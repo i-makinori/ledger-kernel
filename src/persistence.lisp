@@ -158,6 +158,22 @@ already-built ledger."
 WRITE-COMMANDS-TO-FILE for the actual writing."
   (write-commands-to-file (ledger-commands ledger) path))
 
+(defun read-forms-from-file (path)
+  "Every top-level S-expression in PATH, read as DATA ONLY: with the
+standard readtable and *READ-EVAL* off, so #.(...) in a file signals a
+reader error instead of running code, and no reader macro installed in the
+current image can change how the file is read. Symbols are read in the
+LEDGER-KERNEL package. This is what makes it true that loading a .ledger
+or .system file cannot do anything but hand commands to the kernel's own
+gates: a hostile file can fail to load, but it cannot execute."
+  (with-open-file (in path :direction :input)
+    (with-standard-io-syntax
+      (let ((*read-eval* nil)
+            (*package* (find-package :ledger-kernel)))
+        (loop for form = (read in nil in)   ; the stream itself as EOF marker
+              until (eq form in)
+              collect form)))))
+
 (defun read-ledger-from-file (path &key (atomic-symbols '(A B C D E F G H))
                                          (variables '(v0 v1 v2 v3 v4 v5))
                                          (log (silent-log))
@@ -172,11 +188,7 @@ onto (see LEDGER-FROM-COMMANDS) instead of a fresh BOOTSTRAP-KERNEL --
 this is how several files chain into one growing ledger, module by
 module: (READ-LEDGER-FROM-FILE \"b.ledger\" :LEDGER (READ-LEDGER-FROM-FILE
 \"a.ledger\"))."
-  (let ((*package* (find-package :ledger-kernel)))
-    (with-open-file (in path :direction :input)
-      (let ((commands (loop for form = (read in nil :eof)
-                             until (eq form :eof)
-                             collect form)))
-        (ledger-from-commands commands :atomic-symbols atomic-symbols
-                                        :variables variables :log log
-                                        :ledger ledger)))))
+  (ledger-from-commands (read-forms-from-file path)
+                        :atomic-symbols atomic-symbols
+                        :variables variables :log log
+                        :ledger ledger))

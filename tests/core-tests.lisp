@@ -315,6 +315,7 @@ checks; extended, for one that also grows Sigma or the ledger itself)."
          ;; round-trip that ledger.
          (ledger (test-persistence-round-trip ledger))
          (ledger (test-chained-module-loading ledger))
+         (ledger (test-file-reader-safety ledger))
          (ledger (test-backtracking-and-self-ref ledger))
          (ledger (test-failed-line-report ledger)))
     (declare (ignorable ledger))

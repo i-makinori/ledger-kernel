@@ -45,8 +45,11 @@ checker）です。「証明可能である」(⊢) という関係を、メタ�
   証明した性質から、新しい**関数記号**を保存拡張（conservative extension）
   として鋳造する定義機構。生成された関数は、呼び出すたびに `IOTA` を経由する
   必要がなく、定義公理を直接引用するだけで使える（詳細は下記セクション参照）
+- **ZF 集合論（`zf-library/00-zf.system`）**: 所属関係 `.in`（∈）と、ZF の
+  8公理（外延性・対・和集合・冪集合・無限・正則性・分出図式・置換図式）を
+  `.system` ファイルとして定義。選択公理は含まない（詳細は下記セクション参照）
 
-293/293 の self-test が pass、コンパイル警告 0 の状態です。
+316/316 の self-test が pass、コンパイル警告 0 の状態です。
 
 
 ## ファイル構成
@@ -82,6 +85,8 @@ hilbert-library/
   03-equality-core.ledger             等号の基本定理
   04-peano-arithmetic.ledger          0+x=x の帰納法証明 など
   05-classical-logic.ledger           古典論理の完全性補題（ex-falso, ¬¬導入/除去, raa 等）
+zf-library/
+  00-zf.system                        ZF 集合論の公理系（00-classical-fol-equality.system の上に積む）
 ```
 
 `.system` ファイルと `.ledger` ファイルは似ているようで**信頼のされ方が根本的に違います**（下記「体系そのものをファイルで定義する」参照）。`.system` は体系の**土台**（公理・推論規則）を、`.ledger` は土台の上で**証明された定理**を記述します。
@@ -644,6 +649,73 @@ descriptionは保存的拡張である」というメタ定理そのものを本
 チェックとメタ定理自体の証明との間のギャップは、`.system` ファイルを読み込む
 ときの信頼と同じ種類のものです。
 
+### 12. ZF 集合論: `zf-library/00-zf.system`
+
+一階述語論理 + 等号の体系（`00-classical-fol-equality.system`）の上に、ZF 集合論
+（選択公理なし）を積むための `.system` ファイルです。ペアノ算術と同じく
+チェーンロードして使います。
+
+```lisp
+(defparameter *ZF*
+  (bootstrap-kernel-from-spec-file
+    "zf-library/00-zf.system"
+    :ledger (bootstrap-kernel-from-spec-file
+              "hilbert-library/00-classical-fol-equality.system")))
+```
+
+**言語**: 新しく加わる記号は二項述語 `(.in s t)`（s ∈ t）だけです。∈ についての
+等号の代入則は、任意の論理式についての図式である IV.2 がそのまま担います。
+
+**公理**（引用名と内容）:
+
+| 引用名 | 内容 |
+|---|---|
+| `ZF-EXTENSIONALITY` | ∀x ∀y ( ∀z (z∈x ↔ z∈y) → x = y ) |
+| `ZF-PAIRING` | ∀x ∀y ∃z ∀w ( w∈z ↔ (w = x ∨ w = y) ) |
+| `ZF-UNION` | ∀x ∃y ∀z ( z∈y ↔ ∃w (w∈x ∧ z∈w) ) |
+| `ZF-POWER-SET` | ∀x ∃y ∀z ( z∈y ↔ ∀w (w∈z → w∈x) ) |
+| `ZF-INFINITY` | ∃x ( ∃y (y∈x ∧ ∀z ¬(z∈y)) ∧ ∀y (y∈x → ∃z (z∈x ∧ ∀w (w∈z ↔ (w∈y ∨ w = y)))) ) |
+| `ZF-FOUNDATION` | ∀x ( ∃y (y∈x) → ∃y (y∈x ∧ ¬∃z (z∈y ∧ z∈x)) ) |
+| `ZF-SEPARATION` | ∀x ∃y ∀z ( z∈y ↔ (z∈x ∧ φ) )　（y は φ に自由出現しない） |
+| `ZF-REPLACEMENT` | ∀a ( ∀x (x∈a → ∃!y φ) → ∃b ∀x (x∈a → ∃y (y∈b ∧ φ)) )　（b は φ に自由出現しない） |
+
+**結合子の展開**: カーネルの基本結合子は `.to`（→）と `.neg`（¬）だけなので、
+∧・∨・↔ は次の固定した展開形で書かれています。公理を引用するときは、この
+展開形どおりの式を書く必要があります。
+
+```
+A ∧ B  :=  (.neg (.to A (.neg B)))
+A ∨ B  :=  (.to (.neg A) B)
+A ↔ B  :=  (.neg (.to (.to A B) (.neg (.to B A))))
+∃!y φ  :=  ∃y (φ ∧ ∀u (φ[u/y] → u = y))      ; 置換図式の中だけで使用
+```
+
+**変数の扱い**: 各公理の束縛変数はスキーマ変数（`?x` など）なので、証明中で
+使っている任意の変数名でそのまま引用できます（`ALPHA-RENAME` は不要）。その
+代わり、束縛変数どうしが**互いに異なる**ことを側条件として要求します
+（Metamath の distinct variable 条件に相当）。これがないと、たとえば外延性公理で
+z := x とすると ∀x ∀y (∀x (x∈x ↔ x∈y) → x = y) という別の（健全でない）主張に
+なってしまうためです。
+
+```lisp
+;; 外延性公理を v3, v5, v4 で引用する
+(check-k-proof '((0 (.forall v3 (.forall v5 (.to (.forall v4 (.neg (.to (.to (.in v4 v3) (.in v4 v5))
+                                                                         (.neg (.to (.in v4 v5) (.in v4 v3))))))
+                                                   (.eq v3 v5))))
+                   :axiom (zf-extensionality)))
+               *ZF*)
+;=> T
+```
+
+`hilbert-library/` の `01`〜`03`, `05` の `.ledger`（命題論理・述語論理・等号・
+古典論理の定理）は、この ZF 台帳の上にもそのまま積めます（`04` はペアノ算術用
+なので対象外です）。
+
+**注意**: `.system` ファイルなので、ここに書かれた公理はすべて `:PRIMITIVE`
+（無条件に信頼される）です。公理の書き写しの正しさは、教科書どおりの形から
+独立に組み立てた式で各公理を引用できること、および側条件に反する引用が拒否
+されることを `tests/zf-tests.lisp` で確認しています。
+
 
 ## 式の書き方（S式記法）
 
@@ -749,8 +821,11 @@ sbcl --non-interactive \
 
 ## 既知の限界・今後の方向
 
-- 現在扱えるのは一階述語論理 + 算術の範囲まで。集合変数や高階の量化（逆数学の
-  RCA₀/WKL₀/ACA₀ 等の部分体系）はまだありません。
+- 現在扱えるのは一階述語論理 + 算術、および ZF 集合論の公理系まで。ZF の上の
+  定理ライブラリ（空集合・対・順序対・自然数など）はまだありません。高階の量化
+  （逆数学の RCA₀/WKL₀/ACA₀ 等の部分体系）もまだありません。
+- ∧・∨・↔ は基本結合子ではなく展開形で書く必要があります（ZF の公理が長く
+  なるのはこのためです）。
 - `PROVE-TAUTOLOGY` は命題論理（`.to`/`.neg` のみ）専用で、量化子を含む式には
   使えません。
 - ケース分割の再帰は原子論理式の数に対して指数的です（2^n 個の分岐を作るため）。

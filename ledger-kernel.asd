@@ -43,6 +43,7 @@
                (:file "inductive-tests")
                (:file "exists-elim-tests")
                (:file "function-definition-tests")
+               (:file "zf-tests")
                (:file "run"))
   :perform (test-op (o c)
              (unless (uiop:symbol-call :ledger-kernel :run-all-self-tests)

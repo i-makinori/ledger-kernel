@@ -43,6 +43,7 @@
                (:file "inductive-tests")
                (:file "exists-elim-tests")
                (:file "function-definition-tests")
+               (:file "connectives-tests")
                (:file "zf-tests")
                (:file "run"))
   :perform (test-op (o c)

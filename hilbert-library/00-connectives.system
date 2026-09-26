@@ -1,0 +1,82 @@
+;;; 00-connectives.system
+;;;
+;;; Defined connectives: conjunction, disjunction, biconditional and the
+;;; unique-existence quantifier, as a SYSTEM-SPEC add-on file (see
+;;; src/system-spec.lisp, Section 18). Load it ON TOP OF
+;;; 00-classical-fol-equality.system:
+;;;
+;;;   (bootstrap-kernel-from-spec-file
+;;;     "hilbert-library/00-connectives.system"
+;;;     :ledger (bootstrap-kernel-from-spec-file
+;;;               "hilbert-library/00-classical-fol-equality.system"))
+;;;
+;;; Each connective is a DEFINITIONAL extension: a formation rule plus a
+;;; pair of axioms, UNFOLD (defined form -> expansion) and FOLD
+;;; (expansion -> defined form), against a fixed expansion in the
+;;; primitive language:
+;;;
+;;;   (.and A B)     A ∧ B    :=  (.neg (.to A (.neg B)))
+;;;   (.or A B)      A ∨ B    :=  (.to (.neg A) B)
+;;;   (.iff A B)     A ↔ B    :=  (.and (.to A B) (.to B A))
+;;;   (.exists1 x A) ∃!x A    :=  (.exists x (.and A (.forall u (.to A[u/x] (.eq u x)))))
+;;;                               for any variable u distinct from x, not
+;;;                               free in A, and substitutable for x in A
+;;;
+;;; The kernel matches formulas purely syntactically, so (.and A B) and
+;;; its expansion are DIFFERENT formulas: a proof moves between them
+;;; explicitly by citing the UNFOLD/FOLD axioms (with MP).
+;;;
+;;; .EXISTS1 binds its variable, so it also appears in the kernel's
+;;; BINDER-HEADS list (src/ledger.lisp): that one line is what makes
+;;; FREE-VARS-WFF / SUBSTITUTE-WFF treat x as bound in (.exists1 x A).
+;;; A binder cannot be introduced from a .system file alone.
+;;;
+;;; REMINDER: every entry here is :PRIMITIVE -- trusted by fiat, never
+;;; re-verified. That definitional extensions of this shape are
+;;; conservative is a standard meta-theorem, but the kernel does not
+;;; check it; see 00-classical-fol-equality.system's header and Section
+;;; 18 for the trust model.
+
+;;; --- Formation -------------------------------------------------------------
+
+(:wff-formation wff_and? ((wff? ?A) (wff? ?B)) (wff? (.and ?A ?B)))
+(:wff-formation wff_or? ((wff? ?A) (wff? ?B)) (wff? (.or ?A ?B)))
+(:wff-formation wff_iff? ((wff? ?A) (wff? ?B)) (wff? (.iff ?A ?B)))
+(:wff-formation wff_exists1? ((var? ?x) (wff? ?A)) (wff? (.exists1 ?x ?A)))
+
+;;; --- Conjunction -----------------------------------------------------------
+
+(:axiom AND-UNFOLD ((wff? ?A) (wff? ?B))
+        (nil (.to (.and ?A ?B) (.neg (.to ?A (.neg ?B))))))
+(:axiom AND-FOLD ((wff? ?A) (wff? ?B))
+        (nil (.to (.neg (.to ?A (.neg ?B))) (.and ?A ?B))))
+
+;;; --- Disjunction -----------------------------------------------------------
+
+(:axiom OR-UNFOLD ((wff? ?A) (wff? ?B))
+        (nil (.to (.or ?A ?B) (.to (.neg ?A) ?B))))
+(:axiom OR-FOLD ((wff? ?A) (wff? ?B))
+        (nil (.to (.to (.neg ?A) ?B) (.or ?A ?B))))
+
+;;; --- Biconditional ---------------------------------------------------------
+
+(:axiom IFF-UNFOLD ((wff? ?A) (wff? ?B))
+        (nil (.to (.iff ?A ?B) (.and (.to ?A ?B) (.to ?B ?A)))))
+(:axiom IFF-FOLD ((wff? ?A) (wff? ?B))
+        (nil (.to (.and (.to ?A ?B) (.to ?B ?A)) (.iff ?A ?B))))
+
+;;; --- Unique existence ------------------------------------------------------
+;;; ?x, ?A and ?u are all bound structurally (left to right) before the
+;;; embedded (@subst ?x ?u ?A) is reached, so no extra parameters are
+;;; needed when citing these axioms.
+
+(:axiom EXISTS1-UNFOLD ((var? ?x) (var? ?u) (wff? ?A)
+                        (@not-free-in? ?u ?x) (@not-free-in? ?u ?A)
+                        (@subst-ok? ?x ?u ?A))
+        (nil (.to (.exists1 ?x ?A)
+                  (.exists ?x (.and ?A (.forall ?u (.to (@subst ?x ?u ?A) (.eq ?u ?x))))))))
+(:axiom EXISTS1-FOLD ((var? ?x) (var? ?u) (wff? ?A)
+                      (@not-free-in? ?u ?x) (@not-free-in? ?u ?A)
+                      (@subst-ok? ?x ?u ?A))
+        (nil (.to (.exists ?x (.and ?A (.forall ?u (.to (@subst ?x ?u ?A) (.eq ?u ?x)))))
+                  (.exists1 ?x ?A))))

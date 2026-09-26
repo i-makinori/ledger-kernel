@@ -9,9 +9,10 @@
 ;;; as a rejected positive instance rather than being checked against
 ;;; itself.
 
-(defun zf-and (a b) (list '.neg (list '.to a (list '.neg b))))
-(defun zf-or (a b) (list '.to (list '.neg a) b))
-(defun zf-iff (a b) (zf-and (list '.to a b) (list '.to b a)))
+(defun zf-and (a b) (list '.and a b))
+(defun zf-or (a b) (list '.or a b))
+(defun zf-iff (a b) (list '.iff a b))
+(defun zf-ex1 (x a) (list '.exists1 x a))
 (defun zf-in (a b) (list '.in a b))
 (defun zf-eq (a b) (list '.eq a b))
 (defun zf-all (x a) (list '.forall x a))
@@ -50,17 +51,15 @@
 (defun zf-separation (x y z phi)
   (zf-all x (zf-ex y (zf-all z (zf-iff (zf-in z y) (zf-and (zf-in z x) phi))))))
 
-(defun zf-replacement (a b x y u phi phi-u)
-  "PHI-U is PHI with U substituted for Y, written out by the caller."
-  (zf-all a (zf-imp (zf-all x (zf-imp (zf-in x a)
-                                      (zf-ex y (zf-and phi (zf-all u (zf-imp phi-u (zf-eq u y)))))))
+(defun zf-replacement (a b x y phi)
+  (zf-all a (zf-imp (zf-all x (zf-imp (zf-in x a) (zf-ex1 y phi)))
                     (zf-ex b (zf-all x (zf-imp (zf-in x a)
                                                (zf-ex y (zf-and (zf-in y b) phi))))))))
 
 (defun zf-ledger ()
   (bootstrap-kernel-from-spec-file
    (asdf:system-relative-pathname :ledger-kernel "zf-library/00-zf.system")
-   :ledger (bootstrap-kernel-from-spec-file (library-path "00-classical-fol-equality.system"))))
+   :ledger (connectives-ledger)))
 
 (defun zf-axiom-ok-p (ledger formula axiom-name)
   (check-k-proof (list (list 0 formula :axiom (list axiom-name))) ledger))
@@ -85,8 +84,7 @@ distinct-variable or freshness side condition are rejected."
   (expect "ZF-SEPARATION with a parameter v3 free in phi"
           (zf-axiom-ok-p ledger (zf-separation 'v0 'v1 'v2 '(.in v2 v3)) 'zf-separation) t)
   (expect "ZF-REPLACEMENT with phi = (y = x)"
-          (zf-axiom-ok-p ledger (zf-replacement 'v0 'v1 'v2 'v3 'v4 '(.eq v3 v2) '(.eq v4 v2))
-                         'zf-replacement) t)
+          (zf-axiom-ok-p ledger (zf-replacement 'v0 'v1 'v2 'v3 '(.eq v3 v2)) 'zf-replacement) t)
   ;; --- side conditions ------------------------------------------------
   (expect "Attack: ZF-EXTENSIONALITY with z := x (captures x) -- must reject"
           (zf-axiom-ok-p ledger (zf-extensionality 'v0 'v1 'v0) 'zf-extensionality) nil)
@@ -99,14 +97,14 @@ distinct-variable or freshness side condition are rejected."
   (expect "Attack: ZF-SEPARATION with z := x -- must reject"
           (zf-axiom-ok-p ledger (zf-separation 'v0 'v1 'v0 '(.eq v0 v0)) 'zf-separation) nil)
   (expect "Attack: ZF-REPLACEMENT with b free in phi -- must reject"
-          (zf-axiom-ok-p ledger (zf-replacement 'v0 'v1 'v2 'v3 'v4 '(.in v3 v1) '(.in v4 v1))
-                         'zf-replacement) nil)
-  (expect "Attack: ZF-REPLACEMENT with u free in phi -- must reject"
-          (zf-axiom-ok-p ledger (zf-replacement 'v0 'v1 'v2 'v3 'v4 '(.eq v3 v4) '(.eq v4 v4))
-                         'zf-replacement) nil)
-  (expect "Attack: ZF-REPLACEMENT whose uniqueness clause is not phi[u/y] -- must reject"
-          (zf-axiom-ok-p ledger (zf-replacement 'v0 'v1 'v2 'v3 'v4 '(.eq v3 v2) '(.eq v2 v2))
-                         'zf-replacement) nil)
+          (zf-axiom-ok-p ledger (zf-replacement 'v0 'v1 'v2 'v3 '(.in v3 v1)) 'zf-replacement) nil)
+  (expect "Attack: ZF-REPLACEMENT with y := x -- must reject"
+          (zf-axiom-ok-p ledger (zf-replacement 'v0 'v1 'v2 'v2 '(.eq v2 v2)) 'zf-replacement) nil)
+  (expect "Attack: ZF-SEPARATION written with the expanded conjunction instead of .and -- must reject"
+          (zf-axiom-ok-p ledger
+                         '(.forall v0 (.exists v1 (.forall v2 (.iff (.in v2 v1)
+                                                                    (.neg (.to (.in v2 v0) (.neg (.eq v2 v2))))))))
+                         'zf-separation) nil)
   (expect "Attack: 'there is an empty set' is not itself an axiom -- must reject"
           (zf-axiom-ok-p ledger (zf-ex 'v0 (zf-all 'v1 (zf-not (zf-in 'v1 'v0)))) 'zf-infinity) nil)
   ledger)

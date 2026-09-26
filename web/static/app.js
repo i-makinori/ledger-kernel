@@ -1,0 +1,334 @@
+// Ledger Kernel web UI: browse a world's entries, view proofs as a table or
+// as a proof tree, and check proofs typed in the editor. All logic that
+// decides anything lives on the server (the kernel); this file only displays.
+"use strict";
+
+const state = {
+  world: "zf",
+  entries: [],
+  selectedK: null,
+  editorMode: "table",
+  lastCheck: null,
+};
+
+const KIND_GROUPS = {
+  theorem: ["th", "th-ded", "ith", "def-abbrev"],
+  axiom: ["axiom"],
+  rule: ["irule"],
+  formation: ["wff?", "term?", "var?"],
+  symbol: ["atomic-wff-symbol", "variable-symbol", "predicate-schema-symbol"],
+};
+const KIND_LABELS = {
+  "th": "定理", "th-ded": "定理（演繹）", "ith": "定理", "def-abbrev": "略記",
+  "axiom": "公理", "irule": "推論規則", "wff?": "論理式の形成", "term?": "項の形成",
+  "var?": "変数の形成", "atomic-wff-symbol": "命題記号", "variable-symbol": "変数",
+  "predicate-schema-symbol": "述語スキーマ",
+};
+const ROLE_LABELS = { hyp: "仮定", axiom: "公理", ir: "規則", th: "定理", "th-ded": "定理", ith: "定理", "def-abbrev": "略記" };
+
+// --- small helpers ------------------------------------------------------------
+
+function el(tag, attrs = {}, ...children) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (v !== undefined && v !== null) e.setAttribute(k, v);
+  }
+  for (const c of children.flat()) {
+    if (c === null || c === undefined || c === false) continue;
+    e.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
+  return e;
+}
+
+async function api(path, options) {
+  const res = await fetch(path, options);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+function kindGroup(kind) {
+  for (const [g, kinds] of Object.entries(KIND_GROUPS)) if (kinds.includes(kind)) return g;
+  return "symbol";
+}
+
+// --- worlds and the entry list ----------------------------------------------------
+
+async function loadWorlds() {
+  const worlds = await api("/api/worlds");
+  const select = document.getElementById("world");
+  select.replaceChildren(...worlds.map(w => el("option", { value: w.id }, `${w.title}（${w.entries}）`)));
+  const fromHash = parseHash();
+  if (fromHash && worlds.some(w => w.id === fromHash.world)) state.world = fromHash.world;
+  select.value = state.world;
+  select.addEventListener("change", () => { state.world = select.value; state.selectedK = null; loadEntries(); });
+  await loadEntries();
+  if (fromHash && fromHash.k) showEntry(fromHash.k);
+}
+
+async function loadEntries() {
+  state.entries = await api(`/api/entries?world=${encodeURIComponent(state.world)}`);
+  renderList();
+  if (!state.selectedK) {
+    document.getElementById("entry-detail").replaceChildren(
+      el("p", { class: "placeholder" }, "左の一覧から定義・公理・定理を選んでください。"));
+  }
+}
+
+function activeFilters() {
+  const on = {};
+  document.querySelectorAll(".filters input").forEach(i => on[i.dataset.filter] = i.checked);
+  return on;
+}
+
+function renderList() {
+  const on = activeFilters();
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  const list = document.getElementById("entry-list");
+  const nodes = [];
+  let module = null;
+  for (const e of state.entries) {
+    if (!on[kindGroup(e.kind)]) continue;
+    if (e.aux && !on.aux) continue;
+    if (q && !(e.name.toLowerCase().includes(q) || e.text.toLowerCase().includes(q))) continue;
+    if (e.module !== module) {
+      module = e.module;
+      nodes.push(el("div", { class: "module-head" }, module));
+    }
+    const stmt = (e.premises.length ? e.premises.join(", ") + " ⊢ " : "") + e.text;
+    nodes.push(el("button", {
+      class: "entry-item" + (e.k === state.selectedK ? " selected" : ""),
+      "data-k": e.k,
+      onclick: () => showEntry(e.k),
+    },
+      el("div", { class: "name" }, el("span", { class: "badge " + e.kind }, KIND_LABELS[e.kind] || e.kind), e.name),
+      el("div", { class: "stmt" }, stmt)));
+  }
+  if (!nodes.length) nodes.push(el("p", { class: "placeholder", style: "padding: 12px" }, "該当するエントリはありません。"));
+  list.replaceChildren(...nodes);
+}
+
+// --- one entry ----------------------------------------------------------------------
+
+function parseHash() {
+  const m = location.hash.match(/^#([\w-]+)(?:\/(\d+))?$/);
+  return m ? { world: m[1], k: m[2] ? Number(m[2]) : null } : null;
+}
+
+async function showEntry(k) {
+  state.selectedK = k;
+  history.replaceState(null, "", `#${state.world}/${k}`);
+  document.querySelectorAll(".entry-item").forEach(b => b.classList.toggle("selected", Number(b.dataset.k) === k));
+  const detail = document.getElementById("entry-detail");
+  let e;
+  try {
+    e = await api(`/api/entry?world=${encodeURIComponent(state.world)}&k=${k}`);
+  } catch (err) {
+    detail.replaceChildren(el("p", { class: "placeholder" }, "読み込めませんでした: " + err.message));
+    return;
+  }
+  const premises = e.premiseFormulas.map(p => p.text);
+  const statement = el("div", { class: "statement" },
+    premises.length ? [premises.join(", "), el("span", { class: "turnstile" }, "⊢")] : null,
+    e.conclusion.text);
+  const parts = [
+    el("h1", {}, e.name),
+    el("div", { class: "meta" },
+      el("span", { class: "badge " + e.kind }, KIND_LABELS[e.kind] || e.kind),
+      el("code", {}, e.module), `　#${e.k}　起源: ${e.origin}`),
+    statement,
+    el("pre", { class: "sexp" }, e.conclusion.sexp),
+  ];
+  if (e.discharged) {
+    parts.push(el("p", { class: "muted" }, "演繹定理で仮定 ", el("span", { style: "font-family: var(--math)" }, e.discharged.text), " を含意の前件に移した定理です。"));
+  }
+  if (e.conditions.length) {
+    parts.push(el("div", { class: "section-title" }, "側条件"),
+      el("div", { class: "conditions" }, ...e.conditions.map(c => el("div", {}, c))));
+  }
+  if (e.proof) {
+    const holder = el("div");
+    let mode = "tree";
+    const switcher = el("span", { class: "view-switch" },
+      el("button", { "data-mode": "table" }, "表"),
+      el("button", { "data-mode": "tree", class: "active" }, "証明図"));
+    const draw = () => {
+      switcher.querySelectorAll("button").forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
+      holder.replaceChildren(mode === "table" ? proofTable(e.proof) : proofTree(e.proof));
+    };
+    switcher.addEventListener("click", ev => { if (ev.target.dataset.mode) { mode = ev.target.dataset.mode; draw(); } });
+    parts.push(
+      el("div", { class: "section-title" }, `証明（${e.proof.length} 行）`, switcher,
+        el("button", { class: "secondary", onclick: () => openInEditor(e.proofSexp) }, "エディタで開く")),
+      holder);
+    draw();
+  } else if (["axiom", "irule", "wff?", "term?", "var?"].includes(e.kind)) {
+    parts.push(el("p", { class: "muted" }, "無条件に信頼される基本エントリ（.system ファイル由来）です。?x などはスキーマ変数です。"));
+  }
+  detail.replaceChildren(...parts);
+  detail.scrollTop = 0;
+}
+
+function citeLink(line) {
+  const text = [line.rule, ...line.args].filter(Boolean).join(" ");
+  if (line.cite && line.cite.k) {
+    return el("button", { class: "link", title: "引用しているエントリを開く", onclick: () => goToEntry(line.cite.k) }, text);
+  }
+  return text;
+}
+
+function goToEntry(k) {
+  switchView("library");
+  showEntry(k);
+}
+
+// --- proof as a table -----------------------------------------------------------------
+
+function proofTable(lines) {
+  const rows = new Map();
+  const table = el("table", { class: "proof" });
+  for (const line of lines) {
+    const refs = line.refs.map(r => el("span", {
+      class: "ref",
+      onmouseenter: () => rows.get(r)?.classList.add("hl"),
+      onmouseleave: () => rows.get(r)?.classList.remove("hl"),
+    }, r));
+    const why = line.role === "hyp"
+      ? "仮定"
+      : [ROLE_LABELS[line.role] || line.role, " ", citeLink({ ...line, args: line.args.filter(a => !line.refs.includes(a)) })];
+    const tr = el("tr", { class: line.status || "" },
+      el("td", { class: "n" }, line.n),
+      el("td", { class: "f", title: line.formula.sexp }, line.formula.text),
+      el("td", { class: "why" }, why, refs.length ? ["　← ", ...refs.flatMap((r, i) => i ? [", ", r] : [r])] : null));
+    rows.set(line.n, tr);
+    table.append(tr);
+  }
+  return table;
+}
+
+// --- proof as a tree ----------------------------------------------------------------------
+// Each proof line is a node; the lines it cites are drawn above a horizontal
+// bar, the rule that justifies it to the right of the bar. A Hilbert proof is
+// a DAG, so a line cited twice appears twice. Click a bar to fold/unfold.
+
+function proofTree(lines) {
+  const byN = new Map(lines.map(l => [l.n, l]));
+  const root = lines[lines.length - 1];
+  const wrap = el("div", { class: "tree-wrap" });
+  // small proofs open fully; large ones start with the last two steps
+  const initialDepth = lines.length <= 12 ? 99 : 2;
+  wrap.append(treeNode(root, byN, 0, new Set(), initialDepth));
+  // the root's conclusion sits at the horizontal centre of a wide tree;
+  // start scrolled there so the final result is visible first
+  requestAnimationFrame(() => { wrap.scrollLeft = (wrap.scrollWidth - wrap.clientWidth) / 2; });
+  return el("div", {},
+    el("p", { class: "tree-hint" }, "横線をクリックすると、その上の部分を折りたたみ／展開できます。規則名をクリックすると引用先のエントリへ移動します。"),
+    wrap);
+}
+
+function treeNode(line, byN, depth, path, initialDepth) {
+  const node = el("div", { class: "pnode " + (line.status || "") });
+  const concl = el("div", { class: "concl" + (line.role === "hyp" ? " hyp" : ""), title: `${line.n}: ${line.formula.sexp}` }, line.formula.text);
+  if (line.role === "hyp") {
+    node.append(concl);
+    return node;
+  }
+  const premises = el("div", { class: "premises" });
+  const label = el("span", { class: "label" }, citeLink({ ...line, args: line.args.filter(a => !line.refs.includes(a)) }));
+  const barRow = el("div", { class: "bar-row" }, el("div", { class: "bar" }), label);
+  let open = depth < initialDepth;
+  const children = line.refs.map(r => byN.get(r)).filter(Boolean);
+  const fill = () => {
+    barRow.classList.toggle("collapsed", !open && children.length > 0);
+    if (!children.length) { premises.replaceChildren(); return; }
+    if (!open) { premises.replaceChildren(el("span", { class: "elided", title: "クリックで展開" }, "⋮")); return; }
+    const next = new Set(path).add(line.n);
+    premises.replaceChildren(...children.map(c =>
+      next.has(c.n) ? el("span", { class: "elided" }, `(${c.n})`) : treeNode(c, byN, depth + 1, next, initialDepth)));
+  };
+  barRow.addEventListener("click", ev => {
+    if (ev.target.closest("button")) return;   // the rule link navigates instead
+    open = !open;
+    fill();
+  });
+  fill();
+  node.append(premises, barRow, concl);
+  return node;
+}
+
+// --- editor ---------------------------------------------------------------------------
+
+function openInEditor(proofText) {
+  document.getElementById("proof-input").value = proofText;
+  switchView("editor");
+  runCheck();
+}
+
+async function runCheck() {
+  const summary = document.getElementById("check-summary");
+  const out = document.getElementById("check-result");
+  summary.className = "summary muted";
+  summary.textContent = "検証中…";
+  let r;
+  try {
+    r = await api("/api/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=utf-8" },
+      body: JSON.stringify({ world: state.world, proof: document.getElementById("proof-input").value }),
+    });
+  } catch (err) {
+    summary.className = "summary bad";
+    summary.replaceChildren(el("span", { class: "verdict" }, "エラー"), err.message);
+    out.replaceChildren();
+    return;
+  }
+  state.lastCheck = r;
+  const sequent = r.conclusion
+    ? el("span", { class: "sequent" },
+        (r.hypotheses.length ? r.hypotheses.map(h => h.text).join(", ") + " " : "") + "⊢ " + r.conclusion.text)
+    : null;
+  if (r.ok) {
+    summary.className = "summary ok";
+    summary.replaceChildren(el("span", { class: "verdict" }, "✓ 検証成功"), `全 ${r.lines.length} 行が受理されました。`, sequent);
+  } else {
+    summary.className = "summary bad";
+    const why = r.error ? r.error : `${r.failedAt} 行目が受理されませんでした（それより前の行は受理、後の行は未検証）。`;
+    summary.replaceChildren(el("span", { class: "verdict" }, "✗ 検証失敗"), why, r.ok === false && r.conclusion ? sequent : null);
+  }
+  drawCheck();
+}
+
+function drawCheck() {
+  const out = document.getElementById("check-result");
+  const r = state.lastCheck;
+  if (!r || !r.lines.length) { out.replaceChildren(); return; }
+  out.replaceChildren(state.editorMode === "table" ? proofTable(r.lines) : proofTree(r.lines));
+}
+
+// --- wiring -------------------------------------------------------------------------------
+
+function switchView(name) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.view === name));
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + name));
+}
+
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => switchView(t.dataset.view)));
+document.getElementById("search").addEventListener("input", renderList);
+document.querySelectorAll(".filters input").forEach(i => i.addEventListener("change", renderList));
+document.getElementById("check-btn").addEventListener("click", runCheck);
+document.getElementById("proof-input").addEventListener("keydown", ev => {
+  if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); runCheck(); }
+});
+document.getElementById("editor-switch").addEventListener("click", ev => {
+  const mode = ev.target.dataset.mode;
+  if (!mode) return;
+  state.editorMode = mode;
+  document.querySelectorAll("#editor-switch button").forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
+  drawCheck();
+});
+
+loadWorlds().catch(err => {
+  document.getElementById("entry-detail").replaceChildren(el("p", { class: "placeholder" }, "サーバーに接続できません: " + err.message));
+});

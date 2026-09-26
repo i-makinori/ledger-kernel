@@ -62,7 +62,10 @@ checker）です。「証明可能である」(⊢) という関係を、メタ�
   補題を `hilbert-library/07-quantifier-schemas.ledger` に収録（詳細は下記
   セクション参照）
 
-403/403 の self-test が pass、コンパイル警告 0 の状態です。
+- **Web UI（`web/`）**: ブラウザでライブラリを閲覧し、証明を表・証明図で表示し、
+  エディタで書いた証明を検証できる（詳細は下記「Web UI」参照）
+
+406/406 の self-test が pass、コンパイル警告 0 の状態です。
 
 
 ## ファイル構成
@@ -106,6 +109,14 @@ zf-library/
   01-empty-set.ledger                 空集合の存在・一意性と、定数 (empty) の定義
 tools/
   generate-connectives-ledger.lisp    06-connectives.ledger を PROVE-TAUTOLOGY で生成し直すスクリプト
+  serve.lisp                          Web UI をコマンドラインから起動するスクリプト
+web/                                  Web UI（ledger-kernel/web システム。カーネルの外側）
+  render.lisp                         S式を教科書風の記法（∀ ∃ → ∧ ∈ ∅ …）で表示
+  worlds.lisp                         表示する「世界」（ZF、ペアノ算術）の読み込み
+  api.lisp                            エントリ・証明・検証結果を JSON 用のデータにする
+  server.lisp                         Hunchentoot のルーティング
+  static/                             画面（index.html, app.js, style.css）
+  tests.lisp                          表示と API のテスト
 ```
 
 `.system` ファイルと `.ledger` ファイルは似ているようで**信頼のされ方が根本的に違います**（下記「体系そのものをファイルで定義する」参照）。`.system` は体系の**土台**（公理・推論規則）を、`.ledger` は土台の上で**証明された定理**を記述します。
@@ -897,6 +908,67 @@ ZF の上に作った最初の定理ライブラリです。読み込み順は�
 これにより、たとえば論理の補題を、後で定義した `(empty)` を含む論理式に対して
 使えます。形成規則は「何が式か」を決めるだけで何も証明しないので、健全性には
 影響しません。
+
+
+## Web UI（ブラウザで閲覧・検証する）
+
+ライブラリの定義・公理・定理をブラウザで眺め、証明を表や証明図（横線の図）で
+表示し、エディタに書いた証明をその場で検証できます。Web UI はカーネルの外側に
+あり、台帳を読むことと `check-k-proof` を呼ぶことしかしません。
+
+**必要なライブラリ**: Hunchentoot と yason（Quicklisp なら
+`(ql:quickload '(:hunchentoot :yason))`、Debian/Ubuntu なら
+`apt install cl-hunchentoot cl-yason`）。カーネル本体（`ledger-kernel`）は
+これらに依存しません。
+
+**起動**（リポジトリのルートで）:
+
+```bash
+sbcl --load tools/serve.lisp          # http://127.0.0.1:8080/
+PORT=9000 sbcl --load tools/serve.lisp
+```
+
+REPL からなら:
+
+```lisp
+(asdf:load-system :ledger-kernel/web)
+(ledger-kernel:start-web-server :port 8080)   ; 止めるときは (ledger-kernel:stop-web-server)
+```
+
+起動時に、各「世界」のライブラリを読み込みます（すべての証明が再検証されます）。
+
+| 世界 | 内容 |
+|---|---|
+| ZF set theory | 一階述語論理 + 結合子 + ZF、hilbert-library 01〜03, 05〜07、zf-library 01 |
+| Peano arithmetic | 一階述語論理 + ペアノ算術、hilbert-library 01〜05 |
+
+**画面**:
+- **ライブラリ**: 左の一覧（種類での絞り込み・検索、読み込んだファイルごとに
+  区切り）から選ぶと、右に主張（前提 ⊢ 結論）と証明が出ます。証明は「表」
+  （行ごとの式と根拠）と「証明図」（引用した行を横線の上に並べた図）で
+  切り替えられます。証明図の横線をクリックするとその上を折りたたみ／展開でき、
+  規則名をクリックすると引用先のエントリへ移動します。URL は
+  `#zf/345` のように世界とエントリ番号を含むので、そのまま共有できます。
+- **エディタ**: 証明を S 式で書き「検証」（Ctrl+Enter）を押すと、選んでいる
+  世界の台帳に対して検証します。受理された行・最初に拒否された行・未検証の行が
+  色分けされ、表と証明図で確認できます。検証するだけで、台帳には何も追加しません。
+  ライブラリで「エディタで開く」を押すと、その定理の証明が入ります。
+
+**API**（すべて JSON）:
+
+| メソッド | パス | 内容 |
+|---|---|---|
+| GET | `/api/worlds` | 世界の一覧 |
+| GET | `/api/entries?world=zf` | 世界の全エントリ（要約） |
+| GET | `/api/entry?world=zf&k=345` | 1つのエントリ（証明の各行、引用先を含む） |
+| POST | `/api/check` | `{"world": "zf", "proof": "((0 ...) ...)"}` を検証 |
+
+**安全性**: サーバーは既定で 127.0.0.1 にだけ接続を受け付けます。
+`/api/check` は受け取った文字列を `*read-eval*` を切った状態で読み（`#.` による
+コード実行はできません）、長さと検証時間（20秒）に上限を設けています。ただし
+読み込みの際に記号が作られるので、外部に公開する場合はさらに制限を加えてください。
+
+**テスト**: `(asdf:test-system :ledger-kernel/web)`（表示と API。HTTP は使いません）。
 
 
 ## 式の書き方（S式記法）

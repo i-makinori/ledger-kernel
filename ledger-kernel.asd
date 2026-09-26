@@ -51,3 +51,24 @@
   :perform (test-op (o c)
              (unless (uiop:symbol-call :ledger-kernel :run-all-self-tests)
                (error "ledger-kernel self-tests failed."))))
+
+(defsystem "ledger-kernel/web"
+  :description "Web UI for browsing ledgers and checking proofs (outside the trusted kernel)."
+  :depends-on ("ledger-kernel" "hunchentoot" "yason")
+  :pathname "web/"
+  :serial t
+  :components ((:file "package")
+               (:file "render")
+               (:file "worlds")
+               (:file "api")
+               (:file "server"))
+  :in-order-to ((test-op (test-op "ledger-kernel/web/tests"))))
+
+(defsystem "ledger-kernel/web/tests"
+  :description "Tests for the web UI's renderer and JSON API."
+  :depends-on ("ledger-kernel/web" "ledger-kernel/tests")
+  :pathname "web/"
+  :components ((:file "tests"))
+  :perform (test-op (o c)
+             (unless (uiop:symbol-call :ledger-kernel :run-web-self-tests)
+               (error "ledger-kernel web self-tests failed."))))

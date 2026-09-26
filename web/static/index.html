@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ledger Kernel</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">Ledger Kernel</div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-view="library" role="tab">ライブラリ</button>
+    <button class="tab" data-view="editor" role="tab">エディタ</button>
+  </nav>
+  <label class="world-select">体系
+    <select id="world"></select>
+  </label>
+</header>
+
+<main>
+  <!-- Library: entries on the left, the selected entry on the right -->
+  <section id="view-library" class="view active">
+    <aside class="sidebar">
+      <input id="search" type="search" placeholder="名前・式で検索" autocomplete="off">
+      <div class="filters">
+        <label><input type="checkbox" data-filter="theorem" checked> 定理</label>
+        <label><input type="checkbox" data-filter="axiom" checked> 公理</label>
+        <label><input type="checkbox" data-filter="rule"> 推論規則</label>
+        <label><input type="checkbox" data-filter="formation"> 形成規則</label>
+        <label><input type="checkbox" data-filter="symbol"> 記号</label>
+        <label><input type="checkbox" data-filter="aux"> 補助エントリ</label>
+      </div>
+      <div id="entry-list" class="entry-list"></div>
+    </aside>
+    <article id="entry-detail" class="detail">
+      <p class="placeholder">左の一覧から定義・公理・定理を選んでください。</p>
+    </article>
+  </section>
+
+  <!-- Editor: type a proof, check it against the selected world -->
+  <section id="view-editor" class="view">
+    <div class="editor-pane">
+      <div class="editor-head">
+        <span>証明（S式、1行ずつ）</span>
+        <button id="check-btn" class="primary">検証 <kbd>Ctrl</kbd>+<kbd>Enter</kbd></button>
+      </div>
+      <textarea id="proof-input" spellcheck="false">((0 (.in v0 v1) :hyp nil)
+ (1 (.to (.in v0 v1) (.or (.in v0 v1) (.in v0 v2))) :th (th-or-intro-l))
+ (2 (.or (.in v0 v1) (.in v0 v2)) :ir (mp 1 0)))</textarea>
+      <p class="hint">行の形: <code>(番号 論理式 :役割 (根拠 引数...))</code>。役割は
+        <code>:hyp</code> <code>:axiom</code> <code>:ir</code> <code>:th</code> <code>:th-ded</code>。
+        ライブラリで定理を開き「エディタで開く」を押すと、その証明が入ります。</p>
+    </div>
+    <div class="result-pane">
+      <div id="check-summary" class="summary muted">まだ検証していません。</div>
+      <div class="view-switch" id="editor-switch">
+        <button data-mode="table" class="active">表</button>
+        <button data-mode="tree">証明図</button>
+      </div>
+      <div id="check-result"></div>
+    </div>
+  </section>
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

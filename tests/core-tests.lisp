@@ -265,6 +265,22 @@ fails by construction (the ENTRIES-UPTO boundary)."
             t)
     ledger))
 
+(defun test-failed-line-report (ledger)
+  "CHECK-K-PROOF's second value names the first rejected line."
+  (multiple-value-bind (ok failed-at)
+      (check-k-proof '((0 A :hyp nil)
+                       (1 (.to A (.to B A)) :axiom (II.1))
+                       (2 (.to B A) :ir (MP 1 0))
+                       (3 B :ir (MP 2 0))
+                       (4 A :hyp nil))
+                     ledger)
+    (expect "check-k-proof rejects a proof whose line 3 does not follow" ok nil)
+    (expect "... and reports line 3 as the first rejected line" (eql failed-at 3) t))
+  (multiple-value-bind (ok failed-at)
+      (check-k-proof '((0 A :hyp nil) (1 (.to A (.to B A)) :axiom (II.1))) ledger)
+    (expect "a correct proof has no failed line" (and ok (null failed-at)) t))
+  ledger)
+
 (defun run-self-tests ()
   "Threads the ledger explicitly through each growth step via a single
 flat LET*, calling one named test-phase function per step: each phase
@@ -299,7 +315,8 @@ checks; extended, for one that also grows Sigma or the ledger itself)."
          ;; round-trip that ledger.
          (ledger (test-persistence-round-trip ledger))
          (ledger (test-chained-module-loading ledger))
-         (ledger (test-backtracking-and-self-ref ledger)))
+         (ledger (test-backtracking-and-self-ref ledger))
+         (ledger (test-failed-line-report ledger)))
     (declare (ignorable ledger))
     (format t "~%Self-tests complete.~%"))
   ;; Section 13's equality/Peano self-tests run against their OWN

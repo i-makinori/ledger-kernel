@@ -190,7 +190,9 @@ rather than by a line number."
   "Re-verify RAW-PROOF from scratch against LEDGER (entries strictly
 earlier than whatever is being admitted; caller is responsible for
 passing an appropriately-restricted ledger view, e.g. via
-ENTRIES-UPTO). Returns T iff every line checks out. Gamma (the open
+ENTRIES-UPTO). Returns T iff every line checks out; when it does not, the
+second value is the NUMBERING of the first line that was rejected (every
+line before it was accepted, none after it was checked). Gamma (the open
 hypotheses) starts fresh as NIL here, local to this call, and is threaded
 explicitly through WALK below as an ordinary accumulator argument: a
 :HYP line extends it (by consing) for the REST of this proof only, and a
@@ -237,12 +239,13 @@ top-level proof's own lines."
                             ;; match DEFINIENS at admission time.
                             (t (check-k-derived-line line proven ledger log)))))
                    (log-line-result log line ok)
-                   (and ok
-                        (walk (cdr lines)
-                              (cons (cons (k-line-numbering line) (k-line-formula line)) proven)
-                              (if (eq (k-line-role line) :hyp)
-                                  (cons (k-line-formula line) open-hyps)
-                                  open-hyps)))))))
+                   (if ok
+                       (walk (cdr lines)
+                             (cons (cons (k-line-numbering line) (k-line-formula line)) proven)
+                             (if (eq (k-line-role line) :hyp)
+                                 (cons (k-line-formula line) open-hyps)
+                                 open-hyps))
+                       (values nil (k-line-numbering line)))))))
     (walk raw-proof nil nil)))
 
 (defun match-schema-hyps-against-cited (pats nums proven-alist ledger binds)

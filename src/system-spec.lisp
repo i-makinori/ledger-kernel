@@ -64,7 +64,8 @@
 
 (defun bootstrap-kernel-from-spec (spec &key (atomic-symbols '(A B C D E F G H))
                                               (variables '(v0 v1 v2 v3 v4 v5))
-                                              (ledger nil))
+                                              (ledger nil)
+                                              (origin-note nil))
   "Builds a ledger by interpreting SPEC (a list of system-spec commands,
 see the section header) instead of BOOTSTRAP-KERNEL's own hardcoded
 axiom/rule literals. LEDGER, when supplied, is the starting point (an
@@ -77,13 +78,19 @@ files together (Section 10) -- except everything admitted here is
 :PRIMITIVE, not :DERIVED, so nothing is or could be re-verified: see the
 section header's trust-model note. When LEDGER is NIL, a fresh EMPTY-
 LEDGER is seeded with ATOMIC-SYMBOLS/VARIABLES first, exactly as
-BOOTSTRAP-KERNEL's own first two ADMIT-EACH calls do."
+BOOTSTRAP-KERNEL's own first two ADMIT-EACH calls do.
+
+ORIGIN-NOTE, when non-NIL, is recorded after :PRIMITIVE in every admitted
+entry's ORIGIN, i.e. (:PRIMITIVE . ORIGIN-NOTE). It is metadata only --
+nothing in the checker reads past the :PRIMITIVE tag -- and exists so
+that LEDGER-COMMANDS can tell which :PRIMITIVE entries came from a
+replayable, checked definition (see DEFINE-FUNCTION-BY-DESCRIPTION)."
   (labels ((admit (ledger kind payload)
              "Mirrors BOOTSTRAP-KERNEL's own private ADMIT exactly (see
 Section 2/7): the only two places in this whole file able to create a
 :PRIMITIVE-origin entry are this LABELS binding and BOOTSTRAP-KERNEL's
 own, neither reachable from outside its own lexical scope."
-             (ledger-append ledger kind payload (list :primitive)))
+             (ledger-append ledger kind payload (list* :primitive origin-note)))
            (admit-each (ledger kind syms)
              (if (null syms)
                  ledger

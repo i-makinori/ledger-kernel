@@ -36,16 +36,65 @@
 ;;;     -- ends with the fully closed theorem |- F.
 ;;; This is exactly the textbook proof of Post/Lukasiewicz completeness,
 ;;; run mechanically and checked at every step.
+;;;
+;;; DEFINED CONNECTIVES. When hilbert-library/00-connectives.system is
+;;; loaded, .AND/.OR/.IFF are handled too, without treating them as
+;;; atoms: each is evaluated through its fixed expansion (KEXPAND), and
+;;; Kalmar's Lemma for (.AND A B) etc. is obtained from the lemma for its
+;;; expansion E:
+;;;   - true case:  E, and the FOLD axiom E -> D, give D by MP;
+;;;   - false case: (.neg E), the UNFOLD axiom D -> E, and a contraposition
+;;;     lemma (D -> E) -> (.neg E -> .neg D) give (.neg D) by MP twice.
+;;; The contraposition lemma is itself proved first, by this same tactic,
+;;; on the pure .TO/.NEG formula (A -> B) -> (.neg B -> .neg A).
+;;;
+;;; ATOMS. Any subformula that is not .TO/.NEG or a defined connective is
+;;; an atom -- a bare atomic-wff symbol, but equally (.in v0 v1),
+;;; (.forall v0 A) or (.exists1 v0 A). Only the propositional structure
+;;; above the atoms is used.
+;;;
+;;; NAMES. The intermediate TH-DED entries the case-split admits are named
+;;; NAME.T1, NAME.F1, NAME.T2, ... and the contraposition lemma
+;;; NAME.CONTRA, where NAME is the theorem being proved -- interned,
+;;; deterministic names, so a ledger built with this tactic can be written
+;;; out with WRITE-LEDGER-TO-FILE and read back (an uninterned GENSYM would
+;;; not read back as the same symbol at each citation).
 
 (defun kto? (f) (and (consp f) (eq (car f) '.to) (= (length f) 3)))
 (defun kneg? (f) (and (consp f) (eq (car f) '.neg) (= (length f) 2)))
 
+(defun kdefined-connectives ()
+  "Defined binary connectives the tactic sees through, as
+(HEAD FOLD-AXIOM UNFOLD-AXIOM); see hilbert-library/00-connectives.system."
+  '((.and and-fold and-unfold)
+    (.or or-fold or-unfold)
+    (.iff iff-fold iff-unfold)))
+
+(defun kdefined? (f)
+  (and (consp f) (= (length f) 3) (assoc (car f) (kdefined-connectives))))
+
+(defun kexpand (f)
+  "The fixed expansion of a defined connective (one level only)."
+  (destructuring-bind (head a b) f
+    (ecase head
+      (.and (list '.neg (list '.to a (list '.neg b))))
+      (.or (list '.to (list '.neg a) b))
+      (.iff (list '.and (list '.to a b) (list '.to b a))))))
+
 (defun katoms-of (f &optional acc)
-  "All atomic (non-.TO, non-.NEG) subformulas of F, deduplicated."
+  "All atomic (non-.TO, non-.NEG, non-defined-connective) subformulas of
+F, deduplicated."
   (cond
     ((kto? f) (katoms-of (third f) (katoms-of (second f) acc)))
     ((kneg? f) (katoms-of (second f) acc))
+    ((kdefined? f) (katoms-of (third f) (katoms-of (second f) acc)))
     (t (adjoin f acc :test #'equal))))
+
+(defun kuses-defined-p (f)
+  (cond ((kdefined? f) t)
+        ((kto? f) (or (kuses-defined-p (second f)) (kuses-defined-p (third f))))
+        ((kneg? f) (kuses-defined-p (second f)))
+        (t nil)))
 
 (defun ktruth (f v)
   "Ordinary two-valued truth evaluation of F under valuation V (an alist
@@ -53,6 +102,7 @@ atom -> generalized boolean)."
   (cond
     ((kto? f) (or (not (ktruth (second f) v)) (ktruth (third f) v)))
     ((kneg? f) (not (ktruth (second f) v)))
+    ((kdefined? f) (ktruth (kexpand f) v))
     (t (let ((cell (assoc f v :test #'equal)))
          (unless cell (error "KTRUTH: ~S not assigned in valuation ~S" f v))
          (cdr cell)))))
@@ -69,6 +119,16 @@ atom -> generalized boolean)."
 
 (defvar *klines*)
 (defvar *kindex*)
+(defvar *kname*)
+(defvar *kname-count*)
+(defvar *kcontra* nil
+  "Name of the contraposition lemma the defined-connective case cites.")
+
+(defun knext-name (tag)
+  "NAME.T<n> / NAME.F<n>: a fresh, interned name for an intermediate
+entry of the theorem *KNAME* (see the NAMES note above)."
+  (let ((pkg (or (symbol-package *kname*) (find-package :ledger-kernel))))
+    (intern (format nil "~A.~A~D" (symbol-name *kname*) tag (incf *kname-count*)) pkg)))
 
 (defun kemit (formula role by)
   "Append a new raw-proof line for FORMULA unless one already exists
@@ -109,6 +169,18 @@ section's header comment for the four cases)."
                       (helper (kemit (list '.to b (list '.neg (list '.neg b))) :th-ded '(th-dneg-intro))))
                  (kemit (list '.neg (list '.neg b)) :ir (list 'mp helper bl)))
                (kalmar b v))))
+        ((kdefined? f)
+         (destructuring-bind (fold unfold) (cdr (kdefined? f))
+           (let* ((e (kexpand f))
+                  (el (kalmar e v)))
+             (if (ktruth f v)
+                 (let ((ax (kemit (list '.to e f) :axiom (list fold))))
+                   (kemit f :ir (list 'mp ax el)))
+                 (let* ((ax (kemit (list '.to f e) :axiom (list unfold)))
+                        (ct (kemit (list '.to (list '.to f e) (list '.to (list '.neg e) (list '.neg f)))
+                                   :th (list *kcontra*)))
+                        (c2 (kemit (list '.to (list '.neg e) (list '.neg f)) :ir (list 'mp ct ax))))
+                   (kemit (list '.neg f) :ir (list 'mp c2 el)))))))
         (t (error "KALMAR: atom ~S not pre-seeded for valuation ~S" f v)))))
 
 (defun kalmar-branch (target full-v atoms-order)
@@ -127,8 +199,8 @@ a flat continuation proof (5 more lines, numbered K..K+4) combining them
 via a II.4 case-split. Returns (VALUES LEDGER' LINES) -- LINES excludes
 the K :hyp lines for PREFIX, which the caller (KALMAR-NODE) already
 knows how to reconstruct."
-  (let* ((name-t (gensym "KT"))
-         (name-f (gensym "KF"))
+  (let* ((name-t (knext-name "T"))
+         (name-f (knext-name "F"))
          (ledger (check-and-extend-by-deduction-direct ledger name-t next-atom raw-true log))
          (ledger (check-and-extend-by-deduction-direct ledger name-f (list '.neg next-atom) raw-false log))
          (gamma-idx (loop for i from 0 below k collect i))
@@ -167,14 +239,28 @@ plus a II.4 case-split."
   "Checks TARGET is a genuine classical tautology (brute-force truth
 table over its own atoms), then mechanically builds and admits a real
 checked Hilbert proof of it under NAME, returning the extended ledger.
-TARGET must be built from .TO/.NEG only (propositional; no quantifiers)
-and LEDGER must already carry TH-EX-FALSO, TH-DNEG-INTRO, TH-NEG-IMPL
+TARGET is built from .TO/.NEG and, if hilbert-library/00-connectives.system
+is loaded, .AND/.OR/.IFF, over arbitrary atoms (see the ATOMS note
+above). LEDGER must already carry TH-EX-FALSO, TH-DNEG-INTRO, TH-NEG-IMPL
 and axiom II.4 -- e.g. a ledger that has replayed 01-propositional-
 core.ledger and 05-classical-logic.ledger, or TEST-CLASSICAL-LOGIC's
-in-memory equivalent."
-  (let* ((atoms (sort (copy-list (katoms-of target)) #'string< :key #'symbol-name)))
-    (dolist (v (kall-valuations atoms))
-      (unless (ktruth target v)
-        (error "PROVE-TAUTOLOGY: ~S is FALSE under ~S -- not a tautology, refusing." target v)))
-    (multiple-value-bind (ledger raw) (kalmar-node ledger atoms nil target log)
-      (check-and-extend ledger 'th name raw log))))
+in-memory equivalent. Besides NAME itself, admits the intermediate
+entries NAME.T<n>/NAME.F<n> (and NAME.CONTRA when a defined connective
+occurs)."
+  (let* ((atoms (sort (copy-list (katoms-of target)) #'string<
+                      :key (lambda (a) (let ((*package* (find-package :ledger-kernel)))
+                                         (prin1-to-string a)))))
+         (pkg (or (symbol-package name) (find-package :ledger-kernel)))
+         (contra (and (kuses-defined-p target)
+                      (intern (format nil "~A.CONTRA" (symbol-name name)) pkg)))
+         (ledger (progn
+                   (dolist (v (kall-valuations atoms))
+                     (unless (ktruth target v)
+                       (error "PROVE-TAUTOLOGY: ~S is FALSE under ~S -- not a tautology, refusing."
+                              target v)))
+                   (if contra
+                       (prove-tautology ledger '(.to (.to a b) (.to (.neg b) (.neg a))) contra log)
+                       ledger))))
+    (let ((*kname* name) (*kname-count* 0) (*kcontra* contra))
+      (multiple-value-bind (ledger raw) (kalmar-node ledger atoms nil target log)
+        (check-and-extend ledger 'th name raw log)))))

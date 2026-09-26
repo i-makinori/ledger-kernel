@@ -27,12 +27,22 @@
 ;;;   (:th   NAME RAW-PROOF)
 ;;;   (:ith  NAME RAW-PROOF)
 ;;;   (:def-abbrev NAME DEFINIENS RAW-PROOF)
+;;;   (:th-ded NAME HYP-FORMULA RAW-PROOF)
+;;;   (:define-function-by-description NAME ARG-VARS Y-VAR Y2-VAR A-FORMULA
+;;;                                    EXISTENCE-NAME UNIQUENESS-NAME)
+;;; The last one replays DEFINE-FUNCTION-BY-DESCRIPTION (Section 22),
+;;; which re-checks its existence/uniqueness theorems before minting the
+;;; new function symbol; see the :PRIMITIVE note just below.
 ;;; :PRIMITIVE entries are never part of the stream: nothing outside
 ;;; BOOTSTRAP-KERNEL's own lexical scope can create one (ADMIT-PRIMITIVE
 ;;; is closed, by design -- see section 2), and BOOTSTRAP-KERNEL is
 ;;; deterministic given the same :ATOMIC-SYMBOLS/:VARIABLES, so replaying
 ;;; a command stream always starts from a fresh (BOOTSTRAP-KERNEL) call,
-;;; never from a saved copy of the primitive base itself.
+;;; never from a saved copy of the primitive base itself. The one
+;;; exception is a :PRIMITIVE entry minted by DEFINE-FUNCTION-BY-
+;;; DESCRIPTION: its ORIGIN is (:PRIMITIVE :BY-DESCRIPTION COMMAND), and
+;;; LEDGER-COMMANDS writes COMMAND (once, at the defining axiom) so that
+;;; the definition is replayed -- and re-checked -- rather than lost.
 ;;;
 ;;; Loading a saved ledger is NOT privileged access: every replayed
 ;;; command goes back through the ordinary CHECK-AND-EXTEND/
@@ -52,31 +62,34 @@ conclusion (PROOF-CONCLUSION) as DEFINIENS -- CHECK-AND-EXTEND-ABBREV's
 own admission check already establishes that this is schema-equivalent
 to whatever the original definiens was, so replaying it this way passes
 the identical check again."
-  (let ((grown-entries
-          ;; Skip :PRIMITIVE-origin entries outright: they are BOOTSTRAP-
-          ;; KERNEL's own doing (the seed atomic-wff-symbols/variables,
-          ;; plus TERM?/WFF?/IRULE/AXIOM formation rules), reconstructed
-          ;; simply by calling BOOTSTRAP-KERNEL again in
-          ;; LEDGER-FROM-COMMANDS -- never by a DECLARE-* command, which
-          ;; would wrongly treat an already-seeded symbol as a fresh one
-          ;; and be refused.
-          (remove-if (lambda (e) (eq (car (entry-origin e)) :primitive))
-                     (treap-values-below (ledger-all ledger) (ledger-bound ledger)))))
-    (loop for e in grown-entries
-          for cmd = (case (entry-kind e)
-                      (atomic-wff-symbol (list :declare-atomic-wff-symbol (entry-payload e)))
-                      (variable-symbol (list :declare-variable-symbol (entry-payload e)))
-                      ((th ith)
-                       (destructuring-bind (name raw-proof) (entry-payload e)
-                         (list (if (eq (entry-kind e) 'th) :th :ith) name raw-proof)))
-                      (def-abbrev
-                       (destructuring-bind (name raw-proof) (entry-payload e)
-                         (list :def-abbrev name (proof-conclusion raw-proof) raw-proof)))
-                      (th-ded
-                       (destructuring-bind (name hyp-formula raw-proof) (entry-payload e)
-                         (list :th-ded name hyp-formula raw-proof)))
-                      (t nil))
-          when cmd collect cmd)))
+  (loop for e in (treap-values-below (ledger-all ledger) (ledger-bound ledger))
+        for origin = (entry-origin e)
+        for cmd = (if (eq (car origin) :primitive)
+                      ;; :PRIMITIVE entries are BOOTSTRAP-KERNEL's (or a
+                      ;; .system file's) own doing -- the seed symbols plus
+                      ;; TERM?/WFF?/IRULE/AXIOM rules -- reconstructed by
+                      ;; bootstrapping again in LEDGER-FROM-COMMANDS, never
+                      ;; by a DECLARE-* command, which would wrongly treat an
+                      ;; already-seeded symbol as a fresh one and be refused.
+                      ;; The one exception is a DEFINE-FUNCTION-BY-DESCRIPTION
+                      ;; definition, written once, at its defining axiom.
+                      (and (eq (second origin) :by-description)
+                           (eq (entry-kind e) 'axiom)
+                           (third origin))
+                      (case (entry-kind e)
+                        (atomic-wff-symbol (list :declare-atomic-wff-symbol (entry-payload e)))
+                        (variable-symbol (list :declare-variable-symbol (entry-payload e)))
+                        ((th ith)
+                         (destructuring-bind (name raw-proof) (entry-payload e)
+                           (list (if (eq (entry-kind e) 'th) :th :ith) name raw-proof)))
+                        (def-abbrev
+                         (destructuring-bind (name raw-proof) (entry-payload e)
+                           (list :def-abbrev name (proof-conclusion raw-proof) raw-proof)))
+                        (th-ded
+                         (destructuring-bind (name hyp-formula raw-proof) (entry-payload e)
+                           (list :th-ded name hyp-formula raw-proof)))
+                        (t nil)))
+        when cmd collect cmd))
 
 (defun ledger-from-commands (commands &key (atomic-symbols '(A B C D E F G H))
                                             (variables '(v0 v1 v2 v3 v4 v5))
@@ -109,6 +122,8 @@ the same CHECK-AND-EXTEND/CHECK-AND-EXTEND-ABBREV/DECLARE-* gates."
                                (check-and-extend-abbrev ledger name definiens raw-proof log)))
                 (:th-ded (destructuring-bind (name hyp-formula raw-proof) args
                            (check-and-extend-by-deduction-direct ledger name hyp-formula raw-proof log)))
+                (:define-function-by-description
+                 (apply #'define-function-by-description ledger args))
                 (t (error "LEDGER-FROM-COMMANDS: unknown command ~S" cmd))))))))
 
 (defun write-commands-to-file (commands path)

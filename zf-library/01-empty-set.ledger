@@ -1,0 +1,114 @@
+;;; 01-empty-set.ledger
+;;;
+;;; The empty set: existence, uniqueness, the definition of the constant
+;;; (empty), and its basic property. A .ledger MODULE file: every proof
+;;; below is re-verified from scratch when the file is loaded.
+;;;
+;;; Load order (each on top of the previous one):
+;;;   hilbert-library/00-classical-fol-equality.system
+;;;   hilbert-library/00-connectives.system
+;;;   zf-library/00-zf.system
+;;;   hilbert-library/01-propositional-core.ledger
+;;;   hilbert-library/02-predicate-core.ledger
+;;;   hilbert-library/03-equality-core.ledger
+;;;   hilbert-library/05-classical-logic.ledger
+;;;   hilbert-library/06-connectives.ledger
+;;;   zf-library/01-empty-set.ledger          <- this file
+;;;
+;;; Contents
+;;;   th-zf-empty-exists   ∃y ∀z ¬(z ∈ y)
+;;;   th-zf-empty-unique   ∀y ∀y' ( ∀z ¬(z ∈ y) → (∀z ¬(z ∈ y') → y = y') )
+;;;   empty                the constant ∅, written (empty), with axiom
+;;;                        EMPTY-DEF: ∀z ¬(z ∈ ∅)
+;;;   th-zf-not-in-empty   ¬(x ∈ ∅)
+;;;
+;;; Variables: v0 = the set Separation is applied to, v1 / v3 = candidate
+;;; empty sets (v3 is also the EXISTS-ELIM witness), v2 = the member.
+
+;;; --- Existence -------------------------------------------------------------
+;;; Separation with φ := ¬(z = z) carves { z ∈ x | z ≠ z } out of any x.
+;;; Step 1: if w is that set (hypothesis H: ∀z (z ∈ w ↔ (z ∈ x ∧ ¬ z = z)))
+;;; then w has no members: z ∈ w would give ¬(z = z), contradicting IV.1.
+
+(:th-ded th-zf-empty-exists-s1 (.forall v2 (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2)))))
+ ((0 (.forall v2 (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2))))) :hyp nil)
+  (1 (.to (.forall v2 (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2))))) (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2))))) :axiom (III.1 v2))
+  (2 (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2)))) :ir (mp 1 0))
+  (3 (.to (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2)))) (.to (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2))))) :th (th-iff-mp))
+  (4 (.to (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2)))) :ir (mp 3 2))
+  (5 (.eq v2 v2) :axiom (IV.1))
+  (6 (.to (.and (.in v2 v0) (.neg (.eq v2 v2))) (.neg (.eq v2 v2))) :th (th-and-elim-r))
+  (7 (.to (.to (.and (.in v2 v0) (.neg (.eq v2 v2))) (.neg (.eq v2 v2))) (.to (.to (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2)))) (.to (.in v2 v3) (.neg (.eq v2 v2))))) :th-ded (th-hypothetical-syllogism))
+  (8 (.to (.to (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2)))) (.to (.in v2 v3) (.neg (.eq v2 v2)))) :ir (mp 7 6))
+  (9 (.to (.in v2 v3) (.neg (.eq v2 v2))) :ir (mp 8 4))
+  (10 (.to (.to (.in v2 v3) (.neg (.eq v2 v2))) (.to (.neg (.neg (.eq v2 v2))) (.neg (.in v2 v3)))) :th (th-contrapositive))
+  (11 (.to (.neg (.neg (.eq v2 v2))) (.neg (.in v2 v3))) :ir (mp 10 9))
+  (12 (.to (.eq v2 v2) (.neg (.neg (.eq v2 v2)))) :th (th-dneg-intro))
+  (13 (.neg (.neg (.eq v2 v2))) :ir (mp 12 5))
+  (14 (.neg (.in v2 v3)) :ir (mp 11 13))
+  (15 (.forall v2 (.neg (.in v2 v3))) :ir (gen 14 v2))))
+
+;;; Step 2: Separation gives such a set for x := v0; take it as the witness
+;;; v3 (EXISTS-ELIM), and generalise its emptiness back to ∃y (III.3).
+
+(:th th-zf-empty-exists
+ ((0 (.forall v0 (.exists v1 (.forall v2 (.iff (.in v2 v1) (.and (.in v2 v0) (.neg (.eq v2 v2))))))) :axiom (zf-separation))
+  (1 (.to (.forall v0 (.exists v1 (.forall v2 (.iff (.in v2 v1) (.and (.in v2 v0) (.neg (.eq v2 v2))))))) (.exists v1 (.forall v2 (.iff (.in v2 v1) (.and (.in v2 v0) (.neg (.eq v2 v2))))))) :axiom (III.1 v0))
+  (2 (.exists v1 (.forall v2 (.iff (.in v2 v1) (.and (.in v2 v0) (.neg (.eq v2 v2)))))) :ir (mp 1 0))
+  (3 (.to (.forall v2 (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2))))) (.forall v2 (.neg (.in v2 v3)))) :th-ded (th-zf-empty-exists-s1))
+  (4 (.to (.forall v2 (.neg (.in v2 v3))) (.exists v1 (.forall v2 (.neg (.in v2 v1))))) :axiom (III.3 v1 (.forall v2 (.neg (.in v2 v1))) v3))
+  (5 (.to (.to (.forall v2 (.neg (.in v2 v3))) (.exists v1 (.forall v2 (.neg (.in v2 v1))))) (.to (.to (.forall v2 (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2))))) (.forall v2 (.neg (.in v2 v3)))) (.to (.forall v2 (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2))))) (.exists v1 (.forall v2 (.neg (.in v2 v1))))))) :th-ded (th-hypothetical-syllogism))
+  (6 (.to (.to (.forall v2 (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2))))) (.forall v2 (.neg (.in v2 v3)))) (.to (.forall v2 (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2))))) (.exists v1 (.forall v2 (.neg (.in v2 v1)))))) :ir (mp 5 4))
+  (7 (.to (.forall v2 (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2))))) (.exists v1 (.forall v2 (.neg (.in v2 v1))))) :ir (mp 6 3))
+  (8 (.exists v1 (.forall v2 (.neg (.in v2 v1)))) :ir (exists-elim 2 7 v3))))
+
+;;; --- Uniqueness ------------------------------------------------------------
+;;; Two sets with no members have the same members (both sides of every
+;;; z ∈ y ↔ z ∈ y' are false), so they are equal by Extensionality.
+
+(:th-ded th-zf-empty-unique-s1 (.forall v2 (.neg (.in v2 v3)))
+ ((0 (.forall v2 (.neg (.in v2 v1))) :hyp nil)
+  (1 (.forall v2 (.neg (.in v2 v3))) :hyp nil)
+  (2 (.to (.forall v2 (.neg (.in v2 v1))) (.neg (.in v2 v1))) :axiom (III.1 v2))
+  (3 (.neg (.in v2 v1)) :ir (mp 2 0))
+  (4 (.to (.forall v2 (.neg (.in v2 v3))) (.neg (.in v2 v3))) :axiom (III.1 v2))
+  (5 (.neg (.in v2 v3)) :ir (mp 4 1))
+  (6 (.to (.neg (.in v2 v1)) (.to (.in v2 v1) (.in v2 v3))) :th-ded (th-ex-falso))
+  (7 (.to (.in v2 v1) (.in v2 v3)) :ir (mp 6 3))
+  (8 (.to (.neg (.in v2 v3)) (.to (.in v2 v3) (.in v2 v1))) :th-ded (th-ex-falso))
+  (9 (.to (.in v2 v3) (.in v2 v1)) :ir (mp 8 5))
+  (10 (.to (.to (.in v2 v1) (.in v2 v3)) (.to (.to (.in v2 v3) (.in v2 v1)) (.iff (.in v2 v1) (.in v2 v3)))) :th (th-iff-intro))
+  (11 (.to (.to (.in v2 v3) (.in v2 v1)) (.iff (.in v2 v1) (.in v2 v3))) :ir (mp 10 7))
+  (12 (.iff (.in v2 v1) (.in v2 v3)) :ir (mp 11 9))
+  (13 (.forall v2 (.iff (.in v2 v1) (.in v2 v3))) :ir (gen 12 v2))
+  (14 (.forall v1 (.forall v3 (.to (.forall v2 (.iff (.in v2 v1) (.in v2 v3))) (.eq v1 v3)))) :axiom (zf-extensionality))
+  (15 (.to (.forall v1 (.forall v3 (.to (.forall v2 (.iff (.in v2 v1) (.in v2 v3))) (.eq v1 v3)))) (.forall v3 (.to (.forall v2 (.iff (.in v2 v1) (.in v2 v3))) (.eq v1 v3)))) :axiom (III.1 v1))
+  (16 (.forall v3 (.to (.forall v2 (.iff (.in v2 v1) (.in v2 v3))) (.eq v1 v3))) :ir (mp 15 14))
+  (17 (.to (.forall v3 (.to (.forall v2 (.iff (.in v2 v1) (.in v2 v3))) (.eq v1 v3))) (.to (.forall v2 (.iff (.in v2 v1) (.in v2 v3))) (.eq v1 v3))) :axiom (III.1 v3))
+  (18 (.to (.forall v2 (.iff (.in v2 v1) (.in v2 v3))) (.eq v1 v3)) :ir (mp 17 16))
+  (19 (.eq v1 v3) :ir (mp 18 13))))
+
+(:th-ded th-zf-empty-unique-s2 (.forall v2 (.neg (.in v2 v1)))
+ ((0 (.forall v2 (.neg (.in v2 v1))) :hyp nil)
+  (1 (.to (.forall v2 (.neg (.in v2 v3))) (.eq v1 v3)) :th-ded (th-zf-empty-unique-s1 0))))
+
+(:th th-zf-empty-unique
+ ((0 (.to (.forall v2 (.neg (.in v2 v1))) (.to (.forall v2 (.neg (.in v2 v3))) (.eq v1 v3))) :th-ded (th-zf-empty-unique-s2))
+  (1 (.forall v3 (.to (.forall v2 (.neg (.in v2 v1))) (.to (.forall v2 (.neg (.in v2 v3))) (.eq v1 v3)))) :ir (gen 0 v3))
+  (2 (.forall v1 (.forall v3 (.to (.forall v2 (.neg (.in v2 v1))) (.to (.forall v2 (.neg (.in v2 v3))) (.eq v1 v3))))) :ir (gen 1 v1))))
+
+;;; --- Definition ------------------------------------------------------------
+;;; DEFINE-FUNCTION-BY-DESCRIPTION re-checks that th-zf-empty-exists and
+;;; th-zf-empty-unique state exactly existence and uniqueness of a y with
+;;; ∀z ¬(z ∈ y), then adds the 0-ary term (empty) and its defining axiom
+;;; EMPTY-DEF: ∀z ¬(z ∈ (empty)).
+
+(:define-function-by-description empty () v1 v3 (.forall v2 (.neg (.in v2 v1)))
+ th-zf-empty-exists th-zf-empty-unique)
+
+;;; --- Basic property --------------------------------------------------------
+
+(:th th-zf-not-in-empty
+ ((0 (.forall v2 (.neg (.in v2 (empty)))) :axiom (empty-def))
+  (1 (.to (.forall v2 (.neg (.in v2 (empty)))) (.neg (.in v0 (empty)))) :axiom (III.1 v0))
+  (2 (.neg (.in v0 (empty))) :ir (mp 1 0))))

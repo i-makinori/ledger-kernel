@@ -101,11 +101,78 @@ tautology proved by PROVE-TAUTOLOGY on top of the classical library."
                            ledger) t)
     ledger))
 
+(defun connectives-library-ledger ()
+  "CONNECTIVES-LEDGER + the 01/02/03/05 modules PROVE-TAUTOLOGY needs."
+  (reduce (lambda (l f) (read-ledger-from-file (library-path f) :ledger l))
+          '("01-propositional-core.ledger" "02-predicate-core.ledger"
+            "03-equality-core.ledger" "05-classical-logic.ledger")
+          :initial-value (connectives-ledger)))
+
+(defun test-prove-tautology-with-connectives (ledger)
+  "PROVE-TAUTOLOGY sees through .AND/.OR/.IFF, refuses non-tautologies,
+and names its intermediate entries so the ledger survives a file round
+trip."
+  (let* ((trans '(.to (.iff a b) (.to (.iff b c) (.iff a c))))
+         (demorgan '(.iff (.neg (.and a b)) (.or (.neg a) (.neg b))))
+         (ledger (prove-tautology ledger trans 'th-test-iff-trans))
+         (ledger (prove-tautology ledger demorgan 'th-test-demorgan)))
+    (expect "PROVE-TAUTOLOGY: iff is transitive"
+            (check-k-proof `((0 ,trans :th (th-test-iff-trans))) ledger) t)
+    (expect "PROVE-TAUTOLOGY: De Morgan, not(A and B) iff (not A or not B)"
+            (check-k-proof `((0 ,demorgan :th (th-test-demorgan))) ledger) t)
+    (expect "PROVE-TAUTOLOGY result is schematic: iff-transitivity at compound formulas"
+            (check-k-proof '((0 (.to (.iff (.eq v0 v1) (.eq v1 v0))
+                                     (.to (.iff (.eq v1 v0) (.and a b))
+                                          (.iff (.eq v0 v1) (.and a b))))
+                                :th (th-test-iff-trans)))
+                           ledger) t)
+    (expect "PROVE-TAUTOLOGY refuses (A or B) -> A"
+            (handler-case (progn (prove-tautology ledger '(.to (.or a b) a) 'th-test-bad) :admitted)
+              (error () :refused))
+            :refused)
+    (expect "PROVE-TAUTOLOGY refuses (A iff B) -> (A and B)"
+            (handler-case (progn (prove-tautology ledger '(.to (.iff a b) (.and a b)) 'th-test-bad2) :admitted)
+              (error () :refused))
+            :refused)
+    (expect "intermediate entries get interned names (TH-TEST-IFF-TRANS.T1, .CONTRA)"
+            (and (derived-rule-name-taken-p (find-symbol "TH-TEST-IFF-TRANS.T1" :ledger-kernel) ledger)
+                 (derived-rule-name-taken-p (find-symbol "TH-TEST-IFF-TRANS.CONTRA" :ledger-kernel) ledger))
+            t)
+    (let ((path "/tmp/ledger-kernel-self-test-tautology.tmp"))
+      (unwind-protect
+           (expect "a ledger built by PROVE-TAUTOLOGY round-trips through a file"
+                   (let ((reloaded (progn (write-ledger-to-file ledger path)
+                                          (read-ledger-from-file path :ledger (connectives-ledger)))))
+                     (check-k-proof `((0 ,demorgan :th (th-test-demorgan))) reloaded))
+                   t)
+        (ignore-errors (delete-file path))))
+    ledger))
+
+(defun test-connectives-library (ledger)
+  "hilbert-library/06-connectives.ledger loads and its lemmas are usable."
+  (let ((ledger (read-ledger-from-file (library-path "06-connectives.ledger") :ledger ledger)))
+    (expect "06: th-and-intro at compound formulas"
+            (check-k-proof '((0 (.to (.eq v0 v1) (.to (.neg a) (.and (.eq v0 v1) (.neg a))))
+                                :th (th-and-intro)))
+                           ledger) t)
+    (expect "06: th-or-elim"
+            (check-k-proof '((0 (.to (.to a c) (.to (.to b c) (.to (.or a b) c))) :th (th-or-elim))) ledger) t)
+    (expect "06: th-iff-sym"
+            (check-k-proof '((0 (.to (.iff a b) (.iff b a)) :th (th-iff-sym))) ledger) t)
+    (expect "06: th-excluded-middle"
+            (check-k-proof '((0 (.or (.eq v0 v0) (.neg (.eq v0 v0))) :th (th-excluded-middle))) ledger) t)
+    (expect "Attack: th-and-elim-l does not give the right conjunct -- must reject"
+            (check-k-proof '((0 (.to (.and a b) b) :th (th-and-elim-l))) ledger) nil)
+    ledger))
+
 (defun run-connectives-self-tests ()
-  "hilbert-library/00-connectives.system and the .EXISTS1 binder."
+  "hilbert-library/00-connectives.system, the .EXISTS1 binder,
+PROVE-TAUTOLOGY over defined connectives, and 06-connectives.ledger."
   (let* ((ledger (connectives-ledger))
          (ledger (test-connectives-formation-and-axioms ledger))
-         (ledger (test-exists1-is-a-binder ledger))
-         (ledger (test-connectives-derivation ledger)))
-    (declare (ignorable ledger))
-    (format t "~%Connectives self-tests complete.~%")))
+         (ledger (test-exists1-is-a-binder ledger)))
+    (test-connectives-derivation ledger))
+  (let* ((ledger (connectives-library-ledger))
+         (ledger (test-prove-tautology-with-connectives ledger)))
+    (test-connectives-library ledger))
+  (format t "~%Connectives self-tests complete.~%"))

@@ -90,4 +90,12 @@ state uniqueness (\"any two things satisfying A are equal\")."
                            (intern (format nil "~A-DEF" (symbol-name name)) (symbol-package name))
                            (mapcar (lambda (x) (list 'term? x)) schema-xs)
                            (list nil schema-a-at-name))))
-      (bootstrap-kernel-from-spec (list term-cmd def-cmd) :ledger ledger))))
+      (bootstrap-kernel-from-spec
+       (list term-cmd def-cmd)
+       :ledger ledger
+       ;; Recorded so LEDGER-COMMANDS can write this definition back out as
+       ;; a :DEFINE-FUNCTION-BY-DESCRIPTION command (Section 10), which
+       ;; replays through this same checked function.
+       :origin-note (list :by-description
+                          (list :define-function-by-description name arg-vars y-var y2-var
+                                a-formula existence-name uniqueness-name))))))

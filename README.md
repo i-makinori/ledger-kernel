@@ -19,7 +19,8 @@ checker）です。「証明可能である」(⊢) という関係を、メタ�
   ¬¬除去/導入、reductio、矛盾律）
 - **`PROVE-TAUTOLOGY`**: 任意の古典命題論理の恒真式を、真理表判定→Kalmarの完全性
   定理の構成的証明→ケース分割による仮定除去、という手順で**自動的に証明・検証**
-  するタクティク
+  するタクティク。∧ ∨ ↔ も展開形を通して扱い、`(.in v0 v1)` のような任意の
+  論理式を原子として使える
 - **`ALPHA-RENAME-ENTRY` / `ALPHA-RENAME-FORALL`**: 束縛変数・自由変数・命題変数
   （atomic-wff-symbol）のα変換相当の操作。カーネルは構造的に一致しないと引用を
   拒否する（自動でのα同値扱いはしない）ので、「同じ定理を別名の変数で使いたい」
@@ -52,8 +53,10 @@ checker）です。「証明可能である」(⊢) という関係を、メタ�
 - **ZF 集合論（`zf-library/00-zf.system`）**: 所属関係 `.in`（∈）と、ZF の
   8公理（外延性・対・和集合・冪集合・無限・正則性・分出図式・置換図式）を
   `.system` ファイルとして定義。選択公理は含まない（詳細は下記セクション参照）
+- **ZF の最初の定理ライブラリ（`zf-library/01-empty-set.ledger`）**: 空集合の
+  存在と一意性を証明し、定数 ∅ `(empty)` を定義（詳細は下記セクション参照）
 
-341/341 の self-test が pass、コンパイル警告 0 の状態です。
+367/367 の self-test が pass、コンパイル警告 0 の状態です。
 
 
 ## ファイル構成
@@ -90,8 +93,12 @@ hilbert-library/
   03-equality-core.ledger             等号の基本定理
   04-peano-arithmetic.ledger          0+x=x の帰納法証明 など
   05-classical-logic.ledger           古典論理の完全性補題（ex-falso, ¬¬導入/除去, raa 等）
+  06-connectives.ledger               ∧ ∨ ↔ の基本補題（導入・除去・対称・推移・ド・モルガン 等）
 zf-library/
   00-zf.system                        ZF 集合論の公理系（00-classical-fol-equality と 00-connectives の上に積む）
+  01-empty-set.ledger                 空集合の存在・一意性と、定数 (empty) の定義
+tools/
+  generate-connectives-ledger.lisp    06-connectives.ledger を PROVE-TAUTOLOGY で生成し直すスクリプト
 ```
 
 `.system` ファイルと `.ledger` ファイルは似ているようで**信頼のされ方が根本的に違います**（下記「体系そのものをファイルで定義する」参照）。`.system` は体系の**土台**（公理・推論規則）を、`.ledger` は土台の上で**証明された定理**を記述します。
@@ -183,6 +190,20 @@ sbcl
 (check-k-proof '((0 (.to (.to (.to A B) A) A) :th (th-peirce))) *L*)
 ;=> T
 ```
+
+`00-connectives.system` を読み込んでいれば、∧ `.and`・∨ `.or`・↔ `.iff` を含む
+式もそのまま扱えます（展開形を通して FOLD／UNFOLD 公理で証明を組み立てます）。
+また、`.to`/`.neg`/`.and`/`.or`/`.iff` 以外の部分論理式はすべて原子として扱うので、
+`(.in v0 v1)` や `(.forall v0 A)` を含む式でも、命題論理の構造だけで成り立つもの
+なら証明できます。
+
+```lisp
+(setf *L* (prove-tautology *L* '(.iff (.neg (.and A B)) (.or (.neg A) (.neg B))) 'th-de-morgan))
+```
+
+証明の途中で使う補助エントリは `NAME.T1`, `NAME.F1`, ..., `NAME.CONTRA` という
+名前で台帳に登録されます（ファイルに書き出して読み戻せるよう、決定的な名前に
+しています）。
 
 恒真式でないものを渡すと、証明を作らずにその場でエラーになります（安全側）。
 
@@ -654,6 +675,16 @@ descriptionは保存的拡張である」というメタ定理そのものを本
 チェックとメタ定理自体の証明との間のギャップは、`.system` ファイルを読み込む
 ときの信頼と同じ種類のものです。
 
+**`.ledger` ファイルへの保存**: 定義は、次のコマンドとして `.ledger` ファイルに
+書けます（`write-ledger-to-file` もこの形で書き出します）。読み込むときは
+`DEFINE-FUNCTION-BY-DESCRIPTION` そのものを呼び直すので、existence／uniqueness
+の再チェックも毎回行われます。
+
+```lisp
+(:define-function-by-description NAME ARG-VARS Y-VAR Y2-VAR A-FORMULA
+                                 EXISTENCE-NAME UNIQUENESS-NAME)
+```
+
 ### 12. 定義された結合子: `hilbert-library/00-connectives.system`
 
 カーネルの基本結合子は `.to`（→）と `.neg`（¬）だけです。∧・∨・↔・∃! は、
@@ -688,8 +719,16 @@ descriptionは保存的拡張である」というメタ定理そのものを本
 `.system` ファイルからは足せないため、ここに `.exists1` を1語追加しています。
 形成規則と意味（定義公理）は、すべて `.system` ファイル側にあります。
 
-**注意**: `PROVE-TAUTOLOGY` は `.and` などを原子論理式として扱うので、これらを
-含む恒真式は、先に展開形に直してから使う必要があります。
+∧ ∨ ↔ の基本補題は `hilbert-library/06-connectives.ledger` にまとめてあります
+（`th-and-intro`, `th-and-elim-l/r`, `th-or-intro-l/r`, `th-or-elim`,
+`th-iff-intro`, `th-iff-mp/mpr`, `th-iff-refl/sym/trans`, `th-not-and`,
+`th-not-or`, `th-excluded-middle`, `th-contrapositive` など）。このファイルは
+`tools/generate-connectives-ledger.lisp` が `PROVE-TAUTOLOGY` で生成したもので、
+読み込むときには他の `.ledger` と同じく全証明が再検証されます。
+
+∃! の補題（∃!x A → ∃x A など）は、いまの仕組みでは汎用の定理として書けません。
+台帳の定理が図式として置き換えられるのは原子記号（A, B, ...）だけで、原子記号は
+x を含む論理式「A(x)」の代わりにはならないためです。
 
 ### 13. ZF 集合論: `zf-library/00-zf.system`
 
@@ -747,6 +786,42 @@ z := x とすると ∀x ∀y (∀x (x∈x ↔ x∈y) → x = y) という別の
 （無条件に信頼される）です。公理の書き写しの正しさは、教科書どおりの形から
 独立に組み立てた式で各公理を引用できること、および側条件に反する引用が拒否
 されることを `tests/zf-tests.lisp` で確認しています。
+
+
+### 14. 空集合: `zf-library/01-empty-set.ledger`
+
+ZF の上に作った最初の定理ライブラリです。読み込み順は次のとおりです。
+
+```lisp
+(defparameter *ZF-EMPTY*
+  (flet ((lib (f l) (read-ledger-from-file f :ledger l)))
+    (lib "zf-library/01-empty-set.ledger"
+     (lib "hilbert-library/06-connectives.ledger"
+      (lib "hilbert-library/05-classical-logic.ledger"
+       (lib "hilbert-library/03-equality-core.ledger"
+        (lib "hilbert-library/02-predicate-core.ledger"
+         (lib "hilbert-library/01-propositional-core.ledger"
+          (bootstrap-kernel-from-spec-file "zf-library/00-zf.system"
+           :ledger (bootstrap-kernel-from-spec-file "hilbert-library/00-connectives.system"
+                    :ledger (bootstrap-kernel-from-spec-file
+                             "hilbert-library/00-classical-fol-equality.system")))))))))))
+```
+
+| 名前 | 内容 |
+|---|---|
+| `th-zf-empty-exists` | ∃y ∀z ¬(z ∈ y)　（分出公理を φ := ¬(z = z) で使う） |
+| `th-zf-empty-unique` | ∀y ∀y′ ( ∀z ¬(z ∈ y) → (∀z ¬(z ∈ y′) → y = y′) )　（外延性公理） |
+| `empty` / `EMPTY-DEF` | 定数 ∅ を `(empty)` と書く。定義公理 ∀z ¬(z ∈ ∅) |
+| `th-zf-not-in-empty` | ¬(x ∈ ∅) |
+
+`(empty)` は `DEFINE-FUNCTION-BY-DESCRIPTION` で定義した0引数の関数記号です。
+上の存在定理と一意性定理が、期待どおりの形をしていることが再チェックされた上で
+定義されます。
+
+```lisp
+(check-k-proof '((0 (.neg (.in v0 (empty))) :th (th-zf-not-in-empty))) *ZF-EMPTY*)
+;=> T
+```
 
 
 ## 式の書き方（S式記法）
@@ -823,6 +898,9 @@ sbcl --non-interactive \
 (run-inductive-definition-self-tests)  ; DEFINE-INDUCTIVE-PREDICATE(S)（単項・n項・相互再帰・整合性検査）
 (run-exists-elim-self-tests)           ; EXISTS-ELIM（存在除去規則）
 (run-function-definition-self-tests)   ; DEFINE-FUNCTION-BY-DESCRIPTION（保存的拡張）
+(run-connectives-self-tests)           ; ∧ ∨ ↔ ∃!、PROVE-TAUTOLOGY の拡張、06-connectives.ledger
+(run-zf-self-tests)                    ; ZF の公理系
+(run-empty-set-self-tests)             ; 空集合、定義の保存と読み戻し
 ```
 
 コードを変更したときは、必ず上のコマンドで **コンパイル警告 0** と
@@ -853,13 +931,17 @@ sbcl --non-interactive \
 
 ## 既知の限界・今後の方向
 
-- 現在扱えるのは一階述語論理 + 算術、および ZF 集合論の公理系まで。ZF の上の
-  定理ライブラリ（空集合・対・順序対・自然数など）はまだありません。高階の量化
+- 現在扱えるのは一階述語論理 + 算術、および ZF 集合論の公理系と空集合まで。
+  対・和集合・順序対・自然数などの ZF 定理ライブラリはまだありません。高階の量化
   （逆数学の RCA₀/WKL₀/ACA₀ 等の部分体系）もまだありません。
-- ∧・∨・↔・∃! は定義された結合子なので、展開形との行き来を UNFOLD／FOLD 公理で
-  明示的に書く必要があり、`PROVE-TAUTOLOGY` もこれらを原子として扱います。
-- `PROVE-TAUTOLOGY` は命題論理（`.to`/`.neg` のみ）専用で、量化子を含む式には
-  使えません。
+- ∧・∨・↔・∃! は定義された結合子なので、証明の中では展開形との行き来を
+  UNFOLD／FOLD 公理で明示的に書く必要があります（`PROVE-TAUTOLOGY` は自動で
+  行います）。
+- 台帳の定理は原子記号（A, B, ...）についてだけ図式的で、変数を含む述語
+  「A(x)」についての図式にはなりません。∃! や量化子についての汎用補題が書け
+  ないのはこのためです。
+- `PROVE-TAUTOLOGY` は命題論理の構造しか使いません。量化子を含む部分論理式は
+  原子として扱うので、量化子の推論が必要な式は証明できません。
 - ケース分割の再帰は原子論理式の数に対して指数的です（2^n 個の分岐を作るため）。
   atom 数が多い恒真式には向きません。
 - `search.lisp`（探索ベースの補助タクティク、bounded forward-chaining）は

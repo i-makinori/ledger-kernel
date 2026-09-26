@@ -88,6 +88,30 @@ CHECK-K-AXIOM-LINE's EXTRA-ARGS) instead of the matcher guessing it."
     ((equal pat expr) binds)
     (t +fail+)))
 
+;;; A predicate schema symbol P (see PREDICATE-SCHEMA-ARITY) is bound to a
+;;; LAMBDA BINDING, (:LAMBDA (x1 ... xn) BODY): "the formula BODY, with
+;;; x1..xn as its argument places". An occurrence (P t1 ... tn) then
+;;; instantiates to BODY with t1..tn substituted simultaneously for
+;;; x1..xn (SCHEMA-BETA). This substitution does not rename bound
+;;; variables to avoid capture; it does not have to, because an
+;;; instantiated proof is always re-verified in full (see
+;;; TRY-DERIVED-ENTRY), so an instance where capture would matter is
+;;; simply rejected.
+
+(defun lambda-binding-p (x)
+  (and (consp x) (eq (car x) :lambda) (= (length x) 3) (listp (second x))))
+
+(defun schema-beta (lam args)
+  "Apply the lambda binding LAM to ARGS (see above). Returns NIL if the
+number of arguments does not match."
+  (destructuring-bind (params body) (cdr lam)
+    (and (= (length params) (length args))
+         (substitute-wff-multi params args body))))
+
+(defun distinct-variables-p (xs ledger)
+  (and (every (lambda (x) (and (symbolp x) (variable-p x ledger))) xs)
+       (= (length xs) (length (remove-duplicates xs :test #'eq)))))
+
 (defun match-schema-atoms (pat expr ledger &optional (binds nil))
   "Like MATCH-TEMPLATE, but the pattern variables are declared ATOMIC-WFF
 SYMBOLS (A, B, C, ... per Sigma) rather than ?-prefixed symbols. This is
@@ -104,6 +128,24 @@ matched structurally as-is."
        (if existing
            (if (equal (cdr existing) expr) binds +fail+)
            (cons (cons pat expr) binds))))
+    ;; (P t1 ... tn) for a predicate schema symbol P. Already bound: the
+    ;; instance must be EXPR exactly. Unbound: bound here only when the
+    ;; arguments are distinct variables (the higher-order "pattern" case,
+    ;; where the solution is unique: P := (lambda (t1..tn) EXPR));
+    ;; otherwise matching fails and the citation must supply P via :INST.
+    ((and (consp pat) (predicate-schema-arity (car pat) ledger))
+     (let ((existing (lookup-binding (car pat) binds))
+           (args (instantiate-schema-atoms (cdr pat) binds)))
+       (cond
+         ((/= (length args) (predicate-schema-arity (car pat) ledger)) +fail+)
+         (existing
+          (if (and (lambda-binding-p (cdr existing))
+                   (equal (schema-beta (cdr existing) args) expr))
+              binds
+              +fail+))
+         ((distinct-variables-p args ledger)
+          (cons (cons (car pat) (list :lambda args expr)) binds))
+         (t +fail+))))
     ((and (consp pat) (consp expr))
      (let ((b1 (match-schema-atoms (car pat) (car expr) ledger binds)))
        (if (match-fail-p b1) +fail+
@@ -118,6 +160,15 @@ BINDS (an alist produced by MATCH-SCHEMA-ATOMS). An unbound schema atom
 is left as-is."
   (cond
     ((and (symbolp template) (lookup-binding template binds)) (cdr (lookup-binding template binds)))
+    ;; (P t1 ... tn) with P bound to a lambda binding: beta-reduce, after
+    ;; instantiating the arguments themselves.
+    ((and (consp template) (symbolp (car template))
+          (let ((b (lookup-binding (car template) binds)))
+            (and b (lambda-binding-p (cdr b)))))
+     (let ((args (instantiate-schema-atoms (cdr template) binds)))
+       (or (and (listp args)
+                (schema-beta (cdr (lookup-binding (car template) binds)) args))
+           template)))
     ((consp template) (cons (instantiate-schema-atoms (car template) binds)
                              (instantiate-schema-atoms (cdr template) binds)))
     (t template)))

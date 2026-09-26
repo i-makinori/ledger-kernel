@@ -56,7 +56,13 @@ checker）です。「証明可能である」(⊢) という関係を、メタ�
 - **ZF の最初の定理ライブラリ（`zf-library/01-empty-set.ledger`）**: 空集合の
   存在と一意性を証明し、定数 ∅ `(empty)` を定義（詳細は下記セクション参照）
 
-367/367 の self-test が pass、コンパイル警告 0 の状態です。
+- **述語スキーマ変数「A(x)」**: `(:declare-predicate-schema-symbol p 1)` で宣言した
+  `p` について、`(p v0)` を「x を含む任意の論理式」として定理に書ける。引用時に
+  具体的な論理式が代入される（自動、または `:inst` で明示）。量化子・∃! の汎用
+  補題を `hilbert-library/07-quantifier-schemas.ledger` に収録（詳細は下記
+  セクション参照）
+
+403/403 の self-test が pass、コンパイル警告 0 の状態です。
 
 
 ## ファイル構成
@@ -94,6 +100,7 @@ hilbert-library/
   04-peano-arithmetic.ledger          0+x=x の帰納法証明 など
   05-classical-logic.ledger           古典論理の完全性補題（ex-falso, ¬¬導入/除去, raa 等）
   06-connectives.ledger               ∧ ∨ ↔ の基本補題（導入・除去・対称・推移・ド・モルガン 等）
+  07-quantifier-schemas.ledger        述語スキーマ P(x) についての量化子・∃! の補題
 zf-library/
   00-zf.system                        ZF 集合論の公理系（00-classical-fol-equality と 00-connectives の上に積む）
   01-empty-set.ledger                 空集合の存在・一意性と、定数 (empty) の定義
@@ -726,9 +733,9 @@ descriptionは保存的拡張である」というメタ定理そのものを本
 `tools/generate-connectives-ledger.lisp` が `PROVE-TAUTOLOGY` で生成したもので、
 読み込むときには他の `.ledger` と同じく全証明が再検証されます。
 
-∃! の補題（∃!x A → ∃x A など）は、いまの仕組みでは汎用の定理として書けません。
-台帳の定理が図式として置き換えられるのは原子記号（A, B, ...）だけで、原子記号は
-x を含む論理式「A(x)」の代わりにはならないためです。
+∃! や量化子についての補題（∃!x P(x) → ∃x P(x) など）は、述語スキーマ変数を
+使って `hilbert-library/07-quantifier-schemas.ledger` にまとめてあります
+（セクション 15）。
 
 ### 13. ZF 集合論: `zf-library/00-zf.system`
 
@@ -824,6 +831,74 @@ ZF の上に作った最初の定理ライブラリです。読み込み順は�
 ```
 
 
+### 15. 述語スキーマ変数「A(x)」: `07-quantifier-schemas.ledger`
+
+原子記号 A, B, ... は「任意の論理式」の代わりになりますが、変数 x に依存する
+「A(x)」の代わりにはなりません。そこで、引数を取る**述語スキーマ記号**を宣言
+できるようにしています。
+
+```lisp
+(:declare-predicate-schema-symbol p 1)   ; .ledger ファイルの中で
+(declare-predicate-schema-symbol *L* 'p 1)  ; Lisp から
+```
+
+宣言すると、任意の項 t について `(p t)` が論理式になります。定理の中の `(p v0)` は
+「v0 を含む任意の論理式」を表し、引用するときに具体的な論理式が代入されます。
+`(p v0)` では v0 が自由変数として見えるので、Gen や EXISTS-ELIM の側条件も
+正しく働きます。
+
+**引用のしかた**: 引数が相異なる変数の箇所（`(.forall v0 (p v0))` など）から、
+代入する論理式は自動で決まります。
+
+```lisp
+;; th-forall-elim: ∀x P(x) → P(v1)。P := (v0 ∈ v3) が自動で決まる
+((0 (.to (.forall v0 (.in v0 v3)) (.in v1 v3)) :th (th-forall-elim)))
+```
+
+自動で決まらない場合や、定理の中の変数を置き換えたい場合は、引用の最後に
+`:inst` で明示します。
+
+```lisp
+(th-forall-elim :inst ((v1 (empty))))            ; 変数 v1 を項 (empty) に置き換え
+(th-forall-mono :inst ((p (v3) (.in v3 v1))       ; P := λv3. v3 ∈ v1
+                       (q (v3) (.in v3 v2))))     ; Q := λv3. v3 ∈ v2
+(th-exists1-exists :inst ((v4 v3)))               ; 補題内部の変数 v4 を v3 に
+```
+
+| `:inst` の要素 | 意味 |
+|---|---|
+| `(A 論理式)` | 原子記号 A にその論理式を代入 |
+| `(P (x1 .. xn) 本体)` | 述語スキーマ P に λx1..xn. 本体 を代入 |
+| `(v0 項)` | 定理の証明全体で変数 v0 をその項に置き換え |
+
+**健全性の仕組み**: 引用されるたびに、定理の保存された証明に代入を施し、
+(1) その証明の仮定と結論が、引用している行・前提と**完全に一致する**こと、
+(2) 代入後の証明全体が**最初から再検証を通る**こと、の2つを確認します。
+代入を見つける照合の処理は、正しい引用を見逃すことはあっても、誤った引用を
+通すことはありません。照合をわざと壊しても誤った引用が通らないことを
+テストで確認しています。変数の捕獲が起きる代入（たとえば、補題の内部で使って
+いる証人変数 v4 を含む論理式を P に入れる）は、再検証で拒否されます。その場合は
+`:inst` で補題内部の変数を別の名前に移せば使えます。
+
+**収録している補題**（P, Q は1引数の述語スキーマ）:
+
+| 名前 | 内容 |
+|---|---|
+| `th-forall-elim` | ∀x P(x) → P(t) |
+| `th-exists-intro` | P(t) → ∃x P(x) |
+| `th-forall-mono` | ∀x (P(x) → Q(x)) → (∀x P(x) → ∀x Q(x)) |
+| `th-exists-mono` | ∀x (P(x) → Q(x)) → (∃x P(x) → ∃x Q(x)) |
+| `th-exists1-exists` | ∃!x P(x) → ∃x P(x) |
+| `th-exists1-unique` | ∃!x P(x) → (P(y) → (P(y′) → y = y′)) |
+
+**後から定義した記号も使える**: 定理を引用して再検証するとき、公理・推論規則・
+定理はその定理より前に登録されたものしか使えません（循環を防ぐため）。一方、
+記号の宣言と形成規則（何が論理式・項か）は、後から追加されたものも見えます。
+これにより、たとえば論理の補題を、後で定義した `(empty)` を含む論理式に対して
+使えます。形成規則は「何が式か」を決めるだけで何も証明しないので、健全性には
+影響しません。
+
+
 ## 式の書き方（S式記法）
 
 論理式はすべて素の S 式です。読み込み時に Common Lisp リーダーが記号を大文字化
@@ -901,6 +976,7 @@ sbcl --non-interactive \
 (run-connectives-self-tests)           ; ∧ ∨ ↔ ∃!、PROVE-TAUTOLOGY の拡張、06-connectives.ledger
 (run-zf-self-tests)                    ; ZF の公理系
 (run-empty-set-self-tests)             ; 空集合、定義の保存と読み戻し
+(run-predicate-schema-self-tests)      ; 述語スキーマ変数、:inst、07-quantifier-schemas.ledger
 ```
 
 コードを変更したときは、必ず上のコマンドで **コンパイル警告 0** と
@@ -910,7 +986,8 @@ sbcl --non-interactive \
 
 ## 設計上の要点（読み手向け）
 
-- **エントリの種類**: `atomic-wff-symbol` / `variable-symbol`（語彙）、`term?` /
+- **エントリの種類**: `atomic-wff-symbol` / `variable-symbol` /
+  `predicate-schema-symbol`（語彙）、`term?` /
   `wff?`（形成規則）、`irule`（推論規則, MP/Gen）、`axiom`、`th` / `ith`（定理、
   閉じた証明）、`th-ded`（演繹定理直接離脱で作った定理）、`def-abbrev`（略記の
   定義）。
@@ -937,9 +1014,8 @@ sbcl --non-interactive \
 - ∧・∨・↔・∃! は定義された結合子なので、証明の中では展開形との行き来を
   UNFOLD／FOLD 公理で明示的に書く必要があります（`PROVE-TAUTOLOGY` は自動で
   行います）。
-- 台帳の定理は原子記号（A, B, ...）についてだけ図式的で、変数を含む述語
-  「A(x)」についての図式にはなりません。∃! や量化子についての汎用補題が書け
-  ないのはこのためです。
+- 定理の中の束縛変数や補題内部の変数は、自動では付け替えられません。変数の
+  衝突で引用が拒否されたときは、`:inst` で変数を置き換えて引用します。
 - `PROVE-TAUTOLOGY` は命題論理の構造しか使いません。量化子を含む部分論理式は
   原子として扱うので、量化子の推論が必要な式は証明できません。
 - ケース分割の再帰は原子論理式の数に対して指数的です（2^n 個の分岐を作るため）。

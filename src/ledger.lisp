@@ -240,8 +240,15 @@ are. A fixed fact about the kernel's own syntax, never mutated at
 runtime; adding a new binder always means adding to this list, whether
 or not the new binder's own axioms/rules could otherwise be expressed as
 pure data (see the .system file commentary, Section 18, and its own
-express caveat about this)."
-  '(.forall .exists .iota))
+express caveat about this).
+
+(.exists1 x A), \"there is exactly one x such that A\", is listed here
+only so that it is treated as a binder. Its formation rule and its
+meaning (fold/unfold axioms against the expansion
+Ex (A & Au (A[u/x] -> u = x))) live entirely in
+hilbert-library/00-connectives.system; without that file loaded, no
+(.exists1 ...) expression is a wff at all."
+  '(.forall .exists .iota .exists1))
 
 (defun at-symbol-p (sym)
   (and (symbolp sym) (> (length (symbol-name sym)) 1)

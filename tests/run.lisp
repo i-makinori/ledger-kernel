@@ -18,6 +18,8 @@ check and a final summary. Returns T if every check passed, NIL otherwise
     (run-inductive-definition-self-tests)
     (run-exists-elim-self-tests)
     (run-function-definition-self-tests)
+    (run-connectives-self-tests)
+    (run-zf-self-tests)
     (destructuring-bind (passed . failed) *expect-results*
       (format t "~%~D/~D self-tests passed~:[, ~D FAILED~;~*~].~%"
               passed (+ passed failed) (zerop failed) failed)

@@ -1,0 +1,119 @@
+;;; 00-zf.system
+;;;
+;;; Zermelo-Fraenkel set theory (ZF, without Choice) as a SYSTEM-SPEC
+;;; add-on file (see src/system-spec.lisp, Section 18). It is written with
+;;; the defined connectives, so load it ON TOP OF both
+;;; hilbert-library/00-classical-fol-equality.system and
+;;; hilbert-library/00-connectives.system:
+;;;
+;;;   (bootstrap-kernel-from-spec-file
+;;;     "zf-library/00-zf.system"
+;;;     :ledger (bootstrap-kernel-from-spec-file
+;;;               "hilbert-library/00-connectives.system"
+;;;               :ledger (bootstrap-kernel-from-spec-file
+;;;                         "hilbert-library/00-classical-fol-equality.system")))
+;;;
+;;; REMINDER: every entry here is :PRIMITIVE -- trusted by fiat, never
+;;; re-verified (see 00-classical-fol-equality.system's header and
+;;; Section 18 for the trust model). This is not a .ledger module file.
+;;;
+;;; --- Conventions ---------------------------------------------------------
+;;;
+;;; Language. The only new symbol is the binary membership predicate
+;;; (.in s t), read "s ∈ t". Equality, the quantifiers and IOTA come from
+;;; the base file; .and/.or/.iff/.exists1 (∧ ∨ ↔ ∃!) come from
+;;; 00-connectives.system. Leibniz substitution for ∈ is already covered
+;;; by IV.2, which is a schema over every wff.
+;;;
+;;; Variables. Every bound variable of an axiom is a schematic ?-variable
+;;; rather than a fixed v0, v1, ..., so an axiom can be cited directly at
+;;; whatever variable names a proof happens to use (no ALPHA-RENAME step
+;;; needed). Each axiom therefore requires its bound variables to be
+;;; PAIRWISE DISTINCT, written (@not-free-in? ?x ?y) -- "?x does not occur
+;;; free in the term ?y", which for two variables means ?x ≠ ?y. This is
+;;; not cosmetic: without it, e.g. Extensionality with z := x would read
+;;; ∀x ∀y (∀x (x∈x ↔ x∈y) → x = y), a different and unsound statement.
+;;; (This plays the role of Metamath's "distinct variable" conditions.)
+;;;
+;;; The Axiom of Choice is deliberately NOT included; ZFC can be obtained
+;;; later by chaining a separate file on top of this one.
+
+;;; --- Formation -------------------------------------------------------------
+
+(:wff-formation wff_in? ((term? ?s) (term? ?t)) (wff? (.in ?s ?t)))
+
+;;; --- Axioms ----------------------------------------------------------------
+
+;;; ZF1 Extensionality
+;;;   ∀x ∀y ( ∀z (z∈x ↔ z∈y) → x = y )
+(:axiom ZF-EXTENSIONALITY
+        ((var? ?x) (var? ?y) (var? ?z)
+         (@not-free-in? ?x ?y) (@not-free-in? ?x ?z) (@not-free-in? ?y ?z))
+        (nil
+         (.forall ?x (.forall ?y (.to (.forall ?z (.iff (.in ?z ?x) (.in ?z ?y))) (.eq ?x ?y))))))
+
+;;; ZF2 Pairing
+;;;   ∀x ∀y ∃z ∀w ( w∈z ↔ (w = x ∨ w = y) )
+(:axiom ZF-PAIRING
+        ((var? ?x) (var? ?y) (var? ?z) (var? ?w)
+         (@not-free-in? ?x ?y) (@not-free-in? ?x ?z) (@not-free-in? ?x ?w)
+         (@not-free-in? ?y ?z) (@not-free-in? ?y ?w) (@not-free-in? ?z ?w))
+        (nil
+         (.forall ?x (.forall ?y (.exists ?z (.forall ?w (.iff (.in ?w ?z) (.or (.eq ?w ?x) (.eq ?w ?y)))))))))
+
+;;; ZF3 Union
+;;;   ∀x ∃y ∀z ( z∈y ↔ ∃w (w∈x ∧ z∈w) )
+(:axiom ZF-UNION
+        ((var? ?x) (var? ?y) (var? ?z) (var? ?w)
+         (@not-free-in? ?x ?y) (@not-free-in? ?x ?z) (@not-free-in? ?x ?w)
+         (@not-free-in? ?y ?z) (@not-free-in? ?y ?w) (@not-free-in? ?z ?w))
+        (nil
+         (.forall ?x (.exists ?y (.forall ?z (.iff (.in ?z ?y) (.exists ?w (.and (.in ?w ?x) (.in ?z ?w)))))))))
+
+;;; ZF4 Power set
+;;;   ∀x ∃y ∀z ( z∈y ↔ ∀w (w∈z → w∈x) )
+(:axiom ZF-POWER-SET
+        ((var? ?x) (var? ?y) (var? ?z) (var? ?w)
+         (@not-free-in? ?x ?y) (@not-free-in? ?x ?z) (@not-free-in? ?x ?w)
+         (@not-free-in? ?y ?z) (@not-free-in? ?y ?w) (@not-free-in? ?z ?w))
+        (nil
+         (.forall ?x (.exists ?y (.forall ?z (.iff (.in ?z ?y) (.forall ?w (.to (.in ?w ?z) (.in ?w ?x)))))))))
+
+;;; ZF5 Infinity  ("some set contains ∅ and is closed under y ↦ y ∪ {y}")
+;;;   ∃x ( ∃y (y∈x ∧ ∀z ¬(z∈y))
+;;;        ∧ ∀y ( y∈x → ∃z (z∈x ∧ ∀w (w∈z ↔ (w∈y ∨ w = y))) ) )
+(:axiom ZF-INFINITY
+        ((var? ?x) (var? ?y) (var? ?z) (var? ?w)
+         (@not-free-in? ?x ?y) (@not-free-in? ?x ?z) (@not-free-in? ?x ?w)
+         (@not-free-in? ?y ?z) (@not-free-in? ?y ?w) (@not-free-in? ?z ?w))
+        (nil
+         (.exists ?x (.and (.exists ?y (.and (.in ?y ?x) (.forall ?z (.neg (.in ?z ?y))))) (.forall ?y (.to (.in ?y ?x) (.exists ?z (.and (.in ?z ?x) (.forall ?w (.iff (.in ?w ?z) (.or (.in ?w ?y) (.eq ?w ?y))))))))))))
+
+;;; ZF6 Foundation (Regularity)
+;;;   ∀x ( ∃y (y∈x) → ∃y (y∈x ∧ ¬∃z (z∈y ∧ z∈x)) )
+(:axiom ZF-FOUNDATION
+        ((var? ?x) (var? ?y) (var? ?z)
+         (@not-free-in? ?x ?y) (@not-free-in? ?x ?z) (@not-free-in? ?y ?z))
+        (nil
+         (.forall ?x (.to (.exists ?y (.in ?y ?x)) (.exists ?y (.and (.in ?y ?x) (.neg (.exists ?z (.and (.in ?z ?y) (.in ?z ?x))))))))))
+
+;;; ZF7 Separation schema  (one axiom per formula φ; y not free in φ.
+;;;   φ may mention z, x and any other free variables as parameters)
+;;;   ∀x ∃y ∀z ( z∈y ↔ (z∈x ∧ φ) )
+(:axiom ZF-SEPARATION
+        ((var? ?x) (var? ?y) (var? ?z)
+         (@not-free-in? ?x ?y) (@not-free-in? ?x ?z) (@not-free-in? ?y ?z)
+         (wff? ?phi) (@not-free-in? ?y ?phi))
+        (nil
+         (.forall ?x (.exists ?y (.forall ?z (.iff (.in ?z ?y) (.and (.in ?z ?x) ?phi)))))))
+
+;;; ZF8 Replacement schema  (one axiom per formula φ; b not free in φ.
+;;;   φ may mention x, y, a and any other free variables as parameters)
+;;;   ∀a ( ∀x (x∈a → ∃!y φ) → ∃b ∀x (x∈a → ∃y (y∈b ∧ φ)) )
+(:axiom ZF-REPLACEMENT
+        ((var? ?a) (var? ?b) (var? ?x) (var? ?y)
+         (@not-free-in? ?a ?b) (@not-free-in? ?a ?x) (@not-free-in? ?a ?y)
+         (@not-free-in? ?b ?x) (@not-free-in? ?b ?y) (@not-free-in? ?x ?y)
+         (wff? ?phi) (@not-free-in? ?b ?phi))
+        (nil
+         (.forall ?a (.to (.forall ?x (.to (.in ?x ?a) (.exists1 ?y ?phi))) (.exists ?b (.forall ?x (.to (.in ?x ?a) (.exists ?y (.and (.in ?y ?b) ?phi)))))))))

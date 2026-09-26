@@ -1,0 +1,6 @@
+(:th-ded th-forall-swap (.forall v0 (.forall v1 a))
+ ((0 (.forall v0 (.forall v1 a)) :hyp nil)
+  (1 (.to (.forall v0 (.forall v1 a)) (.forall v1 a)) :axiom (iii.1 v0))
+  (2 (.forall v1 a) :ir (mp 1 0)) (3 (.to (.forall v1 a) a) :axiom (iii.1 v1))
+  (4 a :ir (mp 3 2)) (5 (.forall v0 a) :ir (gen 4 v0))
+  (6 (.forall v1 (.forall v0 a)) :ir (gen 5 v1))))

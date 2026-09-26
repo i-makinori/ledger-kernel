@@ -1,0 +1,19 @@
+(:th-ded th-identity a ((0 a :hyp nil)))
+(:th-ded th-hyp-syll-step1 a
+ ((0 (.to b c) :hyp nil) (1 (.to a b) :hyp nil) (2 a :hyp nil)
+  (3 b :ir (mp 1 2)) (4 c :ir (mp 0 3))))
+(:th-ded th-hyp-syll-step2 (.to a b)
+ ((0 (.to b c) :hyp nil) (1 (.to a b) :hyp nil)
+  (2 (.to a c) :th-ded (th-hyp-syll-step1 0 1))))
+(:th-ded th-hypothetical-syllogism (.to b c)
+ ((0 (.to b c) :hyp nil)
+  (1 (.to (.to a b) (.to a c)) :th-ded (th-hyp-syll-step2 0))))
+(:th-ded th-permute-step1 a
+ ((0 (.to a (.to b c)) :hyp nil) (1 b :hyp nil) (2 a :hyp nil)
+  (3 (.to b c) :ir (mp 0 2)) (4 c :ir (mp 3 1))))
+(:th-ded th-permute-step2 b
+ ((0 (.to a (.to b c)) :hyp nil) (1 b :hyp nil)
+  (2 (.to a c) :th-ded (th-permute-step1 0 1))))
+(:th-ded th-permute-antecedents (.to a (.to b c))
+ ((0 (.to a (.to b c)) :hyp nil)
+  (1 (.to b (.to a c)) :th-ded (th-permute-step2 0))))

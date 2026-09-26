@@ -1,0 +1,29 @@
+(:th th-zero-plus-zero ((0 (.eq (+ zero zero) zero) :axiom (p4))))
+(:th-ded th-zero-plus-step (.eq (+ zero v0) v0)
+ ((0 (.eq (+ zero v0) v0) :hyp nil)
+  (1 (.eq (+ zero (s v0)) (s (+ zero v0))) :axiom (p5))
+  (2 (.to (.eq (+ zero v0) v0) (.eq (s (+ zero v0)) (s v0))) :axiom (p8))
+  (3 (.eq (s (+ zero v0)) (s v0)) :ir (mp 2 0))
+  (4
+   (.to (.eq (+ zero (s v0)) (s (+ zero v0)))
+    (.to (.eq (s (+ zero v0)) (s v0)) (.eq (+ zero (s v0)) (s v0))))
+   :axiom (iv.4))
+  (5 (.to (.eq (s (+ zero v0)) (s v0)) (.eq (+ zero (s v0)) (s v0))) :ir
+   (mp 4 1))
+  (6 (.eq (+ zero (s v0)) (s v0)) :ir (mp 5 3))))
+(:th th-zero-plus-identity
+ ((0 (.to (.eq (+ zero v0) v0) (.eq (+ zero (s v0)) (s v0))) :th-ded
+   (th-zero-plus-step))
+  (1 (.forall v0 (.to (.eq (+ zero v0) v0) (.eq (+ zero (s v0)) (s v0)))) :ir
+   (gen 0 v0))
+  (2
+   (.to (.eq (+ zero zero) zero)
+    (.to (.forall v0 (.to (.eq (+ zero v0) v0) (.eq (+ zero (s v0)) (s v0))))
+     (.forall v0 (.eq (+ zero v0) v0))))
+   :axiom (p3 v0 (.eq (+ zero v0) v0)))
+  (3 (.eq (+ zero zero) zero) :th-ded (th-zero-plus-zero))
+  (4
+   (.to (.forall v0 (.to (.eq (+ zero v0) v0) (.eq (+ zero (s v0)) (s v0))))
+    (.forall v0 (.eq (+ zero v0) v0)))
+   :ir (mp 2 3))
+  (5 (.forall v0 (.eq (+ zero v0) v0)) :ir (mp 4 1))))

@@ -1,0 +1,107 @@
+;;; 00-classical-fol-equality.system
+;;;
+;;; A SYSTEM-SPEC file (see ledger_kernel.lisp Section 18): term?/wff?
+;;; formation rules, MP/Gen, and axioms II.1-4 (Lukasiewicz's classical
+;;; propositional basis + case-split), III.1-2 (predicate logic), IV.1-4
+;;; (first-order equality) -- expressed purely as data, loaded via
+;;; BOOTSTRAP-KERNEL-FROM-SPEC-FILE instead of hand-edited into
+;;; ledger_kernel.lisp's own BOOTSTRAP-KERNEL function. This is an exact,
+;;; line-for-line transcription of what BOOTSTRAP-KERNEL's Lisp source
+;;; already hardcodes (see its own extensive commentary there for the
+;;; rationale behind each choice) -- TEST-BOOTSTRAP-FROM-SPEC confirms the
+;;; two produce a structurally IDENTICAL (EQUALP) ledger.
+;;;
+;;; REMINDER (see Section 18's header comment for the full argument):
+;;; every entry a system-spec file admits is :PRIMITIVE -- trusted by
+;;; fiat, never independently re-verified. Loading this file is an act of
+;;; trust in its author, exactly like reading BOOTSTRAP-KERNEL's own
+;;; source was. It is NOT a .ledger module file (Section 10); nothing
+;;; here is checked against anything.
+
+;;; --- term?/wff? formation ------------------------------------------
+
+(:term-formation var-term ((var? ?x)) (term? ?x))
+;; (.iota x A): "the x such that A" -- a TERM-producing binder. Inert on
+;; its own (all the actual meaning comes from the IOTA irule below); see
+;; ledger_kernel.lisp's BOOTSTRAP-FORMATION-RULES commentary.
+(:term-formation iota-term ((var? ?x) (wff? ?A)) (term? (.iota ?x ?A)))
+
+(:wff-formation wff_to? ((wff? ?A) (wff? ?B)) (wff? (.to ?A ?B)))
+(:wff-formation wff_neg? ((wff? ?A)) (wff? (.neg ?A)))
+(:wff-formation wff_forall? ((var? ?x) (wff? ?A)) (wff? (.forall ?x ?A)))
+;; .EXISTS's syntax -- III.3 below now gives it real proof theory (still
+;; no full existential elimination/instantiation rule).
+(:wff-formation wff_exists? ((var? ?x) (wff? ?A)) (wff? (.exists ?x ?A)))
+(:wff-formation wff_eq? ((term? ?s) (term? ?t)) (wff? (.eq ?s ?t)))
+
+;;; --- inference rules --------------------------------------------------
+
+(:irule MP ((wff? ?A) (wff? ?B)) (((.to ?A ?B) ?A) nil :=> ?B))
+(:irule Gen ((var? ?x) (wff? ?A) (@not-free-in-dependencies? ?x))
+        ((?A) (?x) :=> (.forall ?x ?A)))
+;; IOTA: from EXISTENCE (.exists ?x ?A) and UNIQUENESS "any two things
+;; satisfying A are equal", concludes A[(.iota ?x ?A)/?x]. See
+;; ledger_kernel.lisp's BOOTSTRAP-INFERENCE-RULES commentary for why this
+;; is an irule (premises cited from the current proof) rather than a
+;; bare axiom, and for the MATCH-TEMPLATE left-to-right binding argument
+;; that makes ?y/?z/?x/?A come out already-ground where needed.
+(:irule IOTA ((var? ?x) (wff? ?A) (@subst-ok? ?x (.iota ?x ?A) ?A))
+        (((.exists ?x ?A)
+          (.forall ?y (.forall ?z (.to (@subst ?x ?y ?A)
+                                       (.to (@subst ?x ?z ?A) (.eq ?y ?z))))))
+         nil :=>
+         (@subst ?x (.iota ?x ?A) ?A)))
+;; EXISTS-ELIM: genuine existential elimination (Mendelson's Rule C).
+;; ?Ac is bound PURELY STRUCTURALLY (not via an embedded @subst -- ?w
+;; isn't ground yet at premise-matching time) and then verified, as a
+;; side condition, to equal A[w/x] via @substitutes?. Named ?w, not ?c:
+;; a pattern variable ?c and ?C would be THE SAME SYMBOL once read (the
+;; reader case-normalizes to upper case). See ledger_kernel.lisp's
+;; BOOTSTRAP-INFERENCE-RULES commentary for the full rationale.
+(:irule EXISTS-ELIM ((var? ?x) (var? ?w) (wff? ?A) (wff? ?Ac) (wff? ?C)
+                      (@substitutes? ?x ?w ?A ?Ac)
+                      (@subst-ok? ?x ?w ?A)
+                      (@not-free-in? ?w ?A)
+                      (@not-free-in? ?w ?C)
+                      (@not-free-in-dependencies? ?w))
+        (((.exists ?x ?A) (.to ?Ac ?C))
+         (?w) :=>
+         ?C))
+
+;;; --- II.1-4: classical propositional logic -----------------------------
+;;;   II.1  A -> (B -> A)                                     [K]
+;;;   II.2  (A -> (B -> C)) -> ((A -> B) -> (A -> C))          [S]
+;;;   II.3  (.neg B -> .neg A) -> (A -> B)                     [contraposition]
+;;;   II.4  (A -> C) -> ((.neg A -> C) -> C)                   [case-split;
+;;;         classically redundant given II.1-3, admitted directly anyway
+;;;         -- see BOOTSTRAP-AXIOMS' own commentary]
+
+(:axiom II.1 ((wff? ?A) (wff? ?B)) (nil (.to ?A (.to ?B ?A))))
+(:axiom II.2 ((wff? ?A) (wff? ?B) (wff? ?C))
+        (nil (.to (.to ?A (.to ?B ?C)) (.to (.to ?A ?B) (.to ?A ?C)))))
+(:axiom II.3 ((wff? ?A) (wff? ?B)) (nil (.to (.to (.neg ?B) (.neg ?A)) (.to ?A ?B))))
+(:axiom II.4 ((wff? ?A) (wff? ?C)) (nil (.to (.to ?A ?C) (.to (.to (.neg ?A) ?C) ?C))))
+
+;;; --- III.1-2: predicate logic -------------------------------------------
+
+(:axiom III.1 ((var? ?x) (wff? ?A) (term? ?t) (@subst-ok? ?x ?t ?A))
+        ((?t) (.to (.forall ?x ?A) (@subst ?x ?t ?A))))
+(:axiom III.2 ((var? ?x) (wff? ?A) (wff? ?B) (@not-free-in? ?x ?A))
+        (nil (.to (.forall ?x (.to ?A ?B)) (.to ?A (.forall ?x ?B)))))
+;; III.3: existential generalization, A[t/x] -> exists x. A. Extra
+;; params are (?x ?A ?t), NOT just (?t) like III.1 -- the binder here
+;; sits in the CONSEQUENT while @subst sits in the ANTECEDENT, so ?x/?A
+;; cannot be left to bind structurally before @subst is reached (see
+;; ledger_kernel.lisp's own commentary on this axiom for the full
+;; MATCH-TEMPLATE left-to-right argument).
+(:axiom III.3 ((var? ?x) (wff? ?A) (term? ?t) (@subst-ok? ?x ?t ?A))
+        ((?x ?A ?t) (.to (@subst ?x ?t ?A) (.exists ?x ?A))))
+
+;;; --- IV.1-4: first-order equality ---------------------------------------
+
+(:axiom IV.1 ((term? ?t)) (nil (.eq ?t ?t)))
+(:axiom IV.2 ((var? ?x) (wff? ?A) (term? ?t) (@subst-ok? ?x ?t ?A))
+        (nil (.to (.eq ?x ?t) (.to ?A (@subst ?x ?t ?A)))))
+(:axiom IV.3 ((term? ?s) (term? ?t)) (nil (.to (.eq ?s ?t) (.eq ?t ?s))))
+(:axiom IV.4 ((term? ?s) (term? ?t) (term? ?u))
+        (nil (.to (.eq ?s ?t) (.to (.eq ?t ?u) (.eq ?s ?u)))))

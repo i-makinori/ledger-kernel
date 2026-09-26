@@ -1,0 +1,15 @@
+(:th th-eq-refl-forall
+ ((0 (.eq v0 v0) :axiom (iv.1)) (1 (.forall v0 (.eq v0 v0)) :ir (gen 0 v0))))
+(:th-ded th-eq-trans3-step1 (.eq v2 v3)
+ ((0 (.eq v0 v1) :hyp nil) (1 (.eq v1 v2) :hyp nil) (2 (.eq v2 v3) :hyp nil)
+  (3 (.to (.eq v0 v1) (.to (.eq v1 v2) (.eq v0 v2))) :axiom (iv.4))
+  (4 (.to (.eq v1 v2) (.eq v0 v2)) :ir (mp 3 0)) (5 (.eq v0 v2) :ir (mp 4 1))
+  (6 (.to (.eq v0 v2) (.to (.eq v2 v3) (.eq v0 v3))) :axiom (iv.4))
+  (7 (.to (.eq v2 v3) (.eq v0 v3)) :ir (mp 6 5)) (8 (.eq v0 v3) :ir (mp 7 2))))
+(:th-ded th-eq-trans3-step2 (.eq v1 v2)
+ ((0 (.eq v0 v1) :hyp nil) (1 (.eq v1 v2) :hyp nil)
+  (2 (.to (.eq v2 v3) (.eq v0 v3)) :th-ded (th-eq-trans3-step1 0 1))))
+(:th-ded th-eq-trans3 (.eq v0 v1)
+ ((0 (.eq v0 v1) :hyp nil)
+  (1 (.to (.eq v1 v2) (.to (.eq v2 v3) (.eq v0 v3))) :th-ded
+   (th-eq-trans3-step2 0))))

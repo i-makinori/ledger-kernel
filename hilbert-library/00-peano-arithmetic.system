@@ -1,0 +1,42 @@
+;;; 00-peano-arithmetic.system
+;;;
+;;; A SYSTEM-SPEC add-on file (see ledger_kernel.lisp Section 18), meant
+;;; to be loaded ON TOP OF 00-classical-fol-equality.system (via
+;;; BOOTSTRAP-KERNEL-FROM-SPEC-FILE's :LEDGER argument, chaining exactly
+;;; the way .ledger MODULE files already do): term-formation rules for
+;;; ZERO/S/+/* and axioms P1-P10, an exact transcription of
+;;; BOOTSTRAP-PEANO-VOCABULARY/BOOTSTRAP-PEANO-AXIOMS (see their own
+;;; commentary in ledger_kernel.lisp for the rationale behind each one,
+;;; especially P3's curried induction schema and P8-P10's existence
+;;; alongside IV.2).
+;;;
+;;; REMINDER: every entry here is :PRIMITIVE -- see 00-classical-fol-
+;;; equality.system's own header, and Section 18's, for the full
+;;; trust-model argument. This is not a .ledger module file.
+
+;;; --- term formation: ZERO, S, +, * --------------------------------------
+
+(:term-formation zero-term nil (term? zero))
+(:term-formation succ-term ((term? ?x)) (term? (S ?x)))
+(:term-formation plus-term ((term? ?x) (term? ?y)) (term? (+ ?x ?y)))
+(:term-formation times-term ((term? ?x) (term? ?y)) (term? (* ?x ?y)))
+
+;;; --- P1-P10 --------------------------------------------------------------
+
+(:axiom P1 ((term? ?x)) (nil (.neg (.eq (S ?x) zero))))
+(:axiom P2 ((term? ?x) (term? ?y)) (nil (.to (.eq (S ?x) (S ?y)) (.eq ?x ?y))))
+(:axiom P3 ((var? ?x) (wff? ?A) (term? zero) (term? (S ?x))
+            (@subst-ok? ?x zero ?A) (@subst-ok? ?x (S ?x) ?A))
+        ((?x ?A)
+         (.to (@subst ?x zero ?A)
+              (.to (.forall ?x (.to ?A (@subst ?x (S ?x) ?A)))
+                   (.forall ?x ?A)))))
+(:axiom P4 ((term? ?x)) (nil (.eq (+ ?x zero) ?x)))
+(:axiom P5 ((term? ?x) (term? ?y)) (nil (.eq (+ ?x (S ?y)) (S (+ ?x ?y)))))
+(:axiom P6 ((term? ?x)) (nil (.eq (* ?x zero) zero)))
+(:axiom P7 ((term? ?x) (term? ?y)) (nil (.eq (* ?x (S ?y)) (+ (* ?x ?y) ?x))))
+(:axiom P8 ((term? ?x) (term? ?y)) (nil (.to (.eq ?x ?y) (.eq (S ?x) (S ?y)))))
+(:axiom P9 ((term? ?x1) (term? ?y1) (term? ?x2) (term? ?y2))
+        (nil (.to (.eq ?x1 ?y1) (.to (.eq ?x2 ?y2) (.eq (+ ?x1 ?x2) (+ ?y1 ?y2))))))
+(:axiom P10 ((term? ?x1) (term? ?y1) (term? ?x2) (term? ?y2))
+        (nil (.to (.eq ?x1 ?y1) (.to (.eq ?x2 ?y2) (.eq (* ?x1 ?x2) (* ?y1 ?y2))))))

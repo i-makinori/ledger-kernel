@@ -11,4 +11,4 @@
 
 (in-package :ledger-kernel)
 
-(export '(start-web-server stop-web-server render-formula))
+(export '(start-web-server stop-web-server render-formula export-static-site))

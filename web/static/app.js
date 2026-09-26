@@ -42,7 +42,39 @@ function el(tag, attrs = {}, ...children) {
   return e;
 }
 
+// A static export (web/static-export.lisp) sets window.LEDGER_STATIC and
+// ships every answer the server would give as data/*.js; the page is then
+// read-only, since checking a new proof needs the kernel.
+const STATIC = window.LEDGER_STATIC || null;
+
+function loadStaticWorld(id) {
+  if (STATIC.data[id]) return Promise.resolve(STATIC.data[id]);
+  if (!/^[\w-]+$/.test(id)) return Promise.reject(new Error("unknown world " + id));
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = `data/${id}.js`;
+    s.onload = () => STATIC.data[id] ? resolve(STATIC.data[id]) : reject(new Error("no data for " + id));
+    s.onerror = () => reject(new Error(`data/${id}.js を読み込めません`));
+    document.head.append(s);
+  });
+}
+
+async function staticApi(path) {
+  const u = new URL(path, "http://static.invalid/");
+  if (u.pathname === "/api/worlds") return STATIC.worlds;
+  if (u.pathname === "/api/check") throw new Error("静的版では証明を検証できません（サーバー版 tools/serve.lisp で検証できます）。");
+  const data = await loadStaticWorld(u.searchParams.get("world"));
+  if (u.pathname === "/api/entries") return data.entries;
+  if (u.pathname === "/api/entry") {
+    const e = data.entry[u.searchParams.get("k")];
+    if (!e) throw new Error("No entry " + u.searchParams.get("k"));
+    return e;
+  }
+  throw new Error("unknown path " + path);
+}
+
 async function api(path, options) {
+  if (STATIC) return staticApi(path);
   const res = await fetch(path, options);
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || res.statusText);
@@ -97,7 +129,7 @@ async function loadEntries() {
   renderList();
   if (!state.selectedK) {
     document.getElementById("entry-detail").replaceChildren(
-      el("p", { class: "placeholder" }, "左の一覧から定義・公理・定理を選んでください。"));
+      STATIC ? staticIntro() : el("p", { class: "placeholder" }, "左の一覧から定義・公理・定理を選んでください。"));
   }
 }
 
@@ -190,7 +222,8 @@ async function showEntry(k) {
     switcher.addEventListener("click", ev => { if (ev.target.dataset.mode) { mode = ev.target.dataset.mode; draw(); } });
     parts.push(
       el("div", { class: "section-title" }, `証明（${e.proof.length} 行）`, switcher,
-        el("button", { class: "secondary", onclick: () => openInEditor(e.proofSexp) }, "エディタで開く")),
+        STATIC ? copyButton(e.proofSexp)
+               : el("button", { class: "secondary", onclick: () => openInEditor(e.proofSexp) }, "エディタで開く")),
       holder);
     draw();
   } else if (["axiom", "irule", "wff?", "term?", "var?"].includes(e.kind)) {
@@ -331,6 +364,34 @@ function treeNode(line, byN, depth, path, initialDepth) {
   return node;
 }
 
+// In the static site: copy the proof's S-expression instead of opening the editor.
+function copyButton(text) {
+  const b = el("button", { class: "secondary", title: "証明の S 式をクリップボードへ" }, "S式をコピー");
+  b.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(text); b.textContent = "コピーしました"; }
+    catch { b.textContent = "コピーできません"; }
+    setTimeout(() => { b.textContent = "S式をコピー"; }, 1500);
+  });
+  return b;
+}
+
+// The static site's landing text, in place of "pick an entry".
+function staticIntro() {
+  const worlds = STATIC.worlds.map(w => `${w.title}（${w.entries} エントリ）`).join("、");
+  return el("div", { class: "static-intro" },
+    el("h1", {}, "Ledger Kernel"),
+    el("p", {}, "追記専用の台帳（ledger）で「証明可能」を管理する、Hilbert 流の証明検証系のライブラリです。"
+      + "左の一覧から公理・定理を選ぶと、命題・証明（表と証明図）・依存している公理・その定理を使っている定理を見られます。"
+      + "式の記号や規則名をクリックすると、導入元・引用先のエントリが新しいタブで開きます。"),
+    el("p", {}, "収録：" + worlds + "。"),
+    el("p", { class: "muted small" },
+      "これは静的に書き出した閲覧専用の版です。書き出しの時点で、すべての証明をカーネルが最初から検証し直しています"
+      + `（${STATIC.generated}${STATIC.revision ? "、commit " + STATIC.revision : ""}）。`
+      + "新しい証明の検証は、サーバー版（tools/serve.lisp）のエディタで行えます。"),
+    el("p", { class: "muted small" },
+      "AI の支援を受けて作成した実験的なソフトウェアで、第三者による監査は受けていません。"));
+}
+
 // --- editor ---------------------------------------------------------------------------
 
 function openInEditor(proofText) {
@@ -414,6 +475,9 @@ window.addEventListener("hashchange", async () => {
   }
   if (h.k && h.k !== state.selectedK) { switchView("library"); showEntry(h.k); }
 });
+
+// The static site has no kernel behind it: no editor tab.
+if (STATIC) document.querySelector('.tab[data-view="editor"]').hidden = true;
 
 loadWorlds().catch(err => {
   document.getElementById("entry-detail").replaceChildren(el("p", { class: "placeholder" }, "サーバーに接続できません: " + err.message));

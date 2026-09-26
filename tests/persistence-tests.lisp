@@ -102,3 +102,47 @@ ledger (writes/reads two temp files as a side effect, then removes them)."
       (ignore-errors (delete-file path-a))
       (ignore-errors (delete-file path-b)))
     ledger))
+
+(defvar *reader-attack-ran* nil
+  "Set by the #.(...) payload in TEST-FILE-READER-SAFETY if it ever runs.")
+
+(defun test-file-reader-safety (ledger)
+  "A .ledger or .system file is read as data only: #.(...) in it must not
+run code while loading (it is a reader error instead), and the load must
+fail rather than admit anything."
+  (let ((ledger-path "/tmp/ledger-kernel-self-test-read-eval.ledger")
+        (system-path "/tmp/ledger-kernel-self-test-read-eval.system")
+        (payload "#.(progn (setf ledger-kernel::*reader-attack-ran* t) nil)"))
+    (unwind-protect
+         (progn
+           (with-open-file (out ledger-path :direction :output :if-exists :supersede)
+             (format out "(:th th-read-eval-probe ((0 (.to A (.to B A)) :axiom (II.1))))~%~A~%" payload))
+           (with-open-file (out system-path :direction :output :if-exists :supersede)
+             (format out "(:atomic-wff-symbols Z9)~%~A~%" payload))
+           (setf *reader-attack-ran* nil)
+           (expect "Attack: #.(...) in a .ledger file -- loading must fail"
+                   (handler-case (progn (read-ledger-from-file ledger-path :ledger ledger) :loaded)
+                     (error () :refused))
+                   :refused)
+           (expect "... and the #.(...) code must never have run"
+                   *reader-attack-ran* nil)
+           (expect "Attack: #.(...) in a .system file -- loading must fail"
+                   (handler-case (progn (bootstrap-kernel-from-spec-file system-path :ledger ledger) :loaded)
+                     (error () :refused))
+                   :refused)
+           (expect "... and the #.(...) code must never have run"
+                   *reader-attack-ran* nil)
+           (expect "a reader macro installed in the image does not change how files are read"
+                   (let ((*readtable* (copy-readtable nil)))
+                     ;; make ( read as the symbol HIJACKED; files must ignore this
+                     (set-macro-character #\( (lambda (s c) (declare (ignore s c)) 'hijacked))
+                     (with-open-file (out ledger-path :direction :output :if-exists :supersede)
+                       (format out "(:th th-readtable-probe ((0 (.to A (.to B A)) :axiom (II.1))))~%"))
+                     (handler-case
+                         (check-k-proof '((0 (.to A (.to B A)) :th (th-readtable-probe)))
+                                        (read-ledger-from-file ledger-path :ledger ledger))
+                       (error () nil)))
+                   t))
+      (ignore-errors (delete-file ledger-path))
+      (ignore-errors (delete-file system-path)))
+    ledger))

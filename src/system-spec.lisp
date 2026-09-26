@@ -116,14 +116,11 @@ own, neither reachable from outside its own lexical scope."
 (defun read-system-spec-from-file (path)
   "Reads PATH as a flat list of system-spec commands (plain S-expressions,
 one or more per file, read back exactly as WRITE-COMMANDS-TO-FILE-style
-tooling would write them) -- the same *PACKAGE*-bound READ loop
-READ-LEDGER-FROM-FILE uses for .ledger MODULE files (Section 10), so
-symbols like A, v0, .forall print and read back identically."
-  (let ((*package* (find-package :ledger-kernel)))
-    (with-open-file (in path :direction :input)
-      (loop for form = (read in nil :eof)
-            until (eq form :eof)
-            collect form))))
+tooling would write them) -- via READ-FORMS-FROM-FILE, the same
+data-only reader READ-LEDGER-FROM-FILE uses for .ledger MODULE files
+(Section 10), so symbols like A, v0, .forall print and read back
+identically and #.(...) cannot run code."
+  (read-forms-from-file path))
 
 (defun bootstrap-kernel-from-spec-file (path &key (atomic-symbols '(A B C D E F G H))
                                                    (variables '(v0 v1 v2 v3 v4 v5))

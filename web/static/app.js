@@ -49,6 +49,30 @@ async function api(path, options) {
   return data;
 }
 
+// Links to entries open in a new tab, so a chain of definitions and
+// lemmas can be followed recursively while the current page stays put.
+function entryHref(k) { return `#${state.world}/${k}`; }
+
+function entryLink(k, text, attrs = {}) {
+  return el("a", { href: entryHref(k), target: "_blank", rel: "noopener", ...attrs }, text);
+}
+
+// A formula as text whose symbols and operators link to the entry that
+// introduced them (declaration, formation rule, or definition).
+function formulaNode(f) {
+  if (!f.segments) return document.createTextNode(f.text);
+  const span = el("span", { class: "formula" });
+  for (const seg of f.segments) {
+    span.append(seg.k ? entryLink(seg.k, seg.t, { class: "sym", title: `#${seg.k} を新しいタブで開く` })
+                      : document.createTextNode(seg.t));
+  }
+  return span;
+}
+
+function joinNodes(nodes, sep) {
+  return nodes.flatMap((n, i) => (i ? [sep, n] : [n]));
+}
+
 function kindGroup(kind) {
   for (const [g, kinds] of Object.entries(KIND_GROUPS)) if (kinds.includes(kind)) return g;
   return "symbol";
@@ -120,7 +144,11 @@ function parseHash() {
 async function showEntry(k) {
   state.selectedK = k;
   history.replaceState(null, "", `#${state.world}/${k}`);
-  document.querySelectorAll(".entry-item").forEach(b => b.classList.toggle("selected", Number(b.dataset.k) === k));
+  document.querySelectorAll(".entry-item").forEach(b => {
+    const on = Number(b.dataset.k) === k;
+    b.classList.toggle("selected", on);
+    if (on) b.scrollIntoView({ block: "nearest" });
+  });
   const detail = document.getElementById("entry-detail");
   let e;
   try {
@@ -129,10 +157,10 @@ async function showEntry(k) {
     detail.replaceChildren(el("p", { class: "placeholder" }, "読み込めませんでした: " + err.message));
     return;
   }
-  const premises = e.premiseFormulas.map(p => p.text);
+  const premises = e.premiseFormulas.map(formulaNode);
   const statement = el("div", { class: "statement" },
-    premises.length ? [premises.join(", "), el("span", { class: "turnstile" }, "⊢")] : null,
-    e.conclusion.text);
+    premises.length ? [...joinNodes(premises, ", "), el("span", { class: "turnstile" }, "⊢")] : null,
+    formulaNode(e.conclusion));
   const parts = [
     el("h1", {}, e.name),
     el("div", { class: "meta" },
@@ -142,7 +170,7 @@ async function showEntry(k) {
     el("pre", { class: "sexp" }, e.conclusion.sexp),
   ];
   if (e.discharged) {
-    parts.push(el("p", { class: "muted" }, "演繹定理で仮定 ", el("span", { style: "font-family: var(--math)" }, e.discharged.text), " を含意の前件に移した定理です。"));
+    parts.push(el("p", { class: "muted" }, "演繹定理で仮定 ", el("span", { style: "font-family: var(--math)" }, formulaNode(e.discharged)), " を含意の前件に移した定理です。"));
   }
   if (e.conditions.length) {
     parts.push(el("div", { class: "section-title" }, "側条件"),
@@ -174,14 +202,9 @@ async function showEntry(k) {
 function citeLink(line) {
   const text = [line.rule, ...line.args].filter(Boolean).join(" ");
   if (line.cite && line.cite.k) {
-    return el("button", { class: "link", title: "引用しているエントリを開く", onclick: () => goToEntry(line.cite.k) }, text);
+    return entryLink(line.cite.k, text, { class: "link", title: `引用している #${line.cite.k} を新しいタブで開く` });
   }
   return text;
-}
-
-function goToEntry(k) {
-  switchView("library");
-  showEntry(k);
 }
 
 // --- proof as a table -----------------------------------------------------------------
@@ -200,7 +223,7 @@ function proofTable(lines) {
       : [ROLE_LABELS[line.role] || line.role, " ", citeLink({ ...line, args: line.args.filter(a => !line.refs.includes(a)) })];
     const tr = el("tr", { class: line.status || "" },
       el("td", { class: "n" }, line.n),
-      el("td", { class: "f", title: line.formula.sexp }, line.formula.text),
+      el("td", { class: "f", title: line.formula.sexp }, formulaNode(line.formula)),
       el("td", { class: "why" }, why, refs.length ? ["　← ", ...refs.flatMap((r, i) => i ? [", ", r] : [r])] : null));
     rows.set(line.n, tr);
     table.append(tr);
@@ -224,13 +247,13 @@ function proofTree(lines) {
   // start scrolled there so the final result is visible first
   requestAnimationFrame(() => { wrap.scrollLeft = (wrap.scrollWidth - wrap.clientWidth) / 2; });
   return el("div", {},
-    el("p", { class: "tree-hint" }, "横線をクリックすると、その上の部分を折りたたみ／展開できます。規則名をクリックすると引用先のエントリへ移動します。"),
+    el("p", { class: "tree-hint" }, "横線をクリックすると、その上の部分を折りたたみ／展開できます。規則名や式の中の記号をクリックすると、引用先・導入元のエントリが新しいタブで開きます。"),
     wrap);
 }
 
 function treeNode(line, byN, depth, path, initialDepth) {
   const node = el("div", { class: "pnode " + (line.status || "") });
-  const concl = el("div", { class: "concl" + (line.role === "hyp" ? " hyp" : ""), title: `${line.n}: ${line.formula.sexp}` }, line.formula.text);
+  const concl = el("div", { class: "concl" + (line.role === "hyp" ? " hyp" : ""), title: `${line.n}: ${line.formula.sexp}` }, formulaNode(line.formula));
   if (line.role === "hyp") {
     node.append(concl);
     return node;
@@ -249,7 +272,7 @@ function treeNode(line, byN, depth, path, initialDepth) {
       next.has(c.n) ? el("span", { class: "elided" }, `(${c.n})`) : treeNode(c, byN, depth + 1, next, initialDepth)));
   };
   barRow.addEventListener("click", ev => {
-    if (ev.target.closest("button")) return;   // the rule link navigates instead
+    if (ev.target.closest("a, button")) return;   // links navigate instead
     open = !open;
     fill();
   });
@@ -287,7 +310,8 @@ async function runCheck() {
   state.lastCheck = r;
   const sequent = r.conclusion
     ? el("span", { class: "sequent" },
-        (r.hypotheses.length ? r.hypotheses.map(h => h.text).join(", ") + " " : "") + "⊢ " + r.conclusion.text)
+        ...(r.hypotheses.length ? [...joinNodes(r.hypotheses.map(formulaNode), ", "), " "] : []),
+        "⊢ ", formulaNode(r.conclusion))
     : null;
   if (r.ok) {
     summary.className = "summary ok";
@@ -327,6 +351,18 @@ document.getElementById("editor-switch").addEventListener("click", ev => {
   state.editorMode = mode;
   document.querySelectorAll("#editor-switch button").forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
   drawCheck();
+});
+
+// Following an entry link in the same tab (e.g. the browser's back button)
+window.addEventListener("hashchange", async () => {
+  const h = parseHash();
+  if (!h) return;
+  if (h.world !== state.world) {
+    state.world = h.world;
+    document.getElementById("world").value = h.world;
+    await loadEntries();
+  }
+  if (h.k && h.k !== state.selectedK) { switchView("library"); showEntry(h.k); }
 });
 
 loadWorlds().catch(err => {

@@ -30,8 +30,9 @@
       "hilbert-library/05-classical-logic.ledger")))
   "(ID TITLE FILES) for every world, FILES relative to the repository.")
 
-(defstruct world id title ledger modules)
+(defstruct world id title ledger modules symbols)
 ;; MODULES: list of (FILE FIRST-K LAST-K), in load order.
+;; SYMBOLS: hash table, symbol -> K of the entry that introduced it.
 
 (defvar *worlds* nil "Loaded WORLD structs, built by LOAD-WORLDS.")
 
@@ -48,7 +49,41 @@
                     (bootstrap-kernel-from-spec-file (web-library-file file) :ledger ledger)
                     (read-ledger-from-file (web-library-file file) :ledger ledger)))
           (push (list file (1+ before) (ledger-count ledger)) modules)))
-      (make-world :id id :title title :ledger ledger :modules (nreverse modules)))))
+      (make-world :id id :title title :ledger ledger :modules (nreverse modules)
+                  :symbols (symbol-index ledger)))))
+
+(defun symbol-index (ledger)
+  "Map each symbol of the language to the entry that introduced it:
+variables and atomic-wff / predicate schema symbols to their declaration,
+connectives, quantifiers, predicates and function symbols to their first
+formation rule -- or, for a function defined by description, to its
+defining axiom NAME-DEF, which says what it means."
+  (let ((index (make-hash-table :test #'eq))
+        (entries (treap-values-below (ledger-all ledger) (ledger-bound ledger))))
+    (flet ((note (sym k) (when (and sym (symbolp sym) (not (pat-var-p sym)))
+                           (unless (gethash sym index) (setf (gethash sym index) k)))))
+      (dolist (e entries)
+        (let ((p (entry-payload e)))
+          (case (entry-kind e)
+            ((atomic-wff-symbol variable-symbol) (note p (entry-k e)))
+            (predicate-schema-symbol (note (first p) (entry-k e)))
+            (axiom
+             ;; NAME-DEF axioms of DEFINE-FUNCTION-BY-DESCRIPTION
+             (let* ((name (symbol-name (first p)))
+                    (len (length name)))
+               (when (and (> len 4) (string= (subseq name (- len 4)) "-DEF"))
+                 (let ((fn (find-symbol (subseq name 0 (- len 4)) :ledger-kernel)))
+                   (when fn (setf (gethash fn index) (entry-k e)))))))
+            ((wff? term? var?)
+             (let ((result (third p)))   ; e.g. (wff? (.to ?A ?B)) or (term? zero)
+               (when (consp result)
+                 (let ((form (second result)))
+                   (note (if (consp form) (car form) form) (entry-k e))))))))))
+    index))
+
+(defun world-link-function (world)
+  (let ((index (world-symbols world)))
+    (lambda (sym) (gethash sym index))))
 
 (defun load-worlds ()
   (setf *worlds* (mapcar #'load-world *world-specs*)))

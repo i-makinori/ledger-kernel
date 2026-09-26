@@ -53,11 +53,45 @@
     (expect "api-check: a malformed line is reported, not checked"
             (and (eq (gethash "ok" junk) 'yason:false) (search "Line 1" (gethash "error" junk))) t)))
 
+(defun test-web-links ()
+  (let* ((w (find-world "zf"))
+         (e (find "th-zf-not-in-empty" (api-entries "zf") :key (lambda (h) (gethash "name" h)) :test #'string=))
+         (detail (api-entry "zf" (gethash "k" e)))
+         (segments (gethash "segments" (gethash "conclusion" detail)))
+         (linked (remove-if-not (lambda (s) (gethash "k" s)) (coerce segments 'list))))
+    (flet ((target (text) (let ((s (find text linked :key (lambda (s) (gethash "t" s)) :test #'string=)))
+                            (and s (find-entry-by-k w (gethash "k" s))))))
+      (expect "links: the plain text is unchanged by linking"
+              (string= (gethash "text" (gethash "conclusion" detail)) "v₀ ∉ ∅") t)
+      (expect "links: the segments spell out the same text"
+              (string= (apply #'concatenate 'string (map 'list (lambda (s) (gethash "t" s)) segments))
+                       "v₀ ∉ ∅")
+              t)
+      (expect "links: v₀ goes to the variable's declaration"
+              (eq (entry-kind (target "v₀")) 'variable-symbol) t)
+      (expect "links: ∉ goes to the formation rule of ∈"
+              (eq (entry-kind (target "∉")) 'wff?) t)
+      (expect "links: ∅ goes to its defining axiom EMPTY-DEF"
+              (string= (symbol-name (car (entry-payload (target "∅")))) "EMPTY-DEF") t))
+    (let* ((r (api-check "zf" "((0 (.forall v0 (.to (p v0) (q v0))) :hyp nil)
+                                 (1 (.to (.exists v0 (p v0)) (.exists v0 (q v0))) :th-ded (th-exists-mono-s1 0)))"))
+           (line (aref (gethash "lines" r) 1)))
+      (expect "links: api-check reports what each line cites"
+              (let* ((cite (gethash "cite" line))
+                     (cited (and cite (find-entry-by-k (find-world "zf") (gethash "k" cite)))))
+                (and cited (string= (symbol-name (car (entry-payload cited))) "TH-EXISTS-MONO-S1")))
+              t)
+      (expect "links: api-check formulas carry segments"
+              (plusp (length (gethash "segments" (gethash "formula" line)))) t))
+    (expect "links: entry summaries stay plain text (no markers)"
+            (notany (lambda (h) (find (code-char 1) (gethash "text" h))) (api-entries "zf")) t)))
+
 (defun run-web-self-tests ()
   (let ((*expect-results* (cons 0 0)))
     (unless *worlds* (load-worlds))
     (test-web-render)
     (test-web-api)
+    (test-web-links)
     (destructuring-bind (passed . failed) *expect-results*
       (format t "~%~D/~D web self-tests passed.~%" passed (+ passed failed))
       (zerop failed))))

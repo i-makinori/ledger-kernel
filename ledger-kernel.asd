@@ -60,6 +60,7 @@
   :components ((:file "package")
                (:file "render")
                (:file "worlds")
+               (:file "deps")
                (:file "api")
                (:file "server"))
   :in-order-to ((test-op (test-op "ledger-kernel/web/tests"))))

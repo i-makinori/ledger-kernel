@@ -30,9 +30,10 @@
       "hilbert-library/05-classical-logic.ledger")))
   "(ID TITLE FILES) for every world, FILES relative to the repository.")
 
-(defstruct world id title ledger modules symbols)
+(defstruct world id title ledger modules symbols deps)
 ;; MODULES: list of (FILE FIRST-K LAST-K), in load order.
 ;; SYMBOLS: hash table, symbol -> K of the entry that introduced it.
+;; DEPS: the citation graph (see deps.lisp), built right after loading.
 
 (defvar *worlds* nil "Loaded WORLD structs, built by LOAD-WORLDS.")
 
@@ -49,8 +50,10 @@
                     (bootstrap-kernel-from-spec-file (web-library-file file) :ledger ledger)
                     (read-ledger-from-file (web-library-file file) :ledger ledger)))
           (push (list file (1+ before) (ledger-count ledger)) modules)))
-      (make-world :id id :title title :ledger ledger :modules (nreverse modules)
-                  :symbols (symbol-index ledger)))))
+      (let ((w (make-world :id id :title title :ledger ledger :modules (nreverse modules)
+                           :symbols (symbol-index ledger))))
+        (setf (world-deps w) (build-deps w))
+        w))))
 
 (defun symbol-index (ledger)
   "Map each symbol of the language to the entry that introduced it:
@@ -99,8 +102,6 @@ defining axiom NAME-DEF, which says what it means."
   (let ((l (world-ledger world)))
     (treap-values-below (ledger-all l) (ledger-bound l))))
 
-(defun find-entry-by-k (world k)
-  (find k (world-entries world) :key #'entry-k))
 
 ;;; --- What an entry says ------------------------------------------------------
 

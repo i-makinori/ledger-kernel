@@ -169,6 +169,12 @@
                                (values (render-1 (second args) ledger)) ")")
                   10))
          ((and (eq head 'ledger-kernel::empty) (null args)) (values (link head "∅") 10))
+         ;; substitution in axiom/rule schemas: (@subst x t A) as A[t/x]
+         ((and (eq head '@subst) (= (length args) 3))
+          (values (concatenate 'string (render-at (third args) 10 ledger)
+                               "[" (render-term (second args) ledger) "/"
+                               (render-term (first args) ledger) "]")
+                  10))
          ((symbolp head)
           ;; predicate schema, predicate or function application
           (values (format nil "~A(~{~A~^, ~})" (render-symbol head ledger)

@@ -140,14 +140,37 @@ same way; only the per-candidate TRY-*-ENTRY logic differs by kind."
                (ledger-by-derived-name ledger))))
     (%make-ledger k new-all new-by-kind new-by-derived-name nil)))
 
+(defun vocabulary-kind-p (kind)
+  "Entry kinds that only say what is well-formed -- Sigma's symbols and
+the TERM?/WFF?/VAR? formation rules -- as opposed to kinds that justify
+proof steps (AXIOM, IRULE, TH, ...)."
+  (member kind '(atomic-wff-symbol variable-symbol predicate-schema-symbol wff? term? var?)
+          :test #'eq))
+
 (defun entries-of-kind (kind ledger)
-  (treap-values-below (alist-get (ledger-by-kind ledger) kind) (ledger-bound ledger)))
+  "Entries of KIND, in admission order. For a VOCABULARY-KIND-P kind the
+ENTRIES-UPTO bound is ignored; see ENTRIES-UPTO for why."
+  (treap-values-below (alist-get (ledger-by-kind ledger) kind)
+                      (if (vocabulary-kind-p kind) nil (ledger-bound ledger))))
 
 (defun entries-upto (k ledger)
   "A read-only VIEW of LEDGER showing only entries with position strictly
 less than K -- used when re-verifying a proof, so nothing can (even
 accidentally) depend on itself or on anything defined later. O(1): see
-LEDGER's BOUND field, above."
+LEDGER's BOUND field, above.
+
+The bound applies to every kind that can JUSTIFY a proof line (axioms,
+inference rules, derived theorems, ...), not to vocabulary: symbols and
+TERM?/WFF?/VAR? formation rules admitted later stay visible (see
+VOCABULARY-KIND-P / ENTRIES-OF-KIND). That is what lets a theorem
+proved early -- say A & B -> A -- be cited, and its stored proof be
+re-verified, at an instance that mentions vocabulary introduced later,
+such as (.in v0 (empty)). This is sound: a well-formedness judgement
+never justifies anything by itself, every proof step of the re-verified
+proof still has to come from an entry strictly before K, and all the
+entries it can use exist in the full ledger too, so its conclusion is a
+theorem of the full ledger. The bound on justifying entries is what
+rules out circular citation, and it is unchanged."
   (let ((new-bound (if (ledger-bound ledger) (min k (ledger-bound ledger)) k)))
     (%make-ledger (ledger-count ledger) (ledger-all ledger) (ledger-by-kind ledger)
                   (ledger-by-derived-name ledger) new-bound)))
@@ -178,6 +201,23 @@ whose payload names a bare declared symbol."
 
 (defun atomic-wff-symbol-p (x ledger)
   (member x (sigma-atomic-symbols ledger) :test #'eq))
+
+;;; Predicate schema symbols: P, Q, ... of a fixed arity N >= 1, so that
+;;; (P t1 ... tN) is a wff for any terms t1..tN. In a stored theorem they
+;;; stand for an arbitrary formula with N argument places ("A(x)"), and
+;;; citing the theorem substitutes a concrete formula for them (see
+;;; MATCH-SCHEMA-ATOMS / INSTANTIATE-SCHEMA-ATOMS). Unlike an atomic-wff
+;;; symbol, (P x) shows its dependence on x: x occurs free in (P x), so
+;;; free-variable side conditions (Gen, EXISTS-ELIM, III.1, ...) see it.
+
+(defun sigma-predicate-schemas (ledger)
+  "Declared predicate schema symbols, as a list of (NAME ARITY)."
+  (mapcar #'entry-payload (entries-of-kind 'predicate-schema-symbol ledger)))
+
+(defun predicate-schema-arity (x ledger)
+  "ARITY if X is a declared predicate schema symbol, else NIL."
+  (and (symbolp x)
+       (second (assoc x (sigma-predicate-schemas ledger) :test #'eq))))
 
 (defun variable-p (x ledger)
   (member x (sigma-variable-symbols ledger) :test #'eq))
@@ -274,7 +314,8 @@ a symbol can't quietly be both)."
        (not (at-symbol-p sym))
        (not (reserved-head-symbol-p sym))
        (not (atomic-wff-symbol-p sym ledger))
-       (not (variable-p sym ledger))))
+       (not (variable-p sym ledger))
+       (not (predicate-schema-arity sym ledger))))
 
 (defun declare-atomic-wff-symbol (ledger sym)
   "The general (non-bootstrap) growth path for Sigma's atomic-wff
@@ -289,6 +330,18 @@ mentions, so it proves nothing new about the existing vocabulary."
             declaration (already declared, or reserved by the kernel ~
             itself)." sym))
   (ledger-append ledger 'atomic-wff-symbol sym (list :declared)))
+
+(defun declare-predicate-schema-symbol (ledger sym arity)
+  "As DECLARE-ATOMIC-WFF-SYMBOL, but for a predicate schema symbol of the
+given ARITY (a positive integer): afterwards (SYM t1 ... tARITY) is a wff
+for any terms t1..tARITY."
+  (unless (fresh-symbol-name-p sym ledger)
+    (error "DECLARE-PREDICATE-SCHEMA-SYMBOL: ~S is not available for ~
+            declaration (already declared, or reserved by the kernel ~
+            itself)." sym))
+  (unless (and (integerp arity) (plusp arity))
+    (error "DECLARE-PREDICATE-SCHEMA-SYMBOL: arity ~S is not a positive integer." arity))
+  (ledger-append ledger 'predicate-schema-symbol (list sym arity) (list :declared)))
 
 (defun declare-variable-symbol (ledger sym)
   "As DECLARE-ATOMIC-WFF-SYMBOL, but for Sigma's variable symbols."

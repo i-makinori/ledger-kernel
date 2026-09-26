@@ -420,12 +420,26 @@ supplying the induction variable and the full schema formula explicitly."
 ;;; base cases of the WFF?/VAR? judgements, as a projection instead of a
 ;;; hardcoded list.
 
+;;;
+;;; The same goes for an application (P t1 ... tn) of a declared predicate
+;;; schema symbol of arity n: it is a wff exactly when every ti is a term.
+
+(defun predicate-schema-application-wff-p (expr ledger seen open-hyps)
+  (and (consp expr)
+       (let ((arity (predicate-schema-arity (car expr) ledger)))
+         (and arity
+              (listp (cdr expr))
+              (= (length (cdr expr)) arity)
+              (every (lambda (arg) (judgement? 'term? arg ledger seen open-hyps)) (cdr expr))))))
+
 (let ((orig #'judgement-bind))
   (setf (symbol-function 'judgement-bind)
         (lambda (kind args binds ledger &optional (seen nil) (open-hyps nil))
-          (if (and (= (length args) 1) (symbolp (car args))
-                   (or (and (eq kind 'wff?) (atomic-wff-symbol-p (car args) ledger))
-                       (and (eq kind 'var?) (variable-p (car args) ledger))
-                       (and (eq kind 'term?) (variable-p (car args) ledger))))
+          (if (or (and (= (length args) 1) (symbolp (car args))
+                       (or (and (eq kind 'wff?) (atomic-wff-symbol-p (car args) ledger))
+                           (and (eq kind 'var?) (variable-p (car args) ledger))
+                           (and (eq kind 'term?) (variable-p (car args) ledger))))
+                  (and (= (length args) 1) (eq kind 'wff?)
+                       (predicate-schema-application-wff-p (car args) ledger seen open-hyps)))
               (values binds t)
               (funcall orig kind args binds ledger seen open-hyps)))))

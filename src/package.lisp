@@ -44,7 +44,7 @@
   (:export #:bootstrap-kernel #:entry-k #:entry-kind #:entry-payload
            #:entry-origin #:ledger-append #:admit-primitive #:check-and-extend
            #:check-and-extend-abbrev #:declare-atomic-wff-symbol
-           #:declare-variable-symbol #:judgement? #:run-self-tests
+           #:declare-variable-symbol #:declare-predicate-schema-symbol #:judgement? #:run-self-tests
            #:make-log-config #:silent-log
            #:ledger-commands #:ledger-from-commands
            #:write-ledger-to-file #:read-ledger-from-file

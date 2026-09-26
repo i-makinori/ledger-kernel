@@ -24,6 +24,7 @@
 ;;; A command is one of:
 ;;;   (:declare-atomic-wff-symbol SYM)
 ;;;   (:declare-variable-symbol SYM)
+;;;   (:declare-predicate-schema-symbol SYM ARITY)
 ;;;   (:th   NAME RAW-PROOF)
 ;;;   (:ith  NAME RAW-PROOF)
 ;;;   (:def-abbrev NAME DEFINIENS RAW-PROOF)
@@ -79,6 +80,8 @@ the identical check again."
                       (case (entry-kind e)
                         (atomic-wff-symbol (list :declare-atomic-wff-symbol (entry-payload e)))
                         (variable-symbol (list :declare-variable-symbol (entry-payload e)))
+                        (predicate-schema-symbol
+                         (list* :declare-predicate-schema-symbol (entry-payload e)))
                         ((th ith)
                          (destructuring-bind (name raw-proof) (entry-payload e)
                            (list (if (eq (entry-kind e) 'th) :th :ith) name raw-proof)))
@@ -116,6 +119,8 @@ the same CHECK-AND-EXTEND/CHECK-AND-EXTEND-ABBREV/DECLARE-* gates."
               (case op
                 (:declare-atomic-wff-symbol (declare-atomic-wff-symbol ledger (first args)))
                 (:declare-variable-symbol (declare-variable-symbol ledger (first args)))
+                (:declare-predicate-schema-symbol
+                 (declare-predicate-schema-symbol ledger (first args) (second args)))
                 ((:th :ith) (destructuring-bind (name raw-proof) args
                               (check-and-extend ledger (if (eq op :th) 'th 'ith) name raw-proof log)))
                 (:def-abbrev (destructuring-bind (name definiens raw-proof) args

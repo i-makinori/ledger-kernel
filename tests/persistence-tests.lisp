@@ -1,0 +1,104 @@
+;;;; persistence-tests.lisp -- Section 12: persistence regression tests
+;;;; Part of the ledger-kernel system (see ledger-kernel.asd).
+
+(in-package :ledger-kernel)
+
+;;; ---------------------------------------------------------------------
+;;; 12. Regression tests for Section 10 (file I/O / persistence)
+;;; ---------------------------------------------------------------------
+;;;
+;;; LEDGER-COMMANDS/LEDGER-FROM-COMMANDS/WRITE-LEDGER-TO-FILE/READ-LEDGER-
+;;; FROM-FILE (Section 10) were exercised only by hand, in scratch scripts,
+;;; when they were first written -- never wired into RUN-SELF-TESTS
+;;; itself, so nothing would have caught a later regression there. This
+;;; section closes that gap: a genuine round trip through the filesystem
+;;; (not just in-memory COMMANDS/FROM-COMMANDS), checked three ways --
+;;; byte-for-byte command-stream fidelity, a real re-citation of a THEOREM
+;;; that itself came from @DEDUCTION, and a tamper-resistance check
+;;; showing a corrupted file can only ever fail to load, never smuggle in
+;;; an unsound entry.
+
+(defun tree-subst (old new tree)
+  "Blind structural substitution (no notion of binders/capture, unlike
+SUBSTITUTE-WFF in Section 4) -- used here only to build a deliberately
+corrupted test fixture, never inside the kernel's own trusted logic."
+  (cond
+    ((eq tree old) new)
+    ((consp tree) (cons (tree-subst old new (car tree)) (tree-subst old new (cdr tree))))
+    (t tree)))
+
+(defun test-persistence-round-trip (ledger)
+  "WRITE-LEDGER-TO-FILE / READ-LEDGER-FROM-FILE, genuinely through the
+filesystem (not just LEDGER-COMMANDS/LEDGER-FROM-COMMANDS in memory).
+Does not grow the ledger (writes/reads a temp file as a side effect, then
+removes it)."
+  (let ((path "/tmp/ledger-kernel-self-test-persistence.tmp")
+        (bad-path "/tmp/ledger-kernel-self-test-persistence-tampered.tmp"))
+    (unwind-protect
+         (progn
+           (write-ledger-to-file ledger path)
+           (let ((reloaded (read-ledger-from-file path)))
+             (expect "Reload preserves the entry count exactly"
+                     (= (ledger-count reloaded) (ledger-count ledger)) t)
+             (expect "Reload's own command stream is identical to the original's"
+                     (equal (ledger-commands reloaded) (ledger-commands ledger)) t)
+             (expect "A plain axiom-instance judgement still holds after reload"
+                     (judgement? 'wff? '(.to A B) reloaded) t)
+             (expect "TH-DEDUCTION-DEMO (built via @DEDUCTION) is still citable after reload"
+                     (check-k-proof '((0 (.to C (.to (.to C D) D)) :th (th-deduction-demo))) reloaded)
+                     t)
+             (expect "MY-AX1 (a DEF-ABBREV) is still citable after reload"
+                     (check-k-proof '((0 (.to Q (.to Q Q)) :def-abbrev (my-ax1))) reloaded)
+                     t)
+             (expect "TH-DIRECT-MP-DEMO (a TH-DED entry, built via CHECK-AND-EXTEND-BY-DEDUCTION-DIRECT) is still citable after reload"
+                     (check-k-proof '((0 F :hyp nil)
+                                       (1 (.to (.to F G) G) :th-ded (th-direct-mp-demo 0)))
+                                     reloaded)
+                     t))
+           ;; Tamper-resistance: corrupt one grown entry's proof (blindly
+           ;; swap B for Z inside the last :TH command's raw-proof, which
+           ;; breaks its own internal citations/schema) and confirm
+           ;; loading it can only fail, never quietly succeed.
+           (let* ((commands (ledger-commands ledger))
+                  (victim (find-if (lambda (c) (eq (car c) :th)) commands :from-end t)))
+             (when victim
+               (let* ((tampered (tree-subst victim (tree-subst 'B 'Z victim) commands)))
+                 (write-commands-to-file tampered bad-path)
+                 (expect "A tampered command stream is refused outright, not silently accepted"
+                         (handler-case (progn (read-ledger-from-file bad-path) nil)
+                           (error () t))
+                         t))))
+           ledger)
+      (ignore-errors (delete-file path))
+      (ignore-errors (delete-file bad-path)))))
+
+(defun test-chained-module-loading (ledger)
+  "READ-LEDGER-FROM-FILE's :LEDGER argument: splitting one ledger's own
+command stream into two files and loading them back CHAINED (the second
+file's commands replayed onto the first file's already-reloaded result,
+rather than each starting over from a fresh BOOTSTRAP-KERNEL) reconstructs
+the SAME ledger a single-file reload would -- confirming several \"module\"
+files can stand in for one, exactly as the next step (an actual
+multi-file Hilbert-system source library) needs. Does not grow the
+ledger (writes/reads two temp files as a side effect, then removes them)."
+  (let ((path-a "/tmp/ledger-kernel-self-test-module-a.tmp")
+        (path-b "/tmp/ledger-kernel-self-test-module-b.tmp"))
+    (unwind-protect
+         (let* ((commands (ledger-commands ledger))
+                (half (floor (length commands) 2))
+                (commands-a (subseq commands 0 half))
+                (commands-b (subseq commands half)))
+           (write-commands-to-file commands-a path-a)
+           (write-commands-to-file commands-b path-b)
+           (let* ((ledger-a (read-ledger-from-file path-a))
+                  (chained (read-ledger-from-file path-b :ledger ledger-a)))
+             (expect "Chained two-file load reaches the same entry count as the original"
+                     (= (ledger-count chained) (ledger-count ledger)) t)
+             (expect "...and the identical command stream"
+                     (equal (ledger-commands chained) commands) t)
+             (expect "TH-DEDUCTION-DEMO is still citable in the two-file chained result"
+                     (check-k-proof '((0 (.to C (.to (.to C D) D)) :th (th-deduction-demo))) chained)
+                     t)))
+      (ignore-errors (delete-file path-a))
+      (ignore-errors (delete-file path-b)))
+    ledger))

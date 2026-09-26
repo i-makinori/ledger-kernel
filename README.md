@@ -52,7 +52,28 @@ checker）です。「証明可能である」(⊢) という関係を、メタ�
 ## ファイル構成
 
 ```
-ledger_kernel.lisp                    カーネル本体（このファイルをコンパイルして使う）
+ledger-kernel.asd                     ASDF システム定義（ledger-kernel / ledger-kernel/tests）
+src/                                  カーネル本体（ASDF で読み込む順に並べています）
+  package.lisp                        パッケージ定義と設計方針のメモ
+  pattern.lisp                        §1   パターンマッチ
+  treap.lisp                          §1.5 台帳の索引に使う永続 treap
+  ledger.lisp                         §2   台帳そのもの（Sigma / Gamma の射影、記号の宣言）
+  side-conditions.lisp                §3   側条件
+  meta.lisp                           §4   メタ述語・メタ構成子（not-free-in, subst 等）
+  judgement.lisp                      §5   JUDGEMENT?（中核の再帰チェッカ）
+  k-proof.lisp                        §6   K-proof の検証と CHECK-AND-EXTEND
+  bootstrap.lisp                      §7-8 原始 Hilbert 体系のブートストラップ
+  persistence.lisp                    §10  台帳のコマンド列としての永続化
+  deduction.lisp                      §11  演繹定理（@DEDUCTION / 直接離脱）
+  tautology.lisp                      §15  PROVE-TAUTOLOGY（Kalmar の完全性定理）
+  alpha-conversion.lisp               §16  α変換
+  system-spec.lisp                    §18  体系そのものをファイルで定義する（.system）
+  inductive.lisp                      §20  帰納的述語の一般定義
+  function-definition.lisp            §22  DEFINE-FUNCTION-BY-DESCRIPTION
+tests/                                self-test 一式（ledger-kernel/tests システム）
+  framework.lisp                      EXPECT と集計、ライブラリのパス解決
+  *-tests.lisp                        機能ごとのテスト（§9, §11-14, §15-22）
+  run.lisp                            RUN-ALL-SELF-TESTS（全テストの実行と集計）
 hilbert-library/
   00-classical-fol-equality.system    体系そのものの定義（公理・推論規則・形成規則）
   00-peano-arithmetic.system          体系定義の追加分（ペアノ算術の語彙・公理）
@@ -73,29 +94,32 @@ hilbert-library/
 
 ## クイックスタート（SBCL REPL）
 
-### 1. コンパイルしてロードする
+### 1. ASDF でロードする
+
+リポジトリのルートで SBCL を起動します。
 
 ```bash
 sbcl
 ```
 
 ```lisp
-(compile-file "ledger_kernel.lisp")
-(load "ledger_kernel.fasl")
+(require :asdf)
+(asdf:load-asd (merge-pathnames "ledger-kernel.asd"))
+(asdf:load-system :ledger-kernel)
 ```
 
-ロードすると自動的に self-test 一式（`run-self-tests` /
-`run-classical-logic-self-tests` / `run-tactics-self-tests`）が走り、末尾に
+リポジトリを `~/common-lisp/` 以下（または Quicklisp の `local-projects/` 以下）に
+置いておけば、`asdf:load-asd` なしで `(asdf:load-system :ledger-kernel)`
+（Quicklisp なら `(ql:quickload :ledger-kernel)`）だけで読み込めます。
 
-```
-Self-tests complete.
-...
-Classical-logic self-tests complete.
-...
-Tactics self-tests complete.
+カーネルをロードしただけでは self-test は走りません。テストは別システム
+`ledger-kernel/tests` に分かれていて、次で実行します（下記「テストの実行」参照）。
+
+```lisp
+(asdf:test-system :ledger-kernel)
 ```
 
-と出れば正常です。`[FAIL]` が一つも出ていないことを確認してください。
+末尾に `293/293 self-tests passed.` と出れば正常です。
 
 以降は `ledger-kernel` パッケージに入って作業すると楽です。
 
@@ -254,15 +278,16 @@ III.1 + Gen + MP からその場で組み立てます。MP で既存の `(forall
 量化子も一切登場しない）で試すと、OFFのままだと深さ16で0.15秒、深さ20は
 2秒超え、深さ30台後半で現実的でなくなりますが、ONにすると深さ60（何も
 しなければ 2^60 相当の作業量）でも一瞬で終わります。詳しくは
-`ledger_kernel.lisp` の「Optional memoization」節（`TRY-DERIVED-ENTRY` の
-直前）と `TEST-DERIVED-ENTRY-MEMOIZATION` を参照してください。
+`src/k-proof.lisp` の「Optional memoization」節（`TRY-DERIVED-ENTRY` の
+直前）と `tests/memoization-tests.lisp` の `TEST-DERIVED-ENTRY-MEMOIZATION` を
+参照してください。
 
 ### 7. 体系そのものをファイルで定義する: `.system` ファイル
 
 ここまでの `.ledger` ファイルは、**すでに存在する体系**（公理・推論規則が
 固定された `bootstrap-kernel`）の上で**証明された定理**を記述するものでした。
 一方で体系そのもの（公理・推論規則・形成規則）は、これまで
-`ledger_kernel.lisp` の `BOOTSTRAP-KERNEL` 関数の中に直接 Lisp のリテラルと
+`src/bootstrap.lisp` の `BOOTSTRAP-KERNEL` 関数の中に直接 Lisp のリテラルと
 して埋め込まれていました -- 別の体系を試したければ Lisp のソースを書き換える
 しかなかった、ということです。
 
@@ -382,7 +407,7 @@ III.1 は `(.forall x A) -> A[t/x]` で、前件の `.forall` 構造から `x`/`
     (2 (.exists v0 (.eq v0 v1)) :ir (MP 1 0)))))
 ;; 一意性: forall v2 forall v3 (v2=v1 -> (v3=v1 -> v2=v3))  (uniq-full。
 ;; 導出は 05-classical-logic.ledger の TH-RAA と同じ多段階の
-;; deduction-theorem-direct 連鎖 -- 詳細は ledger_kernel.lisp Section 19 参照)
+;; deduction-theorem-direct 連鎖 -- 詳細は tests/iota-tests.lisp（Section 19）参照)
 ;; ...
 ;; IOTA適用: (iota v0 (v0=v1)) = v1
 (check-k-proof '((0 (.exists v0 (.eq v0 v1)) :th (th-exists-v0-eq-v1))
@@ -662,6 +687,27 @@ descriptionは保存的拡張である」というメタ定理そのものを本
 
 ## テストの実行
 
+全テストをまとめて実行するには：
+
+```lisp
+(asdf:test-system :ledger-kernel)
+```
+
+コマンドラインからなら（リポジトリのルートで）：
+
+```bash
+sbcl --non-interactive \
+     --eval '(require :asdf)' \
+     --eval '(asdf:load-asd (merge-pathnames "ledger-kernel.asd"))' \
+     --eval '(asdf:test-system :ledger-kernel)'
+```
+
+各チェックが `[pass]`/`[FAIL]` の行を出力し、最後に `N/M self-tests passed.` と
+集計を表示します。`[FAIL]` が1つでもあれば `asdf:test-system` はエラーで終了します。
+
+個別のテスト群だけを実行したい場合は、`(asdf:load-system :ledger-kernel/tests)`
+のあと `ledger-kernel` パッケージで次を呼びます。
+
 ```lisp
 (run-self-tests)                       ; カーネル全体 + 算術
 (run-classical-logic-self-tests)       ; 古典論理の補完的公理・補題
@@ -675,15 +721,8 @@ descriptionは保存的拡張である」というメタ定理そのものを本
 (run-function-definition-self-tests)   ; DEFINE-FUNCTION-BY-DESCRIPTION（保存的拡張）
 ```
 
-いずれも `[pass]`/`[FAIL]` の行を出力し、最後に `... complete.` と表示します。
-コードを変更したときは、必ず
-
-```bash
-sbcl --non-interactive --eval '(compile-file "ledger_kernel.lisp")'
-```
-
-で **0 warnings** を確認し、続けてロード→3つの self-test 群がすべて `[FAIL]` 0
-であることを確認する、という手順を踏んでください（このプロジェクト全体で徹底
+コードを変更したときは、必ず上のコマンドで **コンパイル警告 0** と
+**`[FAIL]` 0** を確認する、という手順を踏んでください（このプロジェクト全体で徹底
 している規約です）。
 
 

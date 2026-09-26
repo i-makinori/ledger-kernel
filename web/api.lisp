@@ -16,8 +16,23 @@
 (defun json-bool (x) (if x 'yason:true 'yason:false))
 
 (defun formula-json (formula ledger)
-  (json-obj "text" (render-formula formula ledger)
-            "sexp" (render-sexp formula)))
+  "TEXT and SEXP of FORMULA, plus SEGMENTS -- the text split into pieces,
+each symbol/operator linked to the entry that introduced it -- when
+*RENDER-LINK* is bound (see WITH-WORLD-LINKS)."
+  (let ((h (json-obj "text" (let ((*render-link* nil)) (render-formula formula ledger))
+                     "sexp" (render-sexp formula))))
+    (when *render-link*
+      (setf (gethash "segments" h)
+            (json-arr (mapcar (lambda (piece)
+                                (if (cdr piece)
+                                    (json-obj "t" (car piece) "k" (cdr piece))
+                                    (json-obj "t" (car piece))))
+                              (render-formula-segments formula ledger)))))
+    h))
+
+(defun call-with-world-links (world thunk)
+  (let ((*render-link* (world-link-function world)))
+    (funcall thunk)))
 
 (defun kind-string (kind) (string-downcase (symbol-name kind)))
 
@@ -31,7 +46,8 @@
                     *worlds*)))
 
 (defun entry-summary-json (world e)
-  (let ((ledger (world-ledger world)))
+  (let ((ledger (world-ledger world))
+        (*render-link* nil))            ; summaries are plain text
     (multiple-value-bind (premises conclusion) (entry-statement e)
       (json-obj "k" (entry-k e)
                 "kind" (kind-string (entry-kind e))
@@ -76,8 +92,11 @@
              raw-proof))))
 
 (defun api-entry (world-id k)
-  (let* ((w (find-world world-id))
-         (ledger (world-ledger w))
+  (let* ((w (find-world world-id)))
+    (call-with-world-links w (lambda () (api-entry-1 w world-id k)))))
+
+(defun api-entry-1 (w world-id k)
+  (let* ((ledger (world-ledger w))
          (e (or (find-entry-by-k w k) (error "No entry ~D in world ~S." k world-id))))
     (multiple-value-bind (premises conclusion) (entry-statement e)
       (let ((h (entry-summary-json w e))
@@ -148,7 +167,11 @@ themselves one after another. Returns (VALUES RAW-PROOF ERROR-STRING)."
   "Check the proof in TEXT against the world's ledger. Reports, per line,
 whether it was accepted, rejected (the first failing line), or not
 reached. Nothing is added to the ledger."
-  (let ((ledger (world-ledger (find-world world-id))))
+  (let ((w (find-world world-id)))
+    (call-with-world-links w (lambda () (api-check-1 w text)))))
+
+(defun api-check-1 (w text)
+  (let ((ledger (world-ledger w)))
     (multiple-value-bind (proof read-error) (read-proof-text text)
       (if read-error
           (json-obj "ok" 'yason:false "error" read-error "lines" (json-arr nil))
@@ -177,5 +200,10 @@ reached. Nothing is added to the ledger."
                                         "refs" (json-arr (mapcar #'render-sexp
                                                                  (proof-line-refs role (and (consp by) (cdr by))
                                                                                   (mapcar #'first proof))))
+                                        "cite" (let ((cited (find-cited-entry w role by)))
+                                                 (if cited
+                                                     (json-obj "k" (entry-k cited)
+                                                               "kind" (kind-string (entry-kind cited)))
+                                                     nil))
                                         "status" status))))
                         proof)))))))))

@@ -22,15 +22,48 @@
 
 (defparameter *binary-connectives*
   ;; head  symbol  precedence  left-min  right-min   (higher binds tighter)
-  '((.iff " ↔ " 1 2 2)
-    (.to  " → " 2 3 2)
-    (.or  " ∨ " 3 3 4)
-    (.and " ∧ " 4 4 5)))
+  '((.iff "↔" 1 2 2)
+    (.to  "→" 2 3 2)
+    (.or  "∨" 3 3 4)
+    (.and "∧" 4 4 5)))
 
 (defparameter *quantifiers*
   '((.forall . "∀") (.exists . "∃") (.exists1 . "∃!") (.iota . "ι")))
 
-(defparameter *infix-terms* '((+ . " + ") (* . " · ")))
+(defparameter *infix-terms* '((+ . "+") (* . "·")))
+
+;;; --- Links -------------------------------------------------------------------
+;;; When *RENDER-LINK* is a function (SYMBOL -> entry K or NIL), every
+;;; rendered symbol or operator that has an entry introducing it is wrapped
+;;; in invisible markers  ^A K ^B TEXT ^C  (control characters that never
+;;; occur in a formula). RENDER-SEGMENTS turns such a string into a list of
+;;; (TEXT . K-or-NIL) pieces for the browser to show as links. With
+;;; *RENDER-LINK* NIL (the default) rendering is plain text.
+
+(defvar *render-link* nil)
+
+(defun link (sym text)
+  (let ((k (and *render-link* sym (funcall *render-link* sym))))
+    (if k
+        (format nil "~C~D~C~A~C" (code-char 1) k (code-char 2) text (code-char 3))
+        text)))
+
+(defun render-segments (marked)
+  "Split a string produced with *RENDER-LINK* into (TEXT . K-or-NIL) pieces."
+  (let ((pieces nil) (i 0) (n (length marked)))
+    (loop while (< i n)
+          do (let ((start (position (code-char 1) marked :start i)))
+               (when (null start)
+                 (push (cons (subseq marked i) nil) pieces)
+                 (return))
+               (when (> start i) (push (cons (subseq marked i start) nil) pieces))
+               (let* ((mid (position (code-char 2) marked :start start))
+                      (end (position (code-char 3) marked :start mid)))
+                 (push (cons (subseq marked (1+ mid) end)
+                             (parse-integer marked :start (1+ start) :end mid))
+                       pieces)
+                 (setf i (1+ end)))))
+    (nreverse pieces)))
 
 (defun subscript-digits (string)
   (map 'string (lambda (c)
@@ -40,6 +73,11 @@
        string))
 
 (defun render-symbol (sym ledger)
+  (if (pat-var-p sym)
+      (symbol-name sym)
+      (link sym (render-symbol-text sym ledger))))
+
+(defun render-symbol-text (sym ledger)
   (let ((name (symbol-name sym)))
     (cond
       ((pat-var-p sym) name)
@@ -83,7 +121,8 @@
        (cond
          ((and bin (= (length args) 2))
           (destructuring-bind (op prec lmin rmin) (cdr bin)
-            (values (concatenate 'string (render-at (first args) lmin ledger) op
+            (values (concatenate 'string (render-at (first args) lmin ledger)
+                                 " " (link head op) " "
                                  (render-at (second args) rmin ledger))
                     prec)))
          ((and (eq head '.neg) (= (length args) 1)
@@ -92,12 +131,12 @@
           ;; ¬(s ∈ t) as s ∉ t, ¬(s = t) as s ≠ t
           (let ((inner (first args)))
             (values (concatenate 'string (render-term (second inner) ledger)
-                                 (if (eq (car inner) '.in) " ∉ " " ≠ ")
+                                 " " (link (car inner) (if (eq (car inner) '.in) "∉" "≠")) " "
                                  (render-term (third inner) ledger))
                     6)))
          ((and (eq head '.neg) (= (length args) 1))
           (let ((arg (first args)))
-            (values (concatenate 'string "¬"
+            (values (concatenate 'string (link '.neg "¬")
                                  (if (and (consp arg) (assoc (car arg) *quantifiers*))
                                      (render-at arg 0 ledger)
                                      (render-at arg 5 ledger)))
@@ -110,25 +149,26 @@
                  (body (if tight
                            (render-at body-form 0 ledger)
                            (concatenate 'string "(" (render-at body-form 0 ledger) ")"))))
-            (values (concatenate 'string (cdr quant) (render-symbol (first args) ledger)
+            (values (concatenate 'string (link head (cdr quant)) (render-symbol (first args) ledger)
                                  (if tight " " "") body)
                     ;; parenthesised as an operand of a binary connective
                     ;; (every connective asks for at least 2), bare at top level
                     1.5)))
          ((and (eq head '.eq) (= (length args) 2))
-          (values (concatenate 'string (render-term (first args) ledger) " = "
+          (values (concatenate 'string (render-term (first args) ledger) " " (link '.eq "=") " "
                                (render-term (second args) ledger))
                   6))
          ((and (eq head '.in) (= (length args) 2))
-          (values (concatenate 'string (render-term (first args) ledger) " ∈ "
+          (values (concatenate 'string (render-term (first args) ledger) " " (link '.in "∈") " "
                                (render-term (second args) ledger))
                   6))
          ((and infix (= (length args) 2))
           ;; operands keep their own parentheses: (a + b) · c
-          (values (concatenate 'string "(" (values (render-1 (first args) ledger)) (cdr infix)
+          (values (concatenate 'string "(" (values (render-1 (first args) ledger))
+                               " " (link head (cdr infix)) " "
                                (values (render-1 (second args) ledger)) ")")
                   10))
-         ((and (eq head 'ledger-kernel::empty) (null args)) (values "∅" 10))
+         ((and (eq head 'ledger-kernel::empty) (null args)) (values (link head "∅") 10))
          ((symbolp head)
           ;; predicate schema, predicate or function application
           (values (format nil "~A(~{~A~^, ~})" (render-symbol head ledger)
@@ -145,6 +185,12 @@
       (values (render-1 term ledger))))
 
 (defun render-formula (formula &optional ledger)
-  "FORMULA as a string in textbook notation (see the file header)."
+  "FORMULA as a string in textbook notation (see the file header). Plain
+text unless *RENDER-LINK* is bound (see above)."
   (handler-case (values (render-1 formula ledger))
     (error () (render-sexp formula))))
+
+(defun render-formula-segments (formula ledger)
+  "FORMULA as (TEXT . K-or-NIL) pieces, linking each symbol and operator
+to the entry that introduced it (requires *RENDER-LINK*)."
+  (render-segments (render-formula formula ledger)))

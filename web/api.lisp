@@ -54,7 +54,7 @@ each symbol/operator linked to the entry that introduced it -- when
                 "name" (render-sexp (entry-name e))
                 "module" (entry-module world (entry-k e))
                 "origin" (kind-string (car (entry-origin e)))
-                "aux" (json-bool (auxiliary-name-p (entry-name e)))
+                "aux" (json-bool (entry-aux-p e))
                 "hasProof" (json-bool (entry-proof e))
                 "premises" (json-arr (mapcar (lambda (f) (render-formula f ledger)) premises))
                 "text" (render-formula conclusion ledger)))))
@@ -108,8 +108,50 @@ each symbol/operator linked to the entry that introduced it -- when
                                            (formula-json (second (entry-payload e)) ledger)
                                            nil)
               (gethash "proof" h) (if proof (proof-lines-json w proof ledger) nil)
+              (gethash "usedBy" h) (json-arr (mapcar (lambda (c) (entry-ref-json w c))
+                                                     (entry-used-by (world-deps w) k)))
+              (gethash "dependents" h) (entry-dependents-count (world-deps w) k)
+              (gethash "foundations" h) (foundations-json w k)
               (gethash "proofSexp" h) (if proof (render-proof-sexp proof) nil))
         h))))
+
+(defun entry-ref-json (world k)
+  "A short reference to entry K, for lists of links."
+  (let* ((e (find-entry-by-k world k))
+         (*render-link* nil))
+    (multiple-value-bind (premises conclusion) (entry-statement e)
+      (json-obj "k" k
+                "name" (render-sexp (entry-name e))
+                "kind" (kind-string (entry-kind e))
+                "module" (entry-module world k)
+                "text" (concatenate 'string
+                                    (if premises
+                                        (format nil "~{~A~^, ~} ⊢ "
+                                                (mapcar (lambda (f) (render-formula f (world-ledger world)))
+                                                        premises))
+                                        "")
+                                    (render-formula conclusion (world-ledger world)))))))
+
+(defun foundations-json (world k)
+  "What entry K ultimately rests on, grouped: axioms, definitional axioms
+(functions defined by description), inference rules; plus whether the
+Deduction Theorem was trusted as a meta-theorem on the way. NIL for
+entries that are not axioms, rules or derived entries."
+  (let* ((d (world-deps world))
+         (e (find-entry-by-k world k)))
+    (when (member (entry-kind e) '(axiom irule th th-ded ith def-abbrev))
+      (multiple-value-bind (ks meta) (entry-foundations d k)
+        (let ((axioms nil) (definitions nil) (rules nil))
+          (dolist (f (sort (copy-list ks) #'<))
+            (let ((fe (find-entry-by-k world f)))
+              (cond ((eq (entry-kind fe) 'irule) (push f rules))
+                    ((by-description-command fe) (push f definitions))
+                    (t (push f axioms)))))
+          (flet ((refs (list) (json-arr (mapcar (lambda (c) (entry-ref-json world c)) (nreverse list)))))
+            (json-obj "axioms" (refs axioms)
+                      "definitions" (refs definitions)
+                      "rules" (refs rules)
+                      "deductionMeta" (json-bool meta))))))))
 
 (defun render-proof-sexp (raw-proof)
   "RAW-PROOF as editable text, one line per proof line."

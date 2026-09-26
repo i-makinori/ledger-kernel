@@ -18,6 +18,8 @@
               (string= (r '(.exists1 v0 (.and (p v0) (.neg (.eq v0 (empty)))))) "∃!v₀(P(v₀) ∧ v₀ ≠ ∅)") t)
       (expect "render: arithmetic terms keep only the parentheses they need"
               (string= (r '(.eq (* (+ v0 v1) (s zero)) (s (+ v0 zero)))) "(v₀ + v₁) · S(0) = S(v₀ + 0)") t)
+      (expect "render: substitution in schemas as A[t/x]"
+              (string= (r '(.to (.forall ?x ?a) (@subst ?x ?t ?a))) "(∀?X ?A) → ?A[?T/?X]") t)
       (expect "render: malformed input falls back to the S-expression"
               (stringp (r '(.to a))) t))))
 
@@ -86,12 +88,67 @@
     (expect "links: entry summaries stay plain text (no markers)"
             (notany (lambda (h) (find (code-char 1) (gethash "text" h))) (api-entries "zf")) t)))
 
+(defun test-web-deps ()
+  (let ((w (find-world "zf")))
+    (labels ((k-of (name)
+               (gethash "k" (find name (api-entries "zf") :key (lambda (h) (gethash "name" h)) :test #'string=)))
+             (names (refs) (map 'list (lambda (r) (gethash "name" r)) refs))
+             (found (name) (gethash "foundations" (api-entry "zf" (k-of name)))))
+      (let ((exists (found "th-zf-empty-exists"))
+            (unique (found "th-zf-empty-unique"))
+            (not-in (found "th-zf-not-in-empty")))
+        (expect "deps: the empty set's existence rests on Separation, not Extensionality"
+                (let ((a (names (gethash "axioms" exists))))
+                  (and (member "zf-separation" a :test #'string=)
+                       (not (member "zf-extensionality" a :test #'string=))))
+                t)
+        (expect "deps: its uniqueness rests on Extensionality, not Separation"
+                (let ((a (names (gethash "axioms" unique))))
+                  (and (member "zf-extensionality" a :test #'string=)
+                       (not (member "zf-separation" a :test #'string=))))
+                t)
+        (expect "deps: not(x in (empty)) rests on the definition EMPTY-DEF ..."
+                (and (member "empty-def" (names (gethash "definitions" not-in)) :test #'string=) t) t)
+        (expect "... and, through it, on both Separation and Extensionality"
+                (let ((a (names (gethash "axioms" not-in))))
+                  (and (member "zf-separation" a :test #'string=)
+                       (member "zf-extensionality" a :test #'string=) t))
+                t)
+        (expect "deps: MP is among the inference rules used"
+                (and (member "mp" (names (gethash "rules" exists)) :test #'string=) t) t)
+        (expect "deps: a TH-DED step on the way is reported"
+                (eq (gethash "deductionMeta" exists) 'yason:true) t))
+      (let ((used (names (gethash "usedBy" (api-entry "zf" (k-of "th-and-elim-r"))))))
+        (expect "deps: th-and-elim-r is used by th-zf-empty-exists (through its step -s1)"
+                (and (member "th-zf-empty-exists" used :test #'string=) t) t)
+        (expect "deps: ... and the auxiliary step itself is not listed"
+                (member "th-zf-empty-exists-s1" used :test #'string=) nil))
+      (expect "deps: Separation is used, directly or not, by the empty-set theorems"
+              (>= (gethash "dependents" (api-entry "zf" (k-of "zf-separation"))) 2) t)
+      (expect "deps: axioms such as II.1 are not hidden as auxiliary entries"
+              (eq (gethash "aux" (find "ii.1" (api-entries "zf") :key (lambda (h) (gethash "name" h)) :test #'string=))
+                  'yason:false)
+              t)
+      (expect "deps: every citation in every stored proof resolves to an entry"
+              (let ((d (world-deps w)))
+                (every (lambda (e)
+                         ;; (a definition's axiom also counts its existence and
+                         ;; uniqueness theorems; only stored proofs are compared)
+                         (or (null (entry-proof e))
+                          (= (length (gethash (entry-k e) (deps-cites d)))
+                            (length (remove-duplicates
+                                     (loop for (nil nil role by) in (entry-proof e)
+                                           unless (eq role :hyp) collect (car by)))))))
+                       (world-entries w)))
+              t))))
+
 (defun run-web-self-tests ()
   (let ((*expect-results* (cons 0 0)))
     (unless *worlds* (load-worlds))
     (test-web-render)
     (test-web-api)
     (test-web-links)
+    (test-web-deps)
     (destructuring-bind (passed . failed) *expect-results*
       (format t "~%~D/~D web self-tests passed.~%" passed (+ passed failed))
       (zerop failed))))

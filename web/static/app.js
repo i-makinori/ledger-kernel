@@ -172,6 +172,7 @@ async function showEntry(k) {
   if (e.discharged) {
     parts.push(el("p", { class: "muted" }, "演繹定理で仮定 ", el("span", { style: "font-family: var(--math)" }, formulaNode(e.discharged)), " を含意の前件に移した定理です。"));
   }
+  parts.push(...dependencySections(e));
   if (e.conditions.length) {
     parts.push(el("div", { class: "section-title" }, "側条件"),
       el("div", { class: "conditions" }, ...e.conditions.map(c => el("div", {}, c))));
@@ -197,6 +198,55 @@ async function showEntry(k) {
   }
   detail.replaceChildren(...parts);
   detail.scrollTop = 0;
+}
+
+// --- what an entry rests on, and what uses it -------------------------------------
+
+function refList(refs) {
+  return el("ul", { class: "ref-list" }, ...refs.map(r =>
+    el("li", {},
+      entryLink(r.k, r.name, { class: "link ref-name", title: `#${r.k} を新しいタブで開く` }),
+      el("span", { class: "ref-text" }, r.text))));
+}
+
+function groupByModule(refs) {
+  const groups = new Map();
+  for (const r of refs) {
+    if (!groups.has(r.module)) groups.set(r.module, []);
+    groups.get(r.module).push(r);
+  }
+  return [...groups].flatMap(([module, rs]) => [el("div", { class: "ref-module" }, module), refList(rs)]);
+}
+
+function dependencySections(e) {
+  const out = [];
+  const f = e.foundations;
+  if (f && (e.hasProof || f.definitions.length)) {
+    const body = [];
+    if (f.axioms.length) body.push(el("div", { class: "dep-sub" }, `公理（${f.axioms.length}）`), ...groupByModule(f.axioms));
+    if (f.definitions.length) body.push(el("div", { class: "dep-sub" }, `定義（${f.definitions.length}）`), refList(f.definitions));
+    if (f.rules.length) {
+      body.push(el("div", { class: "dep-sub" }, "推論規則"),
+        el("p", { class: "inline-refs" }, ...joinNodes(f.rules.map(r =>
+          entryLink(r.k, r.name, { class: "link", title: r.text })), "、")));
+    }
+    if (f.deductionMeta) {
+      body.push(el("p", { class: "trust-note" },
+        "途中で、演繹定理をメタ定理として信頼して登録した定理（th-ded）を使っています。"));
+    }
+    out.push(el("details", { class: "deps", open: "" },
+      el("summary", {}, "この" + (e.hasProof ? "定理" : "エントリ") + "が依存している基礎"),
+      ...body));
+  }
+  if (e.usedBy.length || e.dependents) {
+    out.push(el("details", { class: "deps", open: e.usedBy.length <= 12 ? "" : null },
+      el("summary", {}, `このエントリを使っている定理　直接 ${e.usedBy.length} 件・間接を含め ${e.dependents} 件`),
+      el("p", { class: "muted small" }, "途中の補題（名前.t5、名前-s1 など）から使われている場合は、その補題を使っている定理として数えています。"),
+      refList(e.usedBy)));
+  } else if (["axiom", "irule", "th", "th-ded", "ith"].includes(e.kind)) {
+    out.push(el("p", { class: "muted small" }, "このエントリを使っている定理は、まだありません。"));
+  }
+  return out;
 }
 
 function citeLink(line) {

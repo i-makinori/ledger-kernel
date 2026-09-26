@@ -151,6 +151,18 @@ sbcl --load tools/serve.lisp          # http://127.0.0.1:8080/ を開く
 エディタで書いた証明は、選んだ世界の台帳に対して検証されます（台帳には追加しません）。
 詳しくは [docs/guide.md の13節](docs/guide.md) を参照してください。
 
+サーバーなしで見せたいときは、静的サイトとして書き出せます。
+
+```bash
+sbcl --non-interactive --load tools/export-static.lisp    # site/ に書き出す（OUT=... で変更可）
+```
+
+`site/index.html` はそのままブラウザで開け（file:// でも動きます）、フォルダごと
+GitHub Pages などの静的ホスティングに置けます。画面はサーバー版と同じで、サーバーが
+返すはずの答えをすべて `site/data/*.js` に書き出してあります。書き出しの時点で全証明を
+再検証しているので、載るのはカーネルが受理したものだけです。閲覧専用のため、
+エディタでの検証はできません（証明の S 式はコピーできます）。
+
 
 ## 証明の書き方
 
@@ -305,10 +317,12 @@ web/                     Web UI（ledger-kernel/web。カーネルの外側）
   worlds.lisp            表示する世界（ZF、ペアノ算術）
   deps.lisp              引用関係（依存している公理、使っている定理）
   api.lisp, server.lisp  JSON API と Hunchentoot のルーティング
+  static-export.lisp     静的サイトとして書き出す
   static/                画面（HTML / JS / CSS）
   tests.lisp             表示と API のテスト
 tools/
   serve.lisp                        Web UI を起動する
+  export-static.lisp                Web UI を静的サイトとして書き出す
   generate-connectives-ledger.lisp  06-connectives.ledger を生成し直す
 docs/guide.md            機能ごとの詳しい説明
 ```
@@ -323,7 +337,7 @@ sbcl --non-interactive \
      --eval '(asdf:test-system :ledger-kernel)'        # カーネル（411 件）
 ```
 
-Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（36 件。HTTP は使いません）。
+Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（40 件。HTTP は使いません）。
 各チェックが `[pass]` / `[FAIL]` を出力し、最後に集計を表示します。`[FAIL]` が
 1つでもあると `asdf:test-system` はエラーになります。
 

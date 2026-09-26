@@ -142,6 +142,33 @@
                        (world-entries w)))
               t))))
 
+(defun test-web-static-export ()
+  (let* ((dir (uiop:ensure-directory-pathname
+               (merge-pathnames (format nil "ledger-kernel-static-~D/" (random 1000000 (make-random-state t)))
+                                (uiop:temporary-directory)))))
+    (unwind-protect
+         (progn
+           (export-static-site dir)
+           (let ((index (uiop:read-file-string (merge-pathnames "index.html" dir) :external-format :utf-8))
+                 (zf (uiop:read-file-string (merge-pathnames "data/zf.js" dir) :external-format :utf-8)))
+             (expect "static export: index.html loads the data before the app, by relative paths"
+                     (let ((d (search "src=\"data/worlds.js\"" index))
+                           (a (search "src=\"app.js\"" index)))
+                       (and d a (< d a) (not (search "/static/" index)) t))
+                     t)
+             (expect "static export: every world has its data file"
+                     (every (lambda (w) (probe-file (merge-pathnames (format nil "data/~A.js" (world-id w)) dir)))
+                            *worlds*)
+                     t)
+             (expect "static export: the ZF data holds the empty-set theorem's proof"
+                     (and (search "th-zf-empty-exists" zf) (search "\"proof\"" zf) t)
+                     t)
+             (expect "static export: app.js and style.css are copied"
+                     (and (probe-file (merge-pathnames "app.js" dir))
+                          (probe-file (merge-pathnames "style.css" dir)) t)
+                     t)))
+      (uiop:delete-directory-tree dir :validate t :if-does-not-exist :ignore))))
+
 (defun run-web-self-tests ()
   (let ((*expect-results* (cons 0 0)))
     (unless *worlds* (load-worlds))
@@ -149,6 +176,7 @@
     (test-web-api)
     (test-web-links)
     (test-web-deps)
+    (test-web-static-export)
     (destructuring-bind (passed . failed) *expect-results*
       (format t "~%~D/~D web self-tests passed.~%" passed (+ passed failed))
       (zerop failed))))

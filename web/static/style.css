@@ -15,8 +15,10 @@
   --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --sans: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
 }
+/* dark palette: follows the OS unless a page theme is chosen explicitly */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --bg: #17181a;
     --panel: #1f2023;
     --ink: #e8e6e1;
@@ -30,6 +32,21 @@
     --bad-soft: #3a2220;
     --warn-soft: #2a2822;
   }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #17181a;
+  --panel: #1f2023;
+  --ink: #e8e6e1;
+  --muted: #9b9a96;
+  --line: #34353a;
+  --accent: #8db4dc;
+  --accent-soft: #24303c;
+  --ok: #7cc79a;
+  --ok-soft: #1f3327;
+  --bad: #f08a80;
+  --bad-soft: #3a2220;
+  --warn-soft: #2a2822;
 }
 
 * { box-sizing: border-box; }
@@ -212,3 +229,9 @@ a.link.ref-name { font-family: var(--mono); font-size: 12.5px; white-space: nowr
 .inline-refs { margin: 0; font-family: var(--mono); font-size: 12.5px; }
 .trust-note { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); border-left: 3px solid var(--line); padding-left: 8px; }
 .small { font-size: 12.5px; }
+
+/* static export: landing text */
+.static-intro { max-width: 46em; }
+.static-intro h1 { margin-top: 0; }
+.static-intro p { line-height: 1.7; }
+.tab[hidden] { display: none; }

@@ -62,7 +62,8 @@
                (:file "worlds")
                (:file "deps")
                (:file "api")
-               (:file "server"))
+               (:file "server")
+               (:file "static-export"))
   :in-order-to ((test-op (test-op "ledger-kernel/web/tests"))))
 
 (defsystem "ledger-kernel/web/tests"

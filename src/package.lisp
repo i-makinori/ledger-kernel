@@ -43,17 +43,14 @@
   (:use :cl)
   (:export #:entry-k #:entry-kind #:entry-payload
            #:entry-origin #:ledger-append #:admit-primitive #:check-and-extend
-           #:check-and-extend-abbrev #:declare-atomic-wff-symbol
+           #:declare-atomic-wff-symbol
            #:declare-variable-symbol #:declare-predicate-schema-symbol #:judgement? #:run-self-tests
            #:make-log-config #:silent-log
            #:ledger-commands #:ledger-from-commands
            #:write-ledger-to-file #:read-ledger-from-file
            #:write-commands-to-file
-           #:@deduction #:check-and-extend-by-deduction
            #:check-and-extend-by-deduction-direct
            #:prove-tautology
-           #:find-named-entry #:rename-symbol-everywhere
-           #:alpha-rename-entry #:alpha-rename-forall
            #:enable-derived-entry-memoization
            #:disable-derived-entry-memoization
            #:reset-derived-entry-memoization

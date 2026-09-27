@@ -132,7 +132,7 @@ same way; only the per-candidate TRY-*-ENTRY logic differs by kind."
          (new-all (treap-insert (ledger-all ledger) k e))
          (new-by-kind (alist-put (ledger-by-kind ledger) kind
                                   (treap-insert (alist-get (ledger-by-kind ledger) kind) k e)))
-         (derived-name (and (member kind '(ith th def-abbrev th-ded) :test #'eq) (car payload)))
+         (derived-name (and (member kind '(th th-ded) :test #'eq) (car payload)))
          (new-by-derived-name
            (if derived-name
                (alist-put (ledger-by-derived-name ledger) derived-name

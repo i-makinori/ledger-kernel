@@ -102,16 +102,6 @@ cannot express \"replace x1 with t1 AND x2 with t2, together\"."
       (reduce (lambda (w pair) (substitute-wff (car pair) (cdr pair) w))
               (mapcar #'cons temps terms) :initial-value swapped))))
 
-(defun meta-subst-multi-ok? (ledger open-hyps vars terms wff)
-  "As META-SUBST-OK?, but for the whole VARS/TERMS tuple SUBSTITUTE-WFF-
-MULTI would apply at once: capture-safe iff EVERY individual (var . term)
-pair in the tuple would itself be capture-safe against the ORIGINAL WFF
--- the two-hop GENSYM trick means the substitutions never interact, so
-checking each pair independently against the untouched WFF is exactly
-right, not an approximation."
-  (declare (ignore open-hyps))
-  (every (lambda (v tm) (meta-subst-ok? ledger nil v tm wff)) vars terms))
-
 (defun meta-substitutes? (ledger open-hyps var term wff result)
   "T iff RESULT is exactly WFF with TERM substituted for VAR -- i.e. RESULT
 = (@subst VAR TERM WFF). Used where a rule needs to relate two ALREADY
@@ -129,32 +119,15 @@ time it is reached."
   (declare (ignore ledger open-hyps))
   (equal (substitute-wff var term wff) result))
 
-(defun meta-proven? (ledger open-hyps wff)
-  "Is WFF currently an open hypothesis in the proof being checked (Gamma,
-OPEN-HYPS), or the conclusion of some already-admitted :TH/:ITH ledger
-entry? Used only inside side conditions of DERIVED rules being checked
-against entries strictly earlier than themselves (see CHECK-AND-EXTEND).
-Consults only the TH/ITH buckets of LEDGER's kind index (ENTRIES-OF-KIND),
-never the whole ledger -- there is no index on a conclusion FORMULA
-itself, so within those two buckets this still checks each candidate in
-turn, but it no longer pays for every unrelated WFF?/AXIOM/IRULE/etc.
-entry along the way."
-  (or (member wff open-hyps :test #'equal)
-      (some (lambda (e) (equal (proof-conclusion (second (entry-payload e))) wff))
-            (append (entries-of-kind 'th ledger) (entries-of-kind 'ith ledger)))))
-
 (defun meta-predicates-table ()
   "The dispatch table CHECK-CONDITION/META-PREDICATE-P look up @-tagged
 side conditions in."
   (list (cons '@not-free-in? #'meta-not-free-in?)
         (cons '@not-free-in-dependencies? #'meta-not-free-in-dependencies?)
         (cons '@subst-ok? #'meta-subst-ok?)
-        (cons '@proven? #'meta-proven?)
-        (cons '@substitutes? #'meta-substitutes?)
-        (cons '@substn-ok? #'meta-subst-multi-ok?)))
+        (cons '@substitutes? #'meta-substitutes?)))
 
 (defun meta-constructors-table ()
   "As META-PREDICATES-TABLE, but for meta-constructors (META-CONSTRUCTOR-P,
 used by MATCH-TEMPLATE)."
-  (list (cons '@subst (lambda (var term wff) (substitute-wff var term wff)))
-        (cons '@substn (lambda (vars terms wff) (substitute-wff-multi vars terms wff)))))
+  (list (cons '@subst (lambda (var term wff) (substitute-wff var term wff)))))

@@ -82,12 +82,9 @@ the identical check again."
                         (variable-symbol (list :declare-variable-symbol (entry-payload e)))
                         (predicate-schema-symbol
                          (list* :declare-predicate-schema-symbol (entry-payload e)))
-                        ((th ith)
+                        (th
                          (destructuring-bind (name raw-proof) (entry-payload e)
-                           (list (if (eq (entry-kind e) 'th) :th :ith) name raw-proof)))
-                        (def-abbrev
-                         (destructuring-bind (name raw-proof) (entry-payload e)
-                           (list :def-abbrev name (proof-conclusion raw-proof) raw-proof)))
+                           (list :th name raw-proof)))
                         (th-ded
                          (destructuring-bind (name hyp-formula raw-proof) (entry-payload e)
                            (list :th-ded name hyp-formula raw-proof)))
@@ -119,10 +116,8 @@ the same CHECK-AND-EXTEND/CHECK-AND-EXTEND-ABBREV/DECLARE-* gates."
                 (:declare-variable-symbol (declare-variable-symbol ledger (first args)))
                 (:declare-predicate-schema-symbol
                  (declare-predicate-schema-symbol ledger (first args) (second args)))
-                ((:th :ith) (destructuring-bind (name raw-proof) args
-                              (check-and-extend ledger (if (eq op :th) 'th 'ith) name raw-proof log)))
-                (:def-abbrev (destructuring-bind (name definiens raw-proof) args
-                               (check-and-extend-abbrev ledger name definiens raw-proof log)))
+                (:th (destructuring-bind (name raw-proof) args
+                       (check-and-extend ledger 'th name raw-proof log)))
                 (:th-ded (destructuring-bind (name hyp-formula raw-proof) args
                            (check-and-extend-by-deduction-direct ledger name hyp-formula raw-proof log)))
                 (:define-function-by-description

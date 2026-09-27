@@ -3,79 +3,6 @@
 
 (in-package :ledger-kernel)
 
-(defun test-deduction-theorem (ledger)
-  "@DEDUCTION end to end: discharging TWICE over the ordinary MP proof of
-A, (.to A B) |- B recovers the fully closed combinator theorem
-A -> ((.to A B) -> B); discharging over a GEN-based proof (both the
-self-generalizing case, where the discharged hypothesis is itself the
-formula being generalized over vacuously, and the case where GEN cites a
-DIFFERENT, still-open hypothesis) recovers the corresponding
-quantified theorems -- all admitted and re-citable as real ledger
-THEOREMs (not just in-memory raw-proofs); plus the one remaining
-documented rejection path (a :TH line). Grows the ledger by four
-entries."
-  (let* ((mp-proof '((0 A :hyp nil)
-                      (1 (.to A B) :hyp nil)
-                      (2 B :ir (MP 1 0))))
-         (discharge-1 (@deduction '(.to A B) mp-proof)))
-    (expect "Sanity: the plain MP proof itself still checks"
-            (check-k-proof mp-proof ledger) t)
-    (expect "After discharging (.to A B): A |- (.to A B) -> B"
-            (check-k-proof discharge-1 ledger) t)
-    (expect "...and its conclusion is exactly that"
-            (equal (proof-conclusion discharge-1) '(.to (.to A B) B)) t)
-    (let ((discharge-2 (@deduction 'A discharge-1)))
-      (expect "After discharging A too: |- A -> ((.to A B) -> B), no open hyps left"
-              (check-k-proof discharge-2 ledger) t)
-      (expect "...and its conclusion is exactly that"
-              (equal (proof-conclusion discharge-2) '(.to A (.to (.to A B) B))) t)
-      (let ((ledger (check-and-extend-by-deduction
-                     (check-and-extend-by-deduction ledger 'th 'th-deduction-demo-step1
-                                                     '(.to A B) mp-proof)
-                     'th 'th-deduction-demo 'A discharge-1)))
-        (expect "TH-DEDUCTION-DEMO is now a real, re-citable ledger theorem"
-                (check-k-proof '((0 (.to C (.to (.to C D) D)) :th (th-deduction-demo))) ledger)
-                t)
-        (expect "Attack: citing it with mismatched A<>B halves -- must reject"
-                (check-k-proof '((0 (.to C (.to (.to D D) D)) :th (th-deduction-demo))) ledger)
-                nil)
-        (expect "@DEDUCTION rejects a :TH line (out of scope, see section header)"
-                (handler-case (progn (@deduction 'A `((0 A :hyp nil)
-                                                        (1 (.to A B) :th (my-ax1))))
-                                      nil)
-                  (error () t))
-                t)
-        (let* ((gen-self-proof '((0 A :hyp nil) (1 (.forall v0 A) :ir (Gen 0 v0))))
-               (gen-self-discharge (@deduction 'A gen-self-proof)))
-          (expect "Sanity: the vacuous-Gen proof itself still checks (A |- forall v0 A)"
-                  (check-k-proof gen-self-proof ledger) t)
-          (expect "Case 4 (GEN) on the SELF-discharged hypothesis: |- A -> (forall v0 A)"
-                  (check-k-proof gen-self-discharge ledger) t)
-          (expect "...and its conclusion is exactly that"
-                  (equal (proof-conclusion gen-self-discharge) '(.to A (.forall v0 A))) t)
-          (let ((ledger (check-and-extend-by-deduction ledger 'th 'th-gen-self-discharge
-                                                         'A gen-self-proof)))
-            (expect "TH-GEN-SELF-DISCHARGE is a real, re-citable ledger theorem"
-                    (check-k-proof '((0 (.to C (.forall v0 C)) :th (th-gen-self-discharge))) ledger)
-                    t)
-            (let* ((gen-other-proof '((0 A :hyp nil) (1 B :hyp nil)
-                                       (2 (.forall v0 B) :ir (Gen 1 v0))))
-                   (gen-other-discharge-1 (@deduction 'A gen-other-proof)))
-              (expect "Case 4 (GEN) discharging a hyp OTHER than the one GEN cites: A |- B still open"
-                      (check-k-proof gen-other-discharge-1 ledger) t)
-              (expect "...and its conclusion is exactly that (A -> forall v0 B), with B still open"
-                      (equal (proof-conclusion gen-other-discharge-1) '(.to A (.forall v0 B))) t)
-              (let* ((gen-other-discharge-2 (@deduction 'B gen-other-discharge-1)))
-                (expect "Discharging B too closes it: |- B -> (A -> forall v0 B)"
-                        (check-k-proof gen-other-discharge-2 ledger) t)
-                (let ((ledger (check-and-extend-by-deduction ledger 'th 'th-gen-other-discharge
-                                                              'B gen-other-discharge-1)))
-                  (expect "TH-GEN-OTHER-DISCHARGE is a real, re-citable ledger theorem"
-                          (check-k-proof '((0 (.to C (.to D (.forall v0 C))) :th (th-gen-other-discharge)))
-                                          ledger)
-                          t)
-                  ledger)))))))))
-
 (defun test-deduction-theorem-direct (ledger)
   "CHECK-AND-EXTEND-BY-DEDUCTION-DIRECT (Section 11.5) end to end: the same
 basic MP discharge as TEST-DEDUCTION-THEOREM, but confirming (a) NO
@@ -126,8 +53,6 @@ ledger by two entries."
                          (4 (.eq v4 v1) :ir (MP 3 1)))))
       (expect "Sanity: the edge-case proof itself checks (Gamma,H |- PHI)"
               (check-k-proof edge-proof ledger) t)
-      (expect "@DEDUCTION genuinely fails here -- the documented edge case, concretely demonstrated"
-              (check-k-proof (@deduction h edge-proof) ledger) nil)
       (let ((ledger (check-and-extend-by-deduction-direct ledger 'th-edge-case-fixed h edge-proof)))
         (expect "CHECK-AND-EXTEND-BY-DEDUCTION-DIRECT correctly admits it (citing Gamma=(.eq v4 v1))"
                 (check-k-proof '((0 (.eq v4 v1) :hyp nil)

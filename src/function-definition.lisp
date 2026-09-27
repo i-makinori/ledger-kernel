@@ -52,7 +52,7 @@ in PAIRS, in order, to FORM. Safe here because every NEW name used by this
 section's own callers is a freshly chosen ?-prefixed schema variable that
 cannot already occur in FORM, so the renames can never interfere with
 each other regardless of order."
-  (dolist (p pairs form) (setf form (rename-symbol-everywhere (car p) (cdr p) form))))
+  (dolist (p pairs form) (setf form (subst (cdr p) (car p) form))))
 
 (defun define-function-by-description (ledger name arg-vars y-var y2-var a-formula
                                         existence-name uniqueness-name)

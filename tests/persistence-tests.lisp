@@ -27,6 +27,9 @@ corrupted test fixture, never inside the kernel's own trusted logic."
     ((consp tree) (cons (tree-subst old new (car tree)) (tree-subst old new (cdr tree))))
     (t tree)))
 
+(defun tree-contains-p (x tree)
+  (or (eq x tree) (and (consp tree) (or (tree-contains-p x (car tree)) (tree-contains-p x (cdr tree))))))
+
 (defun test-persistence-round-trip (ledger)
   "WRITE-LEDGER-TO-FILE / READ-LEDGER-FROM-FILE, genuinely through the
 filesystem (not just LEDGER-COMMANDS/LEDGER-FROM-COMMANDS in memory).
@@ -44,11 +47,10 @@ removes it)."
                      (equal (ledger-commands reloaded) (ledger-commands ledger)) t)
              (expect "A plain axiom-instance judgement still holds after reload"
                      (judgement? 'wff? '(.to A B) reloaded) t)
-             (expect "TH-DEDUCTION-DEMO (built via @DEDUCTION) is still citable after reload"
-                     (check-k-proof '((0 (.to C (.to (.to C D) D)) :th (th-deduction-demo))) reloaded)
-                     t)
-             (expect "MY-AX1 (a DEF-ABBREV) is still citable after reload"
-                     (check-k-proof '((0 (.to Q (.to Q Q)) :def-abbrev (my-ax1))) reloaded)
+             (expect "TH-GEN-VACUOUS (a TH entry) is still citable after reload"
+                     (check-k-proof '((X C :hyp nil)
+                                      (Y (.forall v0 C) :th (th-gen-vacuous X)))
+                                    reloaded)
                      t)
              (expect "TH-DIRECT-MP-DEMO (a TH-DED entry, built via CHECK-AND-EXTEND-BY-DEDUCTION-DIRECT) is still citable after reload"
                      (check-k-proof '((0 F :hyp nil)
@@ -56,13 +58,15 @@ removes it)."
                                      reloaded)
                      t))
            ;; Tamper-resistance: corrupt one grown entry's proof (blindly
-           ;; swap B for Z inside the last :TH command's raw-proof, which
-           ;; breaks its own internal citations/schema) and confirm
-           ;; loading it can only fail, never quietly succeed.
+           ;; swap A for the undeclared Z inside the last :TH command
+           ;; that mentions A) and confirm loading it can only fail,
+           ;; never quietly succeed.
            (let* ((commands (ledger-commands ledger))
-                  (victim (find-if (lambda (c) (eq (car c) :th)) commands :from-end t)))
+                  (victim (find-if (lambda (c) (and (eq (car c) :th) (tree-contains-p 'A c)))
+                                   commands :from-end t)))
+             (expect "Sanity: the ledger has a :TH command to tamper with" victim t)
              (when victim
-               (let* ((tampered (tree-subst victim (tree-subst 'B 'Z victim) commands)))
+               (let* ((tampered (tree-subst victim (tree-subst 'A 'Z victim) commands)))
                  (write-commands-to-file tampered bad-path)
                  (expect "A tampered command stream is refused outright, not silently accepted"
                          (handler-case (progn (read-ledger-from-file bad-path :ledger (fol-kernel)) nil)
@@ -96,8 +100,8 @@ ledger (writes/reads two temp files as a side effect, then removes them)."
                      (= (ledger-count chained) (ledger-count ledger)) t)
              (expect "...and the identical command stream"
                      (equal (ledger-commands chained) commands) t)
-             (expect "TH-DEDUCTION-DEMO is still citable in the two-file chained result"
-                     (check-k-proof '((0 (.to C (.to (.to C D) D)) :th (th-deduction-demo))) chained)
+             (expect "TH-GEN-VACUOUS is still citable in the two-file chained result"
+                     (check-k-proof '((X C :hyp nil) (Y (.forall v0 C) :th (th-gen-vacuous X))) chained)
                      t)))
       (ignore-errors (delete-file path-a))
       (ignore-errors (delete-file path-b)))

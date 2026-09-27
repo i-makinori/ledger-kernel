@@ -38,9 +38,9 @@
           nil)
   ledger)
 
-(defun test-vacuous-gen-and-bad-ith (ledger)
+(defun test-vacuous-gen-and-bad-gen (ledger)
   "Derives th-gen-vacuous via CHECK-AND-EXTEND and uses it in a later
-proof, then defines ith-bad-gen (whose schema alone is legitimate) and
+proof, then defines th-bad-gen (whose schema alone is legitimate) and
 confirms a capturing instantiation of it is rejected on full
 re-expansion. Returns the ledger extended with both new entries."
   (let* ((ledger (check-and-extend ledger 'th 'th-gen-vacuous
@@ -52,18 +52,18 @@ re-expansion. Returns the ledger extended with both new entries."
                             ledger)
             t)
     (let* ((ledger (handler-case
-                        (let ((new-ledger (check-and-extend ledger 'ith 'ith-bad-gen
+                        (let ((new-ledger (check-and-extend ledger 'th 'th-bad-gen
                                                              '((0 A :hyp nil)
                                                                (1 (.forall v0 A) :ir (Gen 0 v0))))))
-                          (expect "ith-bad-gen defines cleanly (vacuous case is legitimate on its own)" t t)
+                          (expect "th-bad-gen defines cleanly (vacuous case is legitimate on its own)" t t)
                           new-ledger)
                       (error (e)
-                        (format t "ith-bad-gen unexpectedly rejected at definition time: ~A~%" e)
-                        (expect "ith-bad-gen defines cleanly (vacuous case is legitimate on its own)" nil t)
+                        (format t "th-bad-gen unexpectedly rejected at definition time: ~A~%" e)
+                        (expect "th-bad-gen defines cleanly (vacuous case is legitimate on its own)" nil t)
                         ledger))))
-      (expect "Attack: instantiate ith-bad-gen with A := (.eq v0 v1) -- must reject"
+      (expect "Attack: instantiate th-bad-gen with A := (.eq v0 v1) -- must reject"
               (check-k-proof '((X (.eq v0 v1) :hyp nil)
-                                (Y (.forall v0 (.eq v0 v1)) :ith (ith-bad-gen X)))
+                                (Y (.forall v0 (.eq v0 v1)) :th (th-bad-gen X)))
                               ledger)
               nil)
       ledger)))
@@ -107,38 +107,6 @@ extended with the freshly-declared Q and w0."
               (handler-case (progn (declare-atomic-wff-symbol ledger '@foo) nil) (error () t))
               t)
       ledger)))
-
-(defun test-abbrev-usage (ledger)
-  "Admits my-ax1 as a genuinely-connected label for the II.1 schema (the
-supplied proof's own conclusion IS the claimed definiens), uses it at
-several instances, and confirms a mismatched instance, an undefined
-name, and an unrelated definiens ('evil') are all rejected -- the last
-is the critical regression guarding CHECK-AND-EXTEND-ABBREV itself (see
-its docstring). Returns the ledger extended with my-ax1."
-  (let* ((ledger (check-and-extend-abbrev ledger 'my-ax1 '(.to A (.to A A))
-                                           '((0 (.to A (.to A A)) :axiom (II.1))))))
-    (expect "Using my-ax1 at B: (.to B (.to B B)) via :def-abbrev"
-            (check-k-proof '((0 (.to B (.to B B)) :def-abbrev (my-ax1))) ledger)
-            t)
-    (expect "Using my-ax1 at the freshly-declared Q: (.to Q (.to Q Q))"
-            (check-k-proof '((0 (.to Q (.to Q Q)) :def-abbrev (my-ax1))) ledger)
-            t)
-    (expect "Attack: (.to B (.to C B)) is not an instance of my-ax1 (A<>A mismatch) -- must reject"
-            (check-k-proof '((0 (.to B (.to C B)) :def-abbrev (my-ax1))) ledger)
-            nil)
-    (expect "Attack: citing an undefined abbreviation name -- must reject"
-            (check-k-proof '((0 (.to B (.to B B)) :def-abbrev (no-such-abbrev))) ledger)
-            nil)
-    (expect "Attack: 'evil' abbreviation with an unrelated proof -- must be REFUSED at admission"
-            (handler-case
-                (progn (check-and-extend-abbrev ledger 'evil 'A '((0 (.to A (.to A A)) :axiom (II.1))))
-                       nil)
-              (error () t))
-            t)
-    (expect "Attack payload: citing 'evil' must never assert an arbitrary formula for free"
-            (check-k-proof '((0 (.forall v0 (.eq v0 v1)) :def-abbrev (evil))) ledger)
-            nil)
-    ledger))
 
 (defun test-axiom-iii1 (ledger)
   "Axiom III.1 (universal instantiation): the genuine case (instantiating
@@ -219,21 +187,17 @@ ledger."
   ledger)
 
 (defun test-name-uniqueness (ledger)
-  "ITH/TH/DEF-ABBREV names must be unique, and CHECK-AND-EXTEND must
-refuse a non-ITH/TH kind."
-  (expect "Re-using an existing name (my-ax1) for a new TH -- must be refused"
+  "Derived-entry names are unique, an unknown name cannot be cited, and
+CHECK-AND-EXTEND admits only TH entries."
+  (expect "Re-using an existing name (th-gen-vacuous) for a new TH -- must be refused"
           (handler-case
-              (progn (check-and-extend ledger 'th 'my-ax1 '((0 (.to A (.to A A)) :axiom (II.1)))) nil)
+              (progn (check-and-extend ledger 'th 'th-gen-vacuous '((0 (.to A (.to A A)) :axiom (II.1)))) nil)
             (error () t))
           t)
-  (expect "Re-using an existing name (th-gen-vacuous) for a new DEF-ABBREV -- must be refused"
-          (handler-case
-              (progn (check-and-extend-abbrev ledger 'th-gen-vacuous 'A
-                                               '((0 A :hyp nil) (1 (.forall v0 A) :ir (Gen 0 v0))))
-                     nil)
-            (error () t))
-          t)
-  (expect "CHECK-AND-EXTEND refuses a non-ITH/TH kind (e.g. AXIOM)"
+  (expect "Attack: citing an undefined theorem name -- must reject"
+          (check-k-proof '((0 (.to B (.to B B)) :th (no-such-theorem))) ledger)
+          nil)
+  (expect "CHECK-AND-EXTEND refuses a non-TH kind (e.g. AXIOM)"
           (handler-case
               (progn (check-and-extend ledger 'axiom 'sneaky '((0 A :hyp nil))) nil)
             (error () t))
@@ -290,16 +254,14 @@ checks; extended, for one that also grows Sigma or the ledger itself)."
   (let* ((ledger (fol-kernel))
          (ledger (test-basic-formation ledger))
          (ledger (test-axiom-and-inference ledger))
-         (ledger (test-vacuous-gen-and-bad-ith ledger))
+         (ledger (test-vacuous-gen-and-bad-gen ledger))
          (ledger (test-admit-primitive-closed ledger))
          (ledger (test-sigma-growth ledger))
-         (ledger (test-abbrev-usage ledger))
          (ledger (test-axiom-iii1 ledger))
          (ledger (test-hyp-wellformedness ledger))
          (ledger (test-exists-formation ledger))
          (ledger (test-negation-and-new-axioms ledger))
          (ledger (test-name-uniqueness ledger))
-         (ledger (test-deduction-theorem ledger))
          (ledger (test-deduction-theorem-direct ledger))
          ;; TEST-PERSISTENCE-ROUND-TRIP must run on a ledger built
          ;; entirely through the ordinary growth API (CHECK-AND-EXTEND/

@@ -611,11 +611,8 @@ excluded here too -- use that instead for abbreviations.
 LOG, when non-silent, traces CHECK-K-PROOF's line-by-line verdicts (see
 LOG-LINE-RESULT) as it re-verifies RAW-PROOF, plus one final line for
 this admission's own overall accept/reject (LOG-ADMISSION-RESULT)."
-  (unless (member kind '(ith th) :test #'eq)
-    (error "CHECK-AND-EXTEND: KIND must be ITH or TH, got ~S. (Axioms/irules ~
-            need their own (NAME CONDITIONS FORM) payload shape and are ~
-            admitted only via ADMIT-PRIMITIVE at bootstrap; abbreviations ~
-            go through CHECK-AND-EXTEND-ABBREV.)" kind))
+  (unless (eq kind 'th)
+    (error "CHECK-AND-EXTEND: KIND must be TH, got ~S." kind))
   (when (derived-rule-name-taken-p name ledger)
     (log-admission-result log name nil)
     (error "CHECK-AND-EXTEND: the name ~S is already used by an existing ~
@@ -630,53 +627,3 @@ this admission's own overall accept/reject (LOG-ADMISSION-RESULT)."
     (error "CHECK-AND-EXTEND: proof of ~S rejected." name))
   (log-admission-result log name t)
   (ledger-append ledger kind (list name raw-proof) (list :derived raw-proof)))
-
-(defun check-and-extend-abbrev (ledger name definiens raw-proof &optional (log (silent-log)))
-  "Abbreviation/definition admission: this is ALSO a ledger object
-requiring a proof, unlike Goedel's own meta-level definitions. DEFINIENS
-is the schema NAME is meant to stand for (written using atomic-wff-symbol
-schema atoms, e.g. A, exactly like an ITH/TH schema); RAW-PROOF must be a
-genuine K-proof whose OWN CONCLUSION (last line) matches DEFINIENS via
-MATCH-SCHEMA-ATOMS, checked in BOTH directions.
-
-Requiring RAW-PROOF's actual conclusion to match DEFINIENS is what makes
-this sound: DEF-ABBREV lines are checked via CHECK-K-DERIVED-LINE against
-the STORED PROOF's own real conclusion, never against the caller's
-DEFINIENS claim directly, so a mismatched DEFINIENS cannot be used to
-assert anything false. But a ONE-DIRECTIONAL schema match alone would
-still leave a labeling-honesty gap: a bare, unconstrained schema atom
-like DEFINIENS = 'A matches ANY conclusion at all, so an entry could be
-admitted whose recorded DEFINIENS bears no real relationship to what it
-actually proves. Matching in the OTHER direction too (conclusion-as-
-pattern against definiens-as-expr) closes this: a bare atom on either
-side only matches a compound expression as a STRUCTURED schema, so
-matching the actual conclusion's real structure against a too-vague
-DEFINIENS fails wherever DEFINIENS omits structure the conclusion
-actually has.
-
-LOG is as in CHECK-AND-EXTEND, above."
-  (when (derived-rule-name-taken-p name ledger)
-    (log-admission-result log name nil)
-    (error "CHECK-AND-EXTEND-ABBREV: the name ~S is already used by an ~
-            existing ITH/TH/DEF-ABBREV entry -- refused to avoid an ~
-            ambiguous or shadowing citation." name))
-  (unless (judgement? 'wff? definiens ledger)
-    (log-admission-result log name nil)
-    (error "CHECK-AND-EXTEND-ABBREV: definiens ~S is not a well-formed formula." definiens))
-  ;; As in CHECK-AND-EXTEND: LEDGER is already the right restriction.
-  (unless (check-k-proof raw-proof ledger log)
-    (log-admission-result log name nil)
-    (error "CHECK-AND-EXTEND-ABBREV: proof for ~S rejected." name))
-  (let ((concl (proof-conclusion raw-proof)))
-    (when (or (match-fail-p (match-schema-atoms definiens concl ledger nil))
-              (match-fail-p (match-schema-atoms concl definiens ledger nil)))
-      (log-admission-result log name nil)
-      (error "CHECK-AND-EXTEND-ABBREV: the supplied proof's conclusion (~S) ~
-              does not match the claimed definiens ~S for ~S -- refused ~
-              (an abbreviation's proof must actually establish its own ~
-              definiens, as the SAME schema in both directions, or it ~
-              would let ~S be cited under a misleading description of ~
-              what it really proves)."
-             concl definiens name name)))
-  (log-admission-result log name t)
-  (ledger-append ledger 'def-abbrev (list name raw-proof) (list :derived raw-proof)))

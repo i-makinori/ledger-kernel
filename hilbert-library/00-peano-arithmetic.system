@@ -1,18 +1,20 @@
 ;;; 00-peano-arithmetic.system
 ;;;
-;;; A SYSTEM-SPEC add-on file (see ledger_kernel.lisp Section 18), meant
-;;; to be loaded ON TOP OF 00-classical-fol-equality.system (via
-;;; BOOTSTRAP-KERNEL-FROM-SPEC-FILE's :LEDGER argument, chaining exactly
-;;; the way .ledger MODULE files already do): term-formation rules for
-;;; ZERO/S/+/* and axioms P1-P10, an exact transcription of
-;;; BOOTSTRAP-PEANO-VOCABULARY/BOOTSTRAP-PEANO-AXIOMS (see their own
-;;; commentary in ledger_kernel.lisp for the rationale behind each one,
-;;; especially P3's curried induction schema and P8-P10's existence
-;;; alongside IV.2).
+;;; Peano arithmetic, loaded ON TOP OF 00-classical-fol-equality.system
+;;; (BOOTSTRAP-KERNEL-FROM-SPEC-FILE with :LEDGER): term formation for
+;;; ZERO, S, +, * and axioms P1-P10. Every entry is :PRIMITIVE (trusted).
 ;;;
-;;; REMINDER: every entry here is :PRIMITIVE -- see 00-classical-fol-
-;;; equality.system's own header, and Section 18's, for the full
-;;; trust-model argument. This is not a .ledger module file.
+;;;   P1-P2   successor is injective and never zero
+;;;   P3      induction, curried: A[0/x] -> (forall x (A -> A[Sx/x])) ->
+;;;           forall x A. Cited as (P3 x A): ?x and ?A must be supplied as
+;;;           extra arguments because the conclusion begins with
+;;;           (@subst ?x zero ?A), which can only be evaluated once both
+;;;           are bound.
+;;;   P4-P7   the recursive equations of + and *, stated as axioms (there
+;;;           is no primitive recursion other than proof)
+;;;   P8-P10  congruence of S, +, * under equality. IV.2 cannot give these:
+;;;           it substitutes every free occurrence of a variable at once,
+;;;           while congruence needs one copy of x changed and one kept.
 
 ;;; --- term formation: ZERO, S, +, * --------------------------------------
 

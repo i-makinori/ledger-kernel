@@ -36,16 +36,12 @@ Web UI も付いています。
 **定義の仕組み**
 - `DEFINE-FUNCTION-BY-DESCRIPTION`: 存在と一意性を証明済みの性質から、新しい
   関数記号を定義する（例: 空集合 ∅）
-- `DEFINE-INDUCTIVE-PREDICATE(S)`: 導入節から帰納的述語の形成規則・導入規則・
-  帰納法の公理を生成する（n 項関係・相互再帰に対応）
 - 述語スキーマ変数「A(x)」: `(p v0)` を「x を含む任意の論理式」として定理に書き、
   引用時に具体的な式を代入する（自動、または `:inst` で明示）
 
 **自動化**
 - `PROVE-TAUTOLOGY`: 命題論理の恒真式を、Kalmar の完全性定理の構成に従って自動で
   証明する（∧ ∨ ↔ も扱い、任意の論理式を原子として使える）
-- `ALPHA-RENAME-ENTRY` / `ALPHA-RENAME-FORALL`: 変数を付け替えた版の定理を、
-  再検証込みで作る
 
 どの道具が作った証明も、台帳に入る前に必ずカーネルが検証します。道具そのものは
 信頼しなくて構いません。
@@ -57,7 +53,11 @@ Web UI も付いています。
   リンク、依存している公理と「この定理を使っている定理」の表示、ブラウザ上での
   証明の検証
 
-テスト: カーネル 411 件、Web 36 件がすべて通り、コンパイル警告 0 の状態です。
+テスト: カーネル 234 件、Web 40 件がすべて通り、コンパイル警告 0 の状態です。
+
+カーネル（`src/`）はコメント込みで約 1650 行です。論理そのものはコードに書かず、
+すべて `.system` ファイルに置いています。使われていない機能は `backup/` に、元の
+コードと復元の手順を添えて退避してあります（[backup/README.md](backup/README.md)）。
 
 
 ## 動かしてみる
@@ -71,7 +71,7 @@ Web UI も付いています。
 (require :asdf)
 (asdf:load-asd (merge-pathnames "ledger-kernel.asd"))
 (asdf:load-system :ledger-kernel)
-(asdf:test-system :ledger-kernel)      ; 最後に "411/411 self-tests passed." と出る
+(asdf:test-system :ledger-kernel)      ; 最後に "234/234 self-tests passed." と出る
 (in-package :ledger-kernel)
 ```
 
@@ -149,7 +149,7 @@ sbcl --load tools/serve.lisp          # http://127.0.0.1:8080/ を開く
 規則名をクリックすると引用先・導入元のエントリが新しいタブで開きます。各エントリの
 ページには、依存している公理と、そのエントリを使っている定理も表示されます。
 エディタで書いた証明は、選んだ世界の台帳に対して検証されます（台帳には追加しません）。
-詳しくは [docs/guide.md の13節](docs/guide.md) を参照してください。
+詳しくは [docs/guide.md](docs/guide.md) の Web UI の節を参照してください。
 
 サーバーなしで見せたいときは、静的サイトとして書き出せます。
 
@@ -175,7 +175,7 @@ GitHub Pages などの静的ホスティングに置けます。画面はサー�
 | `:hyp` | `nil` | 仮定を置く |
 | `:axiom` | `(公理名 追加引数...)` | 公理のインスタンス。例: `(III.1 t)`、`(III.3 x A t)` |
 | `:ir` | `(規則名 行番号... 追加引数...)` | 推論規則の適用。例: `(mp 1 0)`、`(gen 3 v0)`、`(exists-elim 2 7 v3)` |
-| `:th`, `:th-ded`, `:ith`, `:def-abbrev` | `(定理名 行番号... [:inst 束縛])` | 定理の引用。行番号は、その定理が要求する前提を証明した行 |
+| `:th`, `:th-ded` | `(定理名 行番号... [:inst 束縛])` | 定理の引用。行番号は、その定理が要求する前提を証明した行 |
 
 `(mp 1 0)` は「1行目の `A → B` と0行目の `A` から `B`」です。定理の引用では、
 定理の中の原子記号 A, B, … や述語スキーマ P(x) に何を代入するかは、ふつう自動で
@@ -213,10 +213,8 @@ GitHub Pages などの静的ホスティングに置けます。画面はサー�
 |---|---|
 | `check-and-extend` | 閉じた証明を、定理（`th`）として登録する |
 | `check-and-extend-by-deduction-direct` | 仮定 H を含む証明 Γ, H ⊢ Φ を、演繹定理により Γ ⊢ H → Φ として登録する（`th-ded`） |
-| `check-and-extend-by-deduction` | 同じことを、演繹定理の証明を実際に展開した純粋な Hilbert 証明として登録する（長くなるが、演繹定理を信頼しない） |
 | `prove-tautology` | 命題論理の恒真式を自動で証明して登録する |
 | `define-function-by-description` | 存在・一意性の定理から、関数記号とその定義公理を追加する |
-| `define-inductive-predicate(s)` | 帰納的述語の形成規則・導入規則・帰納法の公理を追加する |
 | `declare-atomic-wff-symbol`, `declare-variable-symbol`, `declare-predicate-schema-symbol` | 新しい記号を宣言する |
 
 台帳は `write-ledger-to-file` でコマンド列として保存でき、`read-ledger-from-file`
@@ -273,11 +271,12 @@ GitHub Pages などの静的ホスティングに置けます。画面はサー�
   置いています。公理系の無矛盾性は、体系の内側からは確かめられません
   （ゲーデルの第二不完全性定理）。
 - **演繹定理**: `th-ded` の定理は、演繹定理をメタ定理として信頼して登録されて
-  います（Gen の制約は検査しています）。Web UI の「依存している基礎」に、この
+  います（Gen の制約は検査しています）。証明の中で他の定理を引用している場合への
+  拡張の論証は `src/deduction.lisp` に書いてあります（機械的な検証はしていません）。Web UI の「依存している基礎」に、この
   信頼を使ったかどうかが表示されます。
 - **定義の保存性**: `DEFINE-FUNCTION-BY-DESCRIPTION` は存在・一意性の定理を
   再チェックしますが、「それなら定義は保存拡張になる」というメタ定理そのものは
-  信頼しています。`DEFINE-INDUCTIVE-PREDICATE(S)` が生成する公理も同様です。
+  信頼しています。
 
 **保証していないこと**
 - 同じ Lisp イメージの中での保護はありません。`ledger-append` は公開されていて、
@@ -301,13 +300,10 @@ src/                     カーネル本体
   meta.lisp              メタ述語・メタ構成子（自由変数、代入 など）
   judgement.lisp         形成規則の判定（JUDGEMENT?）
   k-proof.lisp           証明の検証（CHECK-K-PROOF）と登録（CHECK-AND-EXTEND）
-  bootstrap.lisp         組み込みの Hilbert 体系
   persistence.lisp       台帳の保存と読み込み
-  deduction.lisp         演繹定理（@DEDUCTION と直接離脱）
+  deduction.lisp         演繹定理による登録（th-ded）
   tautology.lisp         PROVE-TAUTOLOGY
-  alpha-conversion.lisp  α変換
-  system-spec.lisp       .system ファイル
-  inductive.lisp         帰納的述語
+  system-spec.lisp       .system ファイルの読み込み
   function-definition.lisp  DEFINE-FUNCTION-BY-DESCRIPTION
 tests/                   カーネルのテスト（ledger-kernel/tests）
 hilbert-library/         論理とペアノ算術の体系・ライブラリ
@@ -325,6 +321,7 @@ tools/
   export-static.lisp                Web UI を静的サイトとして書き出す
   generate-connectives-ledger.lisp  06-connectives.ledger を生成し直す
 docs/guide.md            機能ごとの詳しい説明
+backup/                  カーネルから外した機能（元のコードと復元の手順。読み込まれない）
 ```
 
 
@@ -334,7 +331,7 @@ docs/guide.md            機能ごとの詳しい説明
 sbcl --non-interactive \
      --eval '(require :asdf)' \
      --eval '(asdf:load-asd (merge-pathnames "ledger-kernel.asd"))' \
-     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（411 件）
+     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（234 件）
 ```
 
 Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（40 件。HTTP は使いません）。

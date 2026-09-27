@@ -1,7 +1,7 @@
 ;;; 00-zf.system
 ;;;
 ;;; Zermelo-Fraenkel set theory (ZF, without Choice) as a SYSTEM-SPEC
-;;; add-on file (see src/system-spec.lisp, Section 18). It is written with
+;;; add-on file (see src/system-spec.lisp). It is written with
 ;;; the defined connectives, so load it ON TOP OF both
 ;;; hilbert-library/00-classical-fol-equality.system and
 ;;; hilbert-library/00-connectives.system:
@@ -14,8 +14,8 @@
 ;;;                         "hilbert-library/00-classical-fol-equality.system")))
 ;;;
 ;;; REMINDER: every entry here is :PRIMITIVE -- trusted by fiat, never
-;;; re-verified (see 00-classical-fol-equality.system's header and
-;;; Section 18 for the trust model). This is not a .ledger module file.
+;;; re-verified (see 00-classical-fol-equality.system's header). This is
+;;; not a .ledger module file.
 ;;;
 ;;; --- Conventions ---------------------------------------------------------
 ;;;
@@ -27,7 +27,7 @@
 ;;;
 ;;; Variables. Every bound variable of an axiom is a schematic ?-variable
 ;;; rather than a fixed v0, v1, ..., so an axiom can be cited directly at
-;;; whatever variable names a proof happens to use (no ALPHA-RENAME step
+;;; whatever variable names a proof happens to use (no renaming step
 ;;; needed). Each axiom therefore requires its bound variables to be
 ;;; PAIRWISE DISTINCT, written (@not-free-in? ?x ?y) -- "?x does not occur
 ;;; free in the term ?y", which for two variables means ?x ≠ ?y. This is

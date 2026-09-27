@@ -4,26 +4,23 @@ README の「できること」で挙げた機能を、1つずつ詳しく説明
 README を読んで全体像を掴んでから、必要な節だけを読む使い方を想定しています。
 コード例は `(in-package :ledger-kernel)` した REPL で実行する前提です。`*L*` には
 ライブラリを読み込んだ台帳が入っているものとします（README の「動かしてみる」参照）。
-1〜3節の例はペアノ算術の台帳（`04-peano-arithmetic.ledger` の定理を使います）、
-9〜12節の例は ZF の台帳を想定しています。5〜8節の例は、それぞれの節の中で台帳を
-作っています。
+1節の例はペアノ算術の台帳、7〜10節の例は ZF の台帳を想定しています。
+4〜6節の例は、それぞれの節の中で台帳を作っています。
 
 ## 目次
 
 1. `PROVE-TAUTOLOGY` で恒真式を自動証明する
-2. `ALPHA-RENAME-ENTRY` で束縛変数を付け替える
-3. 検証コストが気になったら: `ENABLE-DERIVED-ENTRY-MEMOIZATION`
-4. 体系そのものをファイルで定義する: `.system` ファイル
-5. 確定記述: `III.3` と `IOTA`
-6. 帰納的な定義機構: `DEFINE-INDUCTIVE-PREDICATE(S)`
-7. 存在除去規則: `EXISTS-ELIM`
-8. 保存的拡張としての関数定義: `DEFINE-FUNCTION-BY-DESCRIPTION`
-9. 定義された結合子: `00-connectives.system`
-10. ZF 集合論: `zf-library/00-zf.system`
-11. 空集合: `zf-library/01-empty-set.ledger`
-12. 述語スキーマ変数「A(x)」: `07-quantifier-schemas.ledger`
-13. Web UI
-14. 設計上の細かな要点
+2. 検証コストが気になったら: `ENABLE-DERIVED-ENTRY-MEMOIZATION`
+3. 体系そのものをファイルで定義する: `.system` ファイル
+4. 確定記述: `III.3` と `IOTA`
+5. 存在除去規則: `EXISTS-ELIM`
+6. 保存的拡張としての関数定義: `DEFINE-FUNCTION-BY-DESCRIPTION`
+7. 定義された結合子: `00-connectives.system`
+8. ZF 集合論: `zf-library/00-zf.system`
+9. 空集合: `zf-library/01-empty-set.ledger`
+10. 述語スキーマ変数「A(x)」: `07-quantifier-schemas.ledger`
+11. Web UI
+12. 設計上の細かな要点
 
 ## 1. `PROVE-TAUTOLOGY` で恒真式を自動証明する
 
@@ -67,76 +64,9 @@ README を読んで全体像を掴んでから、必要な節だけを読む使�
 (prove-tautology *L* *peirce* 'th-peirce2 (make-log-config :errors t :applications t))
 ```
 
-## 2. `ALPHA-RENAME-ENTRY` で束縛変数を付け替える（v0 → v1 問題の解決）
+## 2. 検証コストが気になったら: `ENABLE-DERIVED-ENTRY-MEMOIZATION`
 
-このカーネルは式を**構造的に**（`equal` ベースで）照合するだけなので、
-`(.forall v0 A)` と `(.forall v1 A)` はまったく別の式として扱われます。つまり
-`th-zero-plus-identity` を `v1` で引用しようとすると、**定理として正しくても
-必ず失敗**します（自動でのα同値変換はしていません）。
-
-```lisp
-;; v0 で証明された定理を v0 のまま引用 -- OK
-(check-k-proof '((0 (.forall v0 (.eq (+ zero v0) v0)) :th (th-zero-plus-identity))) *L*)
-;=> T
-
-;; 同じ定理を v1 で引用しようとすると失敗する（束縛変数名が違うので別の式扱い）
-(check-k-proof '((0 (.forall v1 (.eq (+ zero v1) v1)) :th (th-zero-plus-identity))) *L*)
-;=> NIL
-```
-
-これに対応するのが `ALPHA-RENAME-ENTRY` です。既存のエントリの証明を丸ごと
-`OLD-SYM -> NEW-SYM` でリネームした候補を作り、**ゼロから再検証した上で**新しい
-名前の下に登録し直します（リネーム自体は一切信用しません。捕獲やGenの新鮮さ
-条件を壊すような不正なリネームは、通常のチェッカーがそのまま refuse します）。
-
-```lisp
-(setf *L* (alpha-rename-entry *L* 'th-zero-plus-identity 'th-zero-plus-identity-v1 'v0 'v1))
-
-(check-k-proof '((0 (.forall v1 (.eq (+ zero v1) v1)) :th (th-zero-plus-identity-v1))) *L*)
-;=> T
-```
-
-`th-zero-plus-identity` の証明は内部で `th-zero-plus-step`（引数なしの
-`:th-ded` 引用で、その帰納法の仮定にも `v0` が出てくる）を引用しているため、
-このリネームは**推移的**に効きます -- `th-zero-plus-step` 側も自動的に
-`v0->v1` でリネームされ、`|TH-ZERO-PLUS-STEP\|V0->V1|` のような名前で登録
-されてから、それを引用するよう書き換えられます（共有されている依存先は一度
-だけリネームされ、`OLD-SYM` が出てこない依存先はそのまま引用され続けます）。
-
-`ALPHA-RENAME-ENTRY` は束縛変数だけでなく、自由変数や命題変数（`A`,`B`,...
-のような atomic-wff-symbol）にも同じように使えます（`SUBSTITUTE-WFF` とは
-違い、束縛位置の記号ごと問答無用でリネームするので、シャドーイングの回避には
-使えません -- あくまで「特定の1つの記号をこの証明全体で徹底的に付け替える」
-ための操作です）。
-
-もう一つ、`ALPHA-RENAME-FORALL` は既存の証明をリネームするのではなく、
-`(forall x. A) -> (forall y. A[x:=y])` という一般形の**リネーム用の補題**を
-III.1 + Gen + MP からその場で組み立てます。MP で既存の `(forall x ...)` 定理
-にぶつければ、その定理自体を作り直さずに `y` 版を得られます。
-
-```lisp
-(setf *L* (alpha-rename-forall *L* 'v0 'v1 '(.eq (+ zero v0) v0) 'th-forall-rename-v0-v1))
-
-(check-k-proof
- '((0 (.forall v0 (.eq (+ zero v0) v0)) :th (th-zero-plus-identity))
-   (1 (.to (.forall v0 (.eq (+ zero v0) v0)) (.forall v1 (.eq (+ zero v1) v1)))
-      :th (th-forall-rename-v0-v1))
-   (2 (.forall v1 (.eq (+ zero v1) v1)) :ir (MP 1 0)))
- *L*)
-;=> T
-```
-
-（`ALPHA-RENAME-FORALL` に対応する `ALPHA-RENAME-EXISTS` はありません。
-`ALPHA-RENAME-ENTRY` 自体は、証明の中に `.exists` が出てくる場合でも問題なく
-使えます -- 既存の証明をリネームして再検証するだけだからです。）
-
-**引用時の変数の置き換え**: 述語スキーマ変数の導入（12節）以降は、定理を引用する
-ときに `:inst ((v0 v1))` のように変数の置き換えを指定することもできます。
-エントリを作り直さずに済むので、多くの場合はこちらのほうが手軽です。
-
-## 3. 検証コストが気になったら: `ENABLE-DERIVED-ENTRY-MEMOIZATION`
-
-このカーネルは `TH`/`ITH`/`TH-DED`/`DEF-ABBREV` の引用を一切キャッシュせず、
+このカーネルは `TH`/`TH-DED` の引用を一切キャッシュせず、
 引用のたびに格納された証明を毎回ゼロから展開・再検証します（LCF流の
 "always re-verify" を徹底するための、意図的な設計）。ただし「同じ補題を
 何度も多重引用する」パターン（例えばケース分割タクティクのように、1階層
@@ -163,20 +93,19 @@ III.1 + Gen + MP からその場で組み立てます。MP で既存の `(forall
 直前）と `tests/memoization-tests.lisp` の `TEST-DERIVED-ENTRY-MEMOIZATION` を
 参照してください。
 
-## 4. 体系そのものをファイルで定義する: `.system` ファイル
+## 3. 体系そのものをファイルで定義する: `.system` ファイル
 
-ここまでの `.ledger` ファイルは、**すでに存在する体系**（公理・推論規則が
-固定された `bootstrap-kernel`）の上で**証明された定理**を記述するものでした。
-一方で体系そのもの（公理・推論規則・形成規則）は、これまで
-`src/bootstrap.lisp` の `BOOTSTRAP-KERNEL` 関数の中に直接 Lisp のリテラルと
-して埋め込まれていました -- 別の体系を試したければ Lisp のソースを書き換える
-しかなかった、ということです。
+`.ledger` ファイルは、**すでに存在する体系**の上で**証明された定理**を記述
+するものです。その体系そのもの（公理・推論規則・形成規則）は、`.system`
+ファイルだけで定義されます。カーネルのLispソースに論理は埋め込まれていません
+-- 別の体系を試したければ `.system` ファイルを書けば済みます。
 
-`BOOTSTRAP-KERNEL` の中身は、実はもう完全にただのデータです。公理は
+`.system` ファイルの中身はただのデータです。公理は
 `(名前 側条件 (追加引数パターン 結論パターン))`、推論規則は
 `(名前 側条件 (前提パターン 追加引数パターン :=> 結論パターン))`、
-形成規則も同じ形。これをそのままファイルに切り出したのが `.system` ファイル
-です。
+形成規則も同じ形で書きます。読み込みには
+`(bootstrap-kernel-from-spec-file PATH &key ledger)` を使い、`:ledger` を渡すと
+その台帳の上に積み増します。
 
 ```lisp
 ;; 例: K/S だけの、.neg も量化子もない最小の含意論理を、Lispを一切
@@ -201,9 +130,7 @@ III.1 + Gen + MP からその場で組み立てます。MP で既存の `(forall
 
 `hilbert-library/00-classical-fol-equality.system` + `00-peano-arithmetic.system`
 は、このカーネルが標準で使っている体系（II.1-4/III.1-2/IV.1-4 + ペアノ算術）
-を丸ごと `.system` ファイルとして書き下したものです。`TEST-BOOTSTRAP-FROM-SPEC`
-（Section 18）で、これをロードして作ったLedgerが `BOOTSTRAP-KERNEL` の
-ハードコード版と**エントリ単位で完全に一致する**ことを確認しています。
+を定義する `.system` ファイルです。
 
 ```lisp
 (defparameter *L*
@@ -216,11 +143,9 @@ III.1 + Gen + MP からその場で組み立てます。MP で既存の `(forall
 ファイルや悪意あるファイルは「読み込みに失敗する」以上のことができません
 （本物でない定理を紛れ込ませることは原理的にできない）。`.system` ファイル
 は違います。ここで定義されるのは `ORIGIN = :PRIMITIVE`（=無条件に信頼される)
-エントリで、`BOOTSTRAP-KERNEL` 自身のハードコードされた公理と全く同じ扱い
-です。何と照合して確認するということが原理的にできません。つまり
+エントリで、何と照合して確認するということが原理的にできません。つまり
 `.system` ファイルを読み込むのは「検証」ではなく、**その作者を信頼する行為**
-そのものです（`BOOTSTRAP-KERNEL` のLispソースをそのまま信頼していたのと
-全く同じ意味で）。矛盾した公理系（`A` とその否定が両方証明できてしまう、
+そのものです。矛盾した公理系（`A` とその否定が両方証明できてしまう、
 など）を書いてしまえば、それを体系の内側から検出することは原理的にできま
 せん（ゲーデルの第二不完全性定理そのものであって、このチェッカーの欠陥では
 ありません）。
@@ -229,13 +154,13 @@ III.1 + Gen + MP からその場で組み立てます。MP で既存の `(forall
 構成子（`@subst`, `@subst-ok?`, `@not-free-in?`, `@not-free-in-dependencies?`
 等）を名前で自由に使えます -- これらは固定された閉じたカタログで、
 `.system` ファイルは「この語彙を組み合わせて新しい体系を組み立てる」ことは
-できますが、**新しいメタ述語自体を追加することはできません**（それは今まで
-通りLispソースレベルの拡張です）。それでも、命題論理の別の公理基底、様相
+できますが、**新しいメタ述語自体を追加することはできません**（それは
+Lispソースレベルの拡張です）。それでも、命題論理の別の公理基底、様相
 論理の `.box`/`.diamond` のような新しい結合子と規則、といったものはこの
 仕組みだけで十分表現できるはずです。
 
 
-## 5. 確定記述（definite description）: `III.3` と `IOTA`
+## 4. 確定記述（definite description）: `III.3` と `IOTA`
 
 「Aを満たすxが存在し、しかもそれは一意である」ときに、その唯一のxを直接
 指し示す項 `(.iota x A)`（"the x such that A"）を用意しました。
@@ -243,7 +168,7 @@ III.1 + Gen + MP からその場で組み立てます。MP で既存の `(forall
 これがなぜ簡単ではないか、という点から説明します。既存の `.forall`/
 `.exists` は**WFFを作る**束縛子でしたが、`.iota` は**項を作る**束縛子です。
 このカーネルでは束縛子が新しい種類の値（WFFではなくTERM）を作るということ
-自体が初めてで、`BINDER-HEADS`（`FREE-VARS-WFF`/`SUBSTITUTE-WFF`/
+自体がここだけで、`BINDER-HEADS`（`FREE-VARS-WFF`/`SUBSTITUTE-WFF`/
 `COUNT-BOUND-OCCURRENCES` が「この頭部は束縛子である」と認識するための
 Lispソース側のリスト）に `.IOTA` を追加するという、`.system` ファイルだけ
 では完結しないLispソースレベルの変更が必要でした（既存の非束縛子な結合子・
@@ -264,7 +189,7 @@ Lispソース側のリスト）に `.IOTA` を追加するという、`.system` 
 junk-valueの規約は一切ない）というのが設計上の要点です。
 
 存在証明を可能にするために、`III.3`（存在汎化、`A[t/x] -> exists x. A`）
-も新設しました。III.1（全称除去）の双対で、Gen（全称汎化）と違って自由変数
+があります。III.1（全称除去）の双対で、Gen（全称汎化）と違って自由変数
 条件は不要（「特定の証人tがAを満たす」から「Aを満たす何かが存在する」への
 移行は無条件に健全）です。ただし III.3 の引数は `(III.3 x A t)` の3つで、
 III.1 の `(III.1 t)` と違って `x` と `A` も明示的に渡す必要があります。これ
@@ -280,7 +205,7 @@ III.1 は `(.forall x A) -> A[t/x]` で、前件の `.forall` 構造から `x`/`
 まで）:
 
 ```lisp
-(defparameter *L* (bootstrap-kernel))
+(defparameter *L* (bootstrap-kernel-from-spec-file "hilbert-library/00-classical-fol-equality.system"))
 ;; 存在: exists v0 (v0=v1)
 (setf *L* (check-and-extend *L* 'th 'th-exists-v0-eq-v1
   '((0 (.eq v1 v1) :axiom (IV.1))
@@ -288,7 +213,7 @@ III.1 は `(.forall x A) -> A[t/x]` で、前件の `.forall` 構造から `x`/`
     (2 (.exists v0 (.eq v0 v1)) :ir (MP 1 0)))))
 ;; 一意性: forall v2 forall v3 (v2=v1 -> (v3=v1 -> v2=v3))  (uniq-full。
 ;; 導出は 05-classical-logic.ledger の TH-RAA と同じ多段階の
-;; deduction-theorem-direct 連鎖 -- 詳細は tests/iota-tests.lisp（Section 19）参照)
+;; deduction-theorem-direct 連鎖 -- 詳細は tests/iota-tests.lisp 参照)
 ;; ...
 ;; IOTA適用: (iota v0 (v0=v1)) = v1
 (check-k-proof '((0 (.exists v0 (.eq v0 v1)) :th (th-exists-v0-eq-v1))
@@ -301,165 +226,19 @@ III.1 は `(.forall x A) -> A[t/x]` で、前件の `.forall` 構造から `x`/`
 **補足**:
 
 - `.iota x A` を使うたびに存在と一意性を引用し直すのが煩わしい場合は、
-  `DEFINE-FUNCTION-BY-DESCRIPTION`（8節）で名前の付いた関数記号として定義できます。
-- 存在からの除去方向の規則は `EXISTS-ELIM`（7節）です。
+  `DEFINE-FUNCTION-BY-DESCRIPTION`（6節）で名前の付いた関数記号として定義できます。
+- 存在からの除去方向の規則は `EXISTS-ELIM`（5節）です。
 - 一意性が示せない場合の「値」についての規約（古典的な確定記述理論でよく
   ある total function 化のための junk value）は用意していません。単に
   IOTAが適用できないだけです。
 
 
-## 6. 帰納的な定義機構: `DEFINE-INDUCTIVE-PREDICATE`
+## 5. 存在除去規則: `EXISTS-ELIM`
 
-ペアノのP3（帰納法の公理）は「ZERO と S、この2つの構成子だけから作られる領域」
-専用に手書きされたものでした。しかも「すべての項がすでに自然数である」という
-特殊事情（自然数以外の項が存在しない体系）に乗っかっているので、ZERO/S以外の
-構成子を持つ**新しい帰納的述語**（偶数、素数、到達可能性、……）を定義したいと
-思っても、P3をそのまま使い回すことはできません。
-
-`DEFINE-INDUCTIVE-PREDICATE` は、これを一般化したものです。「基底節」と「再帰
-節」のリストを渡すだけで、以下の3種類のエントリを**すべて自動生成**します。
-
-1. 新しい述語の**形成規則**（`(EVEN ?x)` のようなWFFを作れるようにする）
-2. 節ごとの**導入規則**: 引数を取らない基底節は公理として、既存の証明行を
-   引用する必要がある再帰節は（MP/Genと同じ）IRULEとして
-3. **帰納法の公理そのもの**: P3を一般のk個の節に拡張したもの
-
-具体例（EVEN: 「zeroは偶数」「xが偶数ならS(S(x))も偶数」）:
-
-```lisp
-(defparameter *L*
-  (define-inductive-predicate (bootstrap-kernel :arithmetic t) 'even
-    '((nil nil zero)             ; EVEN(zero)
-      ((?x) nil (S (S ?x))))))   ; EVEN(x) -> EVEN(S(S(x)))
-
-;; 導入規則が使える
-(check-k-proof '((0 (even zero) :axiom (even-intro-1))
-                  (1 (even (S (S zero))) :ir (even-intro-2 0)))
-                *L*)
-;=> T
-
-;; 帰納法の公理 EVEN-IND も生成されている（P3と全く同じ使い方: 基底の証明・
-;; 再帰節の証明をGenで閉じてから、EVEN-INDにMPを2回適用する）
-```
-
-節の書き方は `(再帰変数リスト その他の変数リスト 結果の項)` という3つ組で、
-再帰変数（例: `?x`）は「すでにこの述語を満たしていると分かっている項」を表し、
-再帰節では自動的に「(述語 再帰変数)」という前提と、帰納法の仮定 `A[再帰変数/x]`
-の両方が使えるようになります。再帰変数を持たない節は基底節（公理）になります。
-
-**注意点**: `.system` ファイルと全く同じ信頼モデルです。ここで生成される
-エントリはすべて `:PRIMITIVE`（無条件に信頼される）で、独立検証は一切されま
-せん。「新しい帰納的述語を定義する」というのは「新しい公理を手で書き足す」の
-と全く同じ重みの行為であり、書いた節同士が矛盾していないかを自動でチェック
-する仕組みは（P1〜P10のときと同様）ありません。**書きやすくする**仕組みでは
-ありますが、**安全にする**仕組みではないという点は正直に書いておきます。
-
-### 6.1 一般化: n項関係・相互再帰 — `DEFINE-INDUCTIVE-PREDICATES`
-
-上の `DEFINE-INDUCTIVE-PREDICATE`（単数形）は「単項・自己再帰のみ」という
-よくある特殊ケース向けの薄いラッパーです。裏側の `DEFINE-INDUCTIVE-PREDICATES`
-（複数形）は、これを2つの軸で一般化した本体で、単数形の既存の呼び出し・
-self-testはすべて変更なしでそのまま動きます（後方互換性はテスト済み）。
-
-- **n項関係**: 述語は1引数である必要はありません。節の「結果」が単一の項では
-  なく、宣言した ARITY 個ぶんのタプルになります（例: `SUMR(x,y,z)` = 「x+y=z」
-  という3項関係を、`+` という関数記号を一切使わずに帰納的に定義できます）。
-- **相互再帰**: 複数の述語を1つの **GROUP** として同時に定義できます。各節の
-  再帰前提は「自分自身」だけでなく、GROUP内の**どの述語でも**参照でき、
-  生成される帰納法の公理はGROUP全体の節から組み立てた**同じ前提列**を共有し
-  つつ、結論だけが述語ごとに異なります。これにより、たとえば `EVEN` の帰納法
-  の公理を引用するには `ODD` 側の帰納法の仮定も一緒に満たす必要がある、という
-  **本物の相互帰納法**が成立します。
-
-CLAUSEの形は `(REC-SPECS EXTRA-VARS RESULT-TERMS)` の3つ組に一般化されます。
-`REC-SPECS` は `(述語名 変数1 ... 変数k)` のリスト（1個の再帰前提につき1つ）で、
-述語名はGROUP内のどれでもよく、`RESULT-TERMS` は（単項なら要素数1の）タプルに
-なります。GROUPは `(述語名 ARITY . 節リスト)` のリストです。
-
-具体例1（相互再帰、EVEN/ODD を同時に定義）:
-
-```lisp
-(setf *L*
-  (define-inductive-predicates (bootstrap-kernel :arithmetic t)
-    '((even 1 (nil nil (zero))               ; EVEN(zero)
-             (((odd ?x)) nil ((S ?x))))       ; ODD(x) -> EVEN(S(x))
-      (odd 1 (((even ?x)) nil ((S ?x)))))))   ; EVEN(x) -> ODD(S(x))
-
-;; ODD(S(zero)) は EVEN(zero) を引用して証明できる
-(check-k-proof '((0 (even zero) :axiom (even-intro-1))
-                  (1 (odd (S zero)) :ir (odd-intro-1 0)))
-                *L*)
-;=> T
-```
-
-具体例2（n項関係、`+` を使わずに加法のグラフ `SUMR(x,y,z)` を定義）:
-
-```lisp
-(setf *L*
-  (define-inductive-predicates (bootstrap-kernel :arithmetic t)
-    '((sumr 3 (nil (?x) (?x zero ?x))                        ; SUMR(x,0,x)
-             (((sumr ?x ?y ?z)) nil (?x (S ?y) (S ?z)))))))  ; SUMR(x,y,z) -> SUMR(x,S(y),S(z))
-```
-
-複数引数を一度に代入するために、`@subst`（1変数専用）とは別の
-**`@substn`/`@substn-ok?`**（複数の変数・項の組を「同時に」代入する、ゲンシム
-を経由した2段階置換によりキャプチャ相互干渉を避ける仕組み）という新しい
-メタ構成子・メタ述語が追加されています。信頼モデル・限界は単数形の場合と
-全く同じです。
-
-### 6.2 定義前の整合性検査 — `CHECK-INDUCTIVE-GROUP-WELL-FORMED`
-
-`DEFINE-INDUCTIVE-PREDICATES` は、実は開発中に**本物のバグ**を1つ生みました。
-EVEN/ODD の相互再帰の例を書いたとき、うっかり既存の（単項・自己再帰の）
-`EVEN` と同じ名前を再利用してしまい、`EVEN-INTRO-2` という名前のIRULEが台帳に
-**2つ**、別の中身のまま共存する状態になりました。台帳は名前でエントリを検索
-するのではなく「その kind の全エントリを順に試して、名前が一致してかつパター
-ンにもマッチする最初の1つ」を採用する仕組みなので、本来は拒否されるべき攻撃
-証明（「相互再帰版のEVENの導入規則を、ODDではなくEVEN自身を引用して騙し通そ
-うとする」）が、**たまたま先に定義されていた古いEVENのほうの規則にマッチして
-しまい、こっそり通ってしまう**という事故が実際に起きました。
-
-これを踏まえて、`DEFINE-INDUCTIVE-PREDICATES` は呼び出しの一番最初に
-`CHECK-INDUCTIVE-GROUP-WELL-FORMED` を必ず通すようになっています。何かに
-引っかかれば、何も鋳造せずに（all-or-nothing で）即座にエラーを送出します。
-検査しているのは次の3系統です。
-
-1. **名前の衝突**: これから鋳造しようとしている名前（各述語のWFF形成規則名、
-   各節の導入規則名、各述語の帰納法公理名）が、台帳に**既存の**
-   `TERM?`/`WFF?`/`AXIOM`/`IRULE` エントリとして1つでも既に存在していないか。
-   上記の実際に起きた事故そのものを再現できないようにする検査です。
-2. **形の妥当性**: GROUP内で述語名が重複していないか、ARITYが正の整数か、
-   各REC-SPECが引用する述語名がGROUPの中に実在するか（タイポで存在しない
-   述語や無関係な述語を指してしまうと、`ASSOC`が黙って`NIL`を返し、静かに
-   間違った公理が生成されてしまいます）、REC-SPECの変数の個数が引用先の
-   述語自身のARITYと一致しているか、各節のRESULT-TERMSの長さが自分自身の
-   ARITYと一致しているか、REC-SPEC/EXTRA-VARの変数がすべて本物のスキーマ
-   パターン変数（`?`で始まる）か。
-3. **基礎付け（groundedness）**: GROUP内のすべての述語が、基底節から辿れる
-   何らかの節の連鎖で実際に導出可能か（文脈自由文法で「その非終端記号が
-   何か1つでも文字列を生成できるか」を判定するのと全く同じ、最小不動点の
-   計算です）。基底節を1つも持たない自己再帰や、誰も土台にたどり着けない
-   相互再帰の循環を検出します。これは**健全性の欠陥ではありません**——導出
-   不能な述語についての帰納法公理は空虚に真（vacuously true）なので、生成
-   された公理自体は正しいままです——が、ほぼ確実に書き間違いなので拒否
-   しています。
-
-**この検査がカバーしていないこと**: いわゆる「厳密な正値性（strict
-positivity）」の検査は行っていませんが、これは手を抜いているのではなく、
-このファイルの節の形式そのものが最初から厳密に正値であることを構造的に
-保証しているためです（REC-SPECSは常に「述語適用を前提として要求する」だけ
-で、RESULT-TERMSの中に否定形や高階の形でその述語自身を埋め込む方法が
-そもそもありません）。つまり、この機構が非単調な演算子（最小不動点が
-そもそも存在しないもの）を作ってしまう心配は構造的になく、ここで検査して
-いるのは純粋に「定義そのものの書き間違い」だけです。
-
-
-## 7. 存在除去規則: `EXISTS-ELIM`
-
-III.3（存在汎化）は `A[t/x] → ∃x.A` という**導入**方向の規則でした。これまでの
-体系には、その逆——`∃x.A` という証明済みの事実から、実際に「その証人を仮に
-名付けて」議論を進める**除去**方向の規則がありませんでした。`EXISTS-ELIM` は
-これを埋める、Mendelson の Rule C 相当の genuine な存在除去規則です。
+III.3（存在汎化）は `A[t/x] → ∃x.A` という**導入**方向の規則です。
+`EXISTS-ELIM` はその逆——`∃x.A` という証明済みの事実から、実際に「その証人を仮に
+名付けて」議論を進める**除去**方向の規則で、Mendelson の Rule C 相当の genuine な
+存在除去規則です。
 
 ```lisp
 ;; ∃x.A と (A[w/x] -> C) の両方から C を結論する。w は:
@@ -485,9 +264,9 @@ III.3（存在汎化）は `A[t/x] → ∃x.A` という**導入**方向の規�
 と全く同じ立て付けです）。
 
 
-## 8. 保存的拡張としての関数定義: `DEFINE-FUNCTION-BY-DESCRIPTION`
+## 6. 保存的拡張としての関数定義: `DEFINE-FUNCTION-BY-DESCRIPTION`
 
-`IOTA`（5節）は「存在して一意」という性質から `.iota x A` という**項**を作れる
+`IOTA`（4節）は「存在して一意」という性質から `.iota x A` という**項**を作れる
 ようにする規則でしたが、使うたびに existence/uniqueness 定理を毎回引用し直す
 必要があり、`(.iota v0 (.eq v0 (+ v1 v1)))` のような式は読みにくく、名前も
 付きません。`DEFINE-FUNCTION-BY-DESCRIPTION` は、この「存在して一意」という
@@ -533,7 +312,7 @@ descriptionは保存的拡張である」というメタ定理そのものを本
                                  EXISTENCE-NAME UNIQUENESS-NAME)
 ```
 
-## 9. 定義された結合子: `hilbert-library/00-connectives.system`
+## 7. 定義された結合子: `hilbert-library/00-connectives.system`
 
 カーネルの基本結合子は `.to`（→）と `.neg`（¬）だけです。∧・∨・↔・∃! は、
 形成規則と、展開形と行き来する2つの定義公理（UNFOLD／FOLD）の組として
@@ -576,9 +355,9 @@ descriptionは保存的拡張である」というメタ定理そのものを本
 
 ∃! や量化子についての補題（∃!x P(x) → ∃x P(x) など）は、述語スキーマ変数を
 使って `hilbert-library/07-quantifier-schemas.ledger` にまとめてあります
-（12節）。
+（10節）。
 
-## 10. ZF 集合論: `zf-library/00-zf.system`
+## 8. ZF 集合論: `zf-library/00-zf.system`
 
 一階述語論理 + 等号の体系と、定義された結合子の上に、ZF 集合論（選択公理なし）を
 積むための `.system` ファイルです。
@@ -611,7 +390,7 @@ descriptionは保存的拡張である」というメタ定理そのものを本
 | `ZF-REPLACEMENT` | ∀a ( ∀x (x∈a → ∃!y φ) → ∃b ∀x (x∈a → ∃y (y∈b ∧ φ)) )　（b は φ に自由出現しない） |
 
 **変数の扱い**: 各公理の束縛変数はスキーマ変数（`?x` など）なので、証明中で
-使っている任意の変数名でそのまま引用できます（`ALPHA-RENAME` は不要）。その
+使っている任意の変数名でそのまま引用できます。その
 代わり、束縛変数どうしが**互いに異なる**ことを側条件として要求します
 （Metamath の distinct variable 条件に相当）。これがないと、たとえば外延性公理で
 z := x とすると ∀x ∀y (∀x (x∈x ↔ x∈y) → x = y) という別の（健全でない）主張に
@@ -636,7 +415,7 @@ z := x とすると ∀x ∀y (∀x (x∈x ↔ x∈y) → x = y) という別の
 されることを `tests/zf-tests.lisp` で確認しています。
 
 
-## 11. 空集合: `zf-library/01-empty-set.ledger`
+## 9. 空集合: `zf-library/01-empty-set.ledger`
 
 ZF の上に作った最初の定理ライブラリです。読み込み順は次のとおりです。
 
@@ -672,7 +451,7 @@ ZF の上に作った最初の定理ライブラリです。読み込み順は�
 ```
 
 
-## 12. 述語スキーマ変数「A(x)」: `07-quantifier-schemas.ledger`
+## 10. 述語スキーマ変数「A(x)」: `07-quantifier-schemas.ledger`
 
 原子記号 A, B, ... は「任意の論理式」の代わりになりますが、変数 x に依存する
 「A(x)」の代わりにはなりません。そこで、引数を取る**述語スキーマ記号**を宣言
@@ -740,7 +519,7 @@ ZF の上に作った最初の定理ライブラリです。読み込み順は�
 影響しません。
 
 
-## 13. Web UI（ブラウザで閲覧・検証する）
+## 11. Web UI（ブラウザで閲覧・検証する）
 
 ライブラリの定義・公理・定理をブラウザで眺め、証明を表や証明図（横線の図）で
 表示し、エディタに書いた証明をその場で検証できます。Web UI はカーネルの外側に
@@ -815,17 +594,22 @@ REPL からなら:
 **テスト**: `(asdf:test-system :ledger-kernel/web)`（表示と API。HTTP は使いません）。
 
 
-## 14. 設計上の細かな要点
+## 12. 設計上の細かな要点
 
 - **エントリの種類**: `atomic-wff-symbol` / `variable-symbol` /
   `predicate-schema-symbol`（語彙）、`term?` /
-  `wff?`（形成規則）、`irule`（推論規則, MP/Gen）、`axiom`、`th` / `ith`（定理、
-  閉じた証明）、`th-ded`（演繹定理直接離脱で作った定理）、`def-abbrev`（略記の
-  定義）。
+  `wff?`（形成規則）、`irule`（推論規則, MP/Gen）、`axiom`、`th`（定理、
+  閉じた証明）、`th-ded`（演繹定理を信頼して直接離脱で作った定理）。
 - **`th-ded` の健全性**: `A ⊢ B` から `A → B` を作るとき、証明中に残っている
   他の未放棄の仮定（Γ）は、引用時にちゃんと citable な前提として要求されます
-  （これを落とすと `(C→D)→D` のような偽の「定理」を認めてしまう、というバグを
-  開発中に一度捕まえて直しています）。
+  （これを落とすと `(C→D)→D` のような偽の「定理」を認めてしまいます）。
+- **削除した機能**: 以下は `src/` から外し、元のコード・テスト・復元手順とともに
+  `backup/` に移しました（一覧は `backup/README.md`）。束縛変数の付け替えは
+  `:inst ((v0 v1))` による引用時の置き換え（10節）で代替できます。
+  - 束縛変数の付け替え: `backup/_backup_alpha-conversion.lisp`
+  - 帰納的述語の定義機構: `backup/_backup_inductive.lisp`, `backup/_backup_meta-unused.lisp`
+  - 証明を変換する演繹定理: `backup/_backup_deduction-transform.lisp`
+  - 略記定義などの旧エントリ種別: `backup/_backup_ith-def-abbrev.lisp`
 - **II.4 の位置づけ**: `II.1〜II.3`（Łukasiewicz の3公理）だけで古典論理として
   完全ですが、そこから ¬¬除去等を導く最短証明は数十ステップ級になるため、
   実用性を優先して `II.4`（ケース分割）を独立公理として追加しています。これは

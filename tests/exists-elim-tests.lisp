@@ -76,7 +76,7 @@ free in A, free in the conclusion C)."
 
 (defun run-exists-elim-self-tests ()
   "Section 21: EXISTS-ELIM -- the positive case plus four attacks."
-  (let* ((ledger (bootstrap-kernel))
+  (let* ((ledger (fol-kernel))
          (ledger (test-exists-elim ledger)))
     (declare (ignorable ledger))
     (format t "~%EXISTS-ELIM self-tests complete.~%")))

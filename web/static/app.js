@@ -12,19 +12,19 @@ const state = {
 };
 
 const KIND_GROUPS = {
-  theorem: ["th", "th-ded", "ith", "def-abbrev"],
+  theorem: ["th", "th-ded"],
   axiom: ["axiom"],
   rule: ["irule"],
   formation: ["wff?", "term?", "var?"],
   symbol: ["atomic-wff-symbol", "variable-symbol", "predicate-schema-symbol"],
 };
 const KIND_LABELS = {
-  "th": "定理", "th-ded": "定理（演繹）", "ith": "定理", "def-abbrev": "略記",
+  "th": "定理", "th-ded": "定理（演繹）",
   "axiom": "公理", "irule": "推論規則", "wff?": "論理式の形成", "term?": "項の形成",
   "var?": "変数の形成", "atomic-wff-symbol": "命題記号", "variable-symbol": "変数",
   "predicate-schema-symbol": "述語スキーマ",
 };
-const ROLE_LABELS = { hyp: "仮定", axiom: "公理", ir: "規則", th: "定理", "th-ded": "定理", ith: "定理", "def-abbrev": "略記" };
+const ROLE_LABELS = { hyp: "仮定", axiom: "公理", ir: "規則", th: "定理", "th-ded": "定理" };
 
 // --- small helpers ------------------------------------------------------------
 
@@ -276,7 +276,7 @@ function dependencySections(e) {
       el("summary", {}, `このエントリを使っている定理　直接 ${e.usedBy.length} 件・間接を含め ${e.dependents} 件`),
       el("p", { class: "muted small" }, "途中の補題（名前.t5、名前-s1 など）から使われている場合は、その補題を使っている定理として数えています。"),
       refList(e.usedBy)));
-  } else if (["axiom", "irule", "th", "th-ded", "ith"].includes(e.kind)) {
+  } else if (["axiom", "irule", "th", "th-ded"].includes(e.kind)) {
     out.push(el("p", { class: "muted small" }, "このエントリを使っている定理は、まだありません。"));
   }
   return out;

@@ -67,7 +67,7 @@ each symbol/operator linked to the entry that introduced it -- when
 
 (defun proof-line-refs (role args numbers)
   "Which of a line's BY arguments refer to earlier lines of the same proof."
-  (let ((line-args (if (member role '(:th :ith :th-ded :def-abbrev))
+  (let ((line-args (if (member role '(:th :th-ded))
                        (values (split-citation-inst args))
                        args)))
     (remove-if-not (lambda (a) (member a numbers :test #'equal)) line-args)))
@@ -139,7 +139,7 @@ Deduction Theorem was trusted as a meta-theorem on the way. NIL for
 entries that are not axioms, rules or derived entries."
   (let* ((d (world-deps world))
          (e (find-entry-by-k world k)))
-    (when (member (entry-kind e) '(axiom irule th th-ded ith def-abbrev))
+    (when (member (entry-kind e) '(axiom irule th th-ded))
       (multiple-value-bind (ks meta) (entry-foundations d k)
         (let ((axioms nil) (definitions nil) (rules nil))
           (dolist (f (sort (copy-list ks) #'<))

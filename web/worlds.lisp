@@ -114,7 +114,7 @@ defining axiom NAME-DEF, which says what it means."
 (defun entry-proof (e)
   "The stored raw proof of a derived entry, or NIL."
   (case (entry-kind e)
-    ((th ith def-abbrev) (second (entry-payload e)))
+    (th (second (entry-payload e)))
     (th-ded (third (entry-payload e)))))
 
 (defun entry-statement (e)
@@ -124,7 +124,7 @@ an inference rule); CONCLUSION is what it yields. Axiom and rule schemas
 contain ?-pattern variables."
   (let ((p (entry-payload e)))
     (case (entry-kind e)
-      ((th ith def-abbrev)
+      (th
        (values (proof-hypotheses (second p)) (proof-conclusion (second p))))
       (th-ded
        (destructuring-bind (name hyp raw) p
@@ -164,5 +164,5 @@ NAME.CONTRA, ...; hand-written NAME-S1, NAME-STEP2, ...)."
       (case role
         (:axiom (find name (entries-of-kind 'axiom l) :key (lambda (e) (car (entry-payload e)))))
         (:ir (find name (entries-of-kind 'irule l) :key (lambda (e) (car (entry-payload e)))))
-        ((:th :ith :th-ded :def-abbrev)
+        ((:th :th-ded)
          (first (treap-values-below (alist-get (ledger-by-derived-name l) name) nil)))))))

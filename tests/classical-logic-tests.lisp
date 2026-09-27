@@ -116,7 +116,7 @@
 (defun run-classical-logic-self-tests ()
   "As RUN-SELF-TESTS, but exercising the classical completeness lemmas
 built on top of a plain (non-arithmetic) BOOTSTRAP-KERNEL -- Section 14."
-  (let* ((ledger (bootstrap-kernel))
+  (let* ((ledger (fol-kernel))
          (ledger (test-classical-logic ledger)))
     (declare (ignorable ledger))
     (format t "~%Classical-logic self-tests complete.~%")))

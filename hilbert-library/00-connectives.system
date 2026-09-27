@@ -2,7 +2,7 @@
 ;;;
 ;;; Defined connectives: conjunction, disjunction, biconditional and the
 ;;; unique-existence quantifier, as a SYSTEM-SPEC add-on file (see
-;;; src/system-spec.lisp, Section 18). Load it ON TOP OF
+;;; src/system-spec.lisp). Load it ON TOP OF
 ;;; 00-classical-fol-equality.system:
 ;;;
 ;;;   (bootstrap-kernel-from-spec-file

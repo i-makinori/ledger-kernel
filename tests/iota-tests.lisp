@@ -134,7 +134,7 @@ free variable under a nested same-named binder inside A -- @subst-ok? must block
 (defun run-iota-self-tests ()
   "Section 19: IOTA formation, III.3, the worked uniqueness-chain example,
 and attack tests."
-  (let* ((ledger (bootstrap-kernel))
+  (let* ((ledger (fol-kernel))
          (ledger (test-iota-formation ledger))
          (ledger (test-axiom-iii3 ledger))
          (ledger (test-iota-irule ledger)))

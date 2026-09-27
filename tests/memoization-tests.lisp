@@ -25,7 +25,7 @@
 II.1; T_0 cites the axiom directly, and every T_i (i>0) cites T_(i-1)
 TWICE (two separate, redundant lines) -- the worst case for a checker
 with no memoization."
-  (let ((ledger (bootstrap-kernel))
+  (let ((ledger (fol-kernel))
         (concl '(.to A (.to B A))))
     (setf ledger (check-and-extend ledger 'th (intern (format nil "~A0" prefix))
                                     (list (list 0 concl :axiom (list 'II.1)))))

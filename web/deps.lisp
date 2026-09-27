@@ -35,7 +35,7 @@
       (gethash k (deps-entries (world-deps world)))
       (find k (world-entries world) :key #'entry-k)))
 
-(defun derived-kind-p (kind) (member kind '(th th-ded ith def-abbrev)))
+(defun derived-kind-p (kind) (member kind '(th th-ded)))
 
 (defun entry-aux-p (e)
   "An intermediate lemma of some other proof (see AUXILIARY-NAME-P)."

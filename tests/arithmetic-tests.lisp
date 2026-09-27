@@ -106,7 +106,7 @@ induction theorem)."
 (defun run-arithmetic-self-tests ()
   "As RUN-SELF-TESTS, but against a BOOTSTRAP-KERNEL :ARITHMETIC T ledger
 -- equality theory and Peano arithmetic, Sections 7.5/13."
-  (let* ((ledger (bootstrap-kernel :arithmetic t))
+  (let* ((ledger (fol-kernel :arithmetic t))
          (ledger (test-equality-axioms ledger))
          (ledger (test-peano-axioms ledger))
          (ledger (test-peano-induction-proof ledger)))

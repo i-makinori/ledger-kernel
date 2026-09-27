@@ -25,7 +25,7 @@
 (defun run-tactics-self-tests ()
   "As RUN-SELF-TESTS, but exercising PROVE-TAUTOLOGY on top of a ledger
 that already carries the classical lemmas -- Section 15."
-  (let* ((ledger (bootstrap-kernel))
+  (let* ((ledger (fol-kernel))
          (ledger (test-classical-logic ledger))
          (ledger (test-prove-tautology ledger)))
     (declare (ignorable ledger))

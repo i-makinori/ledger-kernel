@@ -1,64 +1,34 @@
-;;;; tautology.lisp -- Section 15: PROVE-TAUTOLOGY (Kalmar's completeness theorem)
+;;;; tautology.lisp -- PROVE-TAUTOLOGY (Kalmar's completeness proof as a tactic)
 ;;;; Part of the ledger-kernel system (see ledger-kernel.asd).
 
 (in-package :ledger-kernel)
 
-;;; ---------------------------------------------------------------------
-;;; 15. PROVE-TAUTOLOGY: Kalmar's completeness theorem as a tactic
-;;; ---------------------------------------------------------------------
+;;; PROVE-TAUTOLOGY checks a propositional formula by truth table and, if
+;;; it is a tautology, builds a Hilbert proof of it. Every line it emits
+;;; is checked by the kernel (CHECK-AND-EXTEND / CHECK-AND-EXTEND-BY-
+;;; DEDUCTION-DIRECT), so the tactic itself need not be trusted.
 ;;;
-;;; Section 14 gave the kernel the handful of classical facts (TH-EX-
-;;; FALSO, TH-DNEG-INTRO, TH-NEG-IMPL, II.4) that Lukasiewicz proved are
-;;; enough, together with MP, to prove EVERY classical propositional
-;;; tautology. This section cashes that fact in as a genuine tactic:
-;;; PROVE-TAUTOLOGY takes any formula built from .TO/.NEG, checks it is
-;;; actually a tautology by brute-force truth table, and if so
-;;; mechanically constructs and ADMITS a real, fully checked Hilbert
-;;; proof of it -- no different in kind from a hand-written one, since
-;;; every line it emits still goes through CHECK-K-PROOF via ordinary
-;;; CHECK-AND-EXTEND/CHECK-AND-EXTEND-BY-DEDUCTION-DIRECT. Nothing here
-;;; has to be trusted beyond what Sections 1-14 already established.
+;;; Construction (Kalmar):
+;;;   - For valuation V let F^V be F if F is true under V, else (.NEG F).
+;;;     Kalmar's Lemma: the V-signed atoms of F prove F^V, by induction on
+;;;     F (KALMAR). .TO uses axiom II.1, TH-EX-FALSO and TH-NEG-IMPL; .NEG
+;;;     uses TH-DNEG-INTRO.
+;;;   - For a tautology F^V = F for every V. Atoms are then eliminated one
+;;;     at a time by combining the P-true and P-false branches with the
+;;;     II.4 case split (KALMAR-NODE / KALMAR-COMBINE), leaving |- F.
 ;;;
-;;; The construction is Kalmar's Lemma plus a standard case-split
-;;; combination:
-;;;   - For a fixed valuation V and formula F, define F^V := F when F is
-;;;     true under V, else (.NEG F). Kalmar's Lemma: the V-signed atoms
-;;;     of F prove F^V, by structural induction on F --
-;;;     KALMAR/KALMAR-BRANCH below. The .TO case needs TH-EX-FALSO
-;;;     (consequent true, or antecedent false) and TH-NEG-IMPL
-;;;     (antecedent true, consequent false); the .NEG case needs
-;;;     TH-DNEG-INTRO.
-;;;   - Since the target is an actual tautology, F^V is just F itself
-;;;     for every V, so this gives {atom^V} |- F for EVERY valuation.
-;;;     Eliminating the atoms one at a time via II.4's case-split
-;;;     (KALMAR-COMBINE/KALMAR-NODE) -- for each atom P, combining the
-;;;     P-true and P-false branches into one that no longer mentions P
-;;;     -- ends with the fully closed theorem |- F.
-;;; This is exactly the textbook proof of Post/Lukasiewicz completeness,
-;;; run mechanically and checked at every step.
+;;; Defined connectives (.AND/.OR/.IFF, from 00-connectives.system) are
+;;; not atoms: each is handled through its one-level expansion E (KEXPAND).
+;;; If true, the FOLD axiom E -> D gives D by MP. If false, (.neg E), the
+;;; UNFOLD axiom D -> E and the contraposition lemma
+;;; (D -> E) -> (.neg E -> .neg D) give (.neg D). That lemma is proved
+;;; first by this same tactic and admitted as NAME.CONTRA.
 ;;;
-;;; DEFINED CONNECTIVES. When hilbert-library/00-connectives.system is
-;;; loaded, .AND/.OR/.IFF are handled too, without treating them as
-;;; atoms: each is evaluated through its fixed expansion (KEXPAND), and
-;;; Kalmar's Lemma for (.AND A B) etc. is obtained from the lemma for its
-;;; expansion E:
-;;;   - true case:  E, and the FOLD axiom E -> D, give D by MP;
-;;;   - false case: (.neg E), the UNFOLD axiom D -> E, and a contraposition
-;;;     lemma (D -> E) -> (.neg E -> .neg D) give (.neg D) by MP twice.
-;;; The contraposition lemma is itself proved first, by this same tactic,
-;;; on the pure .TO/.NEG formula (A -> B) -> (.neg B -> .neg A).
+;;; Atoms: any subformula that is not .TO/.NEG or a defined connective,
+;;; e.g. A, (.in v0 v1), (.forall v0 A).
 ;;;
-;;; ATOMS. Any subformula that is not .TO/.NEG or a defined connective is
-;;; an atom -- a bare atomic-wff symbol, but equally (.in v0 v1),
-;;; (.forall v0 A) or (.exists1 v0 A). Only the propositional structure
-;;; above the atoms is used.
-;;;
-;;; NAMES. The intermediate TH-DED entries the case-split admits are named
-;;; NAME.T1, NAME.F1, NAME.T2, ... and the contraposition lemma
-;;; NAME.CONTRA, where NAME is the theorem being proved -- interned,
-;;; deterministic names, so a ledger built with this tactic can be written
-;;; out with WRITE-LEDGER-TO-FILE and read back (an uninterned GENSYM would
-;;; not read back as the same symbol at each citation).
+;;; Intermediate entries are named NAME.T1, NAME.F1, ... (interned, not
+;;; GENSYMs) so a ledger that uses the tactic can be saved and reloaded.
 
 (defun kto? (f) (and (consp f) (eq (car f) '.to) (= (length f) 3)))
 (defun kneg? (f) (and (consp f) (eq (car f) '.neg) (= (length f) 2)))
@@ -71,6 +41,7 @@
     (.iff iff-fold iff-unfold)))
 
 (defun kdefined? (f)
+  "F's row in KDEFINED-CONNECTIVES if F is a defined-connective formula, else NIL."
   (and (consp f) (= (length f) 3) (assoc (car f) (kdefined-connectives))))
 
 (defun kexpand (f)
@@ -82,8 +53,7 @@
       (.iff (list '.and (list '.to a b) (list '.to b a))))))
 
 (defun katoms-of (f &optional acc)
-  "All atomic (non-.TO, non-.NEG, non-defined-connective) subformulas of
-F, deduplicated."
+  "The distinct atoms of F."
   (cond
     ((kto? f) (katoms-of (third f) (katoms-of (second f) acc)))
     ((kneg? f) (katoms-of (second f) acc))
@@ -91,14 +61,14 @@ F, deduplicated."
     (t (adjoin f acc :test #'equal))))
 
 (defun kuses-defined-p (f)
+  "True if a defined connective occurs in F's propositional structure."
   (cond ((kdefined? f) t)
         ((kto? f) (or (kuses-defined-p (second f)) (kuses-defined-p (third f))))
         ((kneg? f) (kuses-defined-p (second f)))
         (t nil)))
 
 (defun ktruth (f v)
-  "Ordinary two-valued truth evaluation of F under valuation V (an alist
-atom -> generalized boolean)."
+  "Truth value of F under valuation V, an alist atom -> boolean."
   (cond
     ((kto? f) (or (not (ktruth (second f) v)) (ktruth (third f) v)))
     ((kneg? f) (not (ktruth (second f) v)))
@@ -125,15 +95,13 @@ atom -> generalized boolean)."
   "Name of the contraposition lemma the defined-connective case cites.")
 
 (defun knext-name (tag)
-  "NAME.T<n> / NAME.F<n>: a fresh, interned name for an intermediate
-entry of the theorem *KNAME* (see the NAMES note above)."
+  "A fresh interned name *KNAME*.<TAG><n> for an intermediate entry."
   (let ((pkg (or (symbol-package *kname*) (find-package :ledger-kernel))))
     (intern (format nil "~A.~A~D" (symbol-name *kname*) tag (incf *kname-count*)) pkg)))
 
 (defun kemit (formula role by)
-  "Append a new raw-proof line for FORMULA unless one already exists
-(memoized on FORMULA itself, so KALMAR never re-derives the same
-signed subformula twice within one branch). Returns its line number."
+  "Line number of FORMULA in the current branch, appending a line if it
+has none yet (so no signed subformula is derived twice)."
   (or (gethash formula *kindex*)
       (let ((n (hash-table-count *kindex*)))
         (push (list n formula role by) *klines*)
@@ -141,9 +109,8 @@ signed subformula twice within one branch). Returns its line number."
         n)))
 
 (defun kalmar (f v)
-  "Ensures (KSIGNED F V) has a line in *KLINES*/*KINDEX*; returns its
-line number. Structural induction on F, per Kalmar's Lemma (see this
-section's header comment for the four cases)."
+  "Line number of a derivation of (KSIGNED F V) from the signed atoms
+(Kalmar's Lemma, by induction on F). Atoms must already be hypotheses."
   (or (gethash (ksigned f v) *kindex*)
       (cond
         ((kto? f)
@@ -184,21 +151,18 @@ section's header comment for the four cases)."
         (t (error "KALMAR: atom ~S not pre-seeded for valuation ~S" f v)))))
 
 (defun kalmar-branch (target full-v atoms-order)
-  "Flat raw-proof for {atom^v : atom in ATOMS-ORDER} |- TARGET, hyp lines
-numbered 0..n-1 in ATOMS-ORDER's own order."
+  "Raw proof of TARGET from the atoms signed by FULL-V, as hypothesis lines
+0..n-1 in ATOMS-ORDER."
   (let ((*klines* nil) (*kindex* (make-hash-table :test #'equal)))
     (dolist (a atoms-order) (kemit (ksigned a full-v) :hyp nil))
     (kalmar target full-v)
     (nreverse *klines*)))
 
 (defun kalmar-combine (ledger k next-atom target raw-true raw-false log)
-  "Given RAW-TRUE (:hyp lines = PREFIX ++ [next-atom]) and RAW-FALSE
-(:hyp lines = PREFIX ++ [not next-atom]), both concluding TARGET, admits
-both as (gensym-named) TH-DED entries discharging NEXT-ATOM, then emits
-a flat continuation proof (5 more lines, numbered K..K+4) combining them
-via a II.4 case-split. Returns (VALUES LEDGER' LINES) -- LINES excludes
-the K :hyp lines for PREFIX, which the caller (KALMAR-NODE) already
-knows how to reconstruct."
+  "Admit RAW-TRUE (hypotheses PREFIX + NEXT-ATOM) and RAW-FALSE (PREFIX +
+(.neg NEXT-ATOM)) as TH-DED entries, and return (VALUES LEDGER LINES):
+five lines K..K+4 deriving TARGET from PREFIX by the II.4 case split.
+LINES omits PREFIX's K hypothesis lines."
   (let* ((name-t (knext-name "T"))
          (name-f (knext-name "F"))
          (ledger (check-and-extend-by-deduction-direct ledger name-t next-atom raw-true log))
@@ -216,11 +180,9 @@ knows how to reconstruct."
     (values ledger (list line-t line-f line-ax line-mp1 line-mp2))))
 
 (defun kalmar-node (ledger atoms-order prefix-v target &optional (log (silent-log)))
-  "Returns (VALUES LEDGER' RAW-PROOF), RAW-PROOF having exactly
-(LENGTH PREFIX-V) :hyp lines -- (KSIGNED atom prefix-v) for each atom in
-ATOMS-ORDER already fixed by PREFIX-V, in that order -- and concluding
-TARGET, with every atom past that point already eliminated via KALMAR
-plus a II.4 case-split."
+  "Return (VALUES LEDGER RAW-PROOF): a proof of TARGET whose only
+hypotheses are the atoms fixed by PREFIX-V, signed, in ATOMS-ORDER; the
+remaining atoms are eliminated by case splits."
   (let ((k (length prefix-v)) (n (length atoms-order)))
     (if (= k n)
         (values ledger (kalmar-branch target prefix-v atoms-order))
@@ -236,17 +198,11 @@ plus a II.4 case-split."
                   (values ledger (append prefix-lines tail-lines))))))))))
 
 (defun prove-tautology (ledger target name &optional (log (silent-log)))
-  "Checks TARGET is a genuine classical tautology (brute-force truth
-table over its own atoms), then mechanically builds and admits a real
-checked Hilbert proof of it under NAME, returning the extended ledger.
-TARGET is built from .TO/.NEG and, if hilbert-library/00-connectives.system
-is loaded, .AND/.OR/.IFF, over arbitrary atoms (see the ATOMS note
-above). LEDGER must already carry TH-EX-FALSO, TH-DNEG-INTRO, TH-NEG-IMPL
-and axiom II.4 -- e.g. a ledger that has replayed 01-propositional-
-core.ledger and 05-classical-logic.ledger, or TEST-CLASSICAL-LOGIC's
-in-memory equivalent. Besides NAME itself, admits the intermediate
-entries NAME.T<n>/NAME.F<n> (and NAME.CONTRA when a defined connective
-occurs)."
+  "Admit tautology TARGET as theorem NAME, or signal an error if it is not
+a tautology. LEDGER must already have TH-EX-FALSO, TH-DNEG-INTRO,
+TH-NEG-IMPL and axiom II.4 (e.g. after 01-propositional-core.ledger and
+05-classical-logic.ledger). Also admits NAME.T<n>, NAME.F<n>, and
+NAME.CONTRA when a defined connective occurs."
   (let* ((atoms (sort (copy-list (katoms-of target)) #'string<
                       :key (lambda (a) (let ((*package* (find-package :ledger-kernel)))
                                          (prin1-to-string a)))))

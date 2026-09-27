@@ -22,12 +22,18 @@
       "zf-library/01-empty-set.ledger"))
     ("peano" "Peano arithmetic"
      ("hilbert-library/00-classical-fol-equality.system"
+      "hilbert-library/00-connectives.system"
       "hilbert-library/00-peano-arithmetic.system"
+      "hilbert-library/00-peano-order.system"
       "hilbert-library/01-propositional-core.ledger"
       "hilbert-library/02-predicate-core.ledger"
       "hilbert-library/03-equality-core.ledger"
       "hilbert-library/04-peano-arithmetic.ledger"
-      "hilbert-library/05-classical-logic.ledger")))
+      "hilbert-library/05-classical-logic.ledger"
+      "hilbert-library/06-connectives.ledger"
+      "hilbert-library/08-arithmetic.ledger"
+      "hilbert-library/09-order.ledger"
+      "hilbert-library/10-division.ledger")))
   "(ID TITLE FILES) for every world, FILES relative to the repository.")
 
 (defstruct world id title ledger modules symbols deps)
@@ -147,11 +153,15 @@ contain ?-pattern variables."
 
 (defun auxiliary-name-p (name)
   "Entries generated as intermediate steps (PROVE-TAUTOLOGY's NAME.T1,
-NAME.CONTRA, ...; hand-written NAME-S1, NAME-STEP2, ...)."
+NAME.CONTRA, ...; NAME-S1, NAME-STEP2, ...; induction pieces NAME-BASE,
+NAME-STEP, NAME-IND)."
   (and (symbolp name)
        (let ((s (symbol-name name)))
          (or (find #\. s :start 1)
              (search "-STEP" s)
+             (let ((n (length s)))       ; induction pieces NAME-BASE / NAME-IND
+               (or (and (> n 5) (string= (subseq s (- n 5)) "-BASE"))
+                   (and (> n 4) (string= (subseq s (- n 4)) "-IND"))))
              (let ((pos (search "-S" s :from-end t)))
                (and pos (< (+ pos 2) (length s))
                     (every #'digit-char-p (subseq s (+ pos 2)))))))))

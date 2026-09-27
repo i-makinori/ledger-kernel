@@ -6,6 +6,7 @@
 ;;;;   (.or A B)            A ∨ B          (.iota x A)     ιx A
 ;;;;   (.iff A B)           A ↔ B          (.eq s t)       s = t
 ;;;;   (.in s t)            s ∈ t          (empty)         ∅
+;;;;   (.le s t)            s ≤ t          (.lt s t)       s < t
 ;;;;   (.neg (.in s t))     s ∉ t          (.neg (.eq s t)) s ≠ t
 ;;;;   (+ s t) / (* s t)    s + t / s · t  (S t) / zero    S(t) / 0
 ;;;;   (f t1 .. tn)         f(t1, .., tn)  v0, v12         v₀, v₁₂
@@ -160,6 +161,11 @@
                   6))
          ((and (eq head '.in) (= (length args) 2))
           (values (concatenate 'string (render-term (first args) ledger) " " (link '.in "∈") " "
+                               (render-term (second args) ledger))
+                  6))
+         ((and (member head '(.le .lt)) (= (length args) 2))
+          (values (concatenate 'string (render-term (first args) ledger) " "
+                               (link head (if (eq head '.le) "≤" "<")) " "
                                (render-term (second args) ledger))
                   6))
          ((and infix (= (length args) 2))

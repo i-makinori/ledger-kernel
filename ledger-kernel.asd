@@ -41,6 +41,7 @@
                (:file "zf-tests")
                (:file "empty-set-tests")
                (:file "predicate-schema-tests")
+               (:file "peano-library-tests")
                (:file "run"))
   :perform (test-op (o c)
              (unless (uiop:symbol-call :ledger-kernel :run-all-self-tests)

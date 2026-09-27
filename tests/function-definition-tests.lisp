@@ -74,7 +74,7 @@ modes."
   "Section 22: DEFINE-FUNCTION-BY-DESCRIPTION -- the DOUBLE worked
 example (existence, uniqueness, definition, and using the defined
 function directly) plus two prerequisite-mismatch attack tests."
-  (let* ((ledger (bootstrap-kernel :arithmetic t))
+  (let* ((ledger (fol-kernel :arithmetic t))
          (ledger (test-define-function-by-description ledger)))
     (declare (ignorable ledger))
     (format t "~%Function-definition self-tests complete.~%")))

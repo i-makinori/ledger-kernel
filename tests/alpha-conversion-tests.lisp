@@ -75,7 +75,7 @@ must already carry Peano arithmetic and TH-ZERO-PLUS-IDENTITY (Section 13)."
 (defun run-alpha-conversion-self-tests ()
   "As RUN-SELF-TESTS, but against a BOOTSTRAP-KERNEL :ARITHMETIC T ledger
 carrying Peano arithmetic and TH-ZERO-PLUS-IDENTITY -- Section 16."
-  (let* ((ledger (bootstrap-kernel :arithmetic t))
+  (let* ((ledger (fol-kernel :arithmetic t))
          (ledger (test-equality-axioms ledger))
          (ledger (test-peano-axioms ledger))
          (ledger (test-peano-induction-proof ledger))

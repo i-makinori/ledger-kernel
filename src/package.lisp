@@ -41,7 +41,7 @@
 
 (defpackage :ledger-kernel
   (:use :cl)
-  (:export #:bootstrap-kernel #:entry-k #:entry-kind #:entry-payload
+  (:export #:entry-k #:entry-kind #:entry-payload
            #:entry-origin #:ledger-append #:admit-primitive #:check-and-extend
            #:check-and-extend-abbrev #:declare-atomic-wff-symbol
            #:declare-variable-symbol #:declare-predicate-schema-symbol #:judgement? #:run-self-tests

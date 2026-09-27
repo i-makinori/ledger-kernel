@@ -37,7 +37,7 @@ removes it)."
     (unwind-protect
          (progn
            (write-ledger-to-file ledger path)
-           (let ((reloaded (read-ledger-from-file path)))
+           (let ((reloaded (read-ledger-from-file path :ledger (fol-kernel))))
              (expect "Reload preserves the entry count exactly"
                      (= (ledger-count reloaded) (ledger-count ledger)) t)
              (expect "Reload's own command stream is identical to the original's"
@@ -65,7 +65,7 @@ removes it)."
                (let* ((tampered (tree-subst victim (tree-subst 'B 'Z victim) commands)))
                  (write-commands-to-file tampered bad-path)
                  (expect "A tampered command stream is refused outright, not silently accepted"
-                         (handler-case (progn (read-ledger-from-file bad-path) nil)
+                         (handler-case (progn (read-ledger-from-file bad-path :ledger (fol-kernel)) nil)
                            (error () t))
                          t))))
            ledger)
@@ -90,7 +90,7 @@ ledger (writes/reads two temp files as a side effect, then removes them)."
                 (commands-b (subseq commands half)))
            (write-commands-to-file commands-a path-a)
            (write-commands-to-file commands-b path-b)
-           (let* ((ledger-a (read-ledger-from-file path-a))
+           (let* ((ledger-a (read-ledger-from-file path-a :ledger (fol-kernel)))
                   (chained (read-ledger-from-file path-b :ledger ledger-a)))
              (expect "Chained two-file load reaches the same entry count as the original"
                      (= (ledger-count chained) (ledger-count ledger)) t)

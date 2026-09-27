@@ -321,7 +321,7 @@ EVEN-specific; CHECK-INDUCTIVE-GROUP-WELL-FORMED's own consistency-check
 attack tests (name collision, shape, groundedness); plus the two
 general-case worked examples: mutual recursion (EVEN/ODD) and an n-ary
 relation (SUMR, the graph of addition)."
-  (let* ((ledger (bootstrap-kernel :arithmetic t))
+  (let* ((ledger (fol-kernel :arithmetic t))
          (ledger (test-inductive-even ledger))
          (ledger (test-inductive-generality ledger))
          (ledger (test-inductive-consistency-checks ledger)))
@@ -337,6 +337,6 @@ relation (SUMR, the graph of addition)."
     ;; attack test above provokes deliberately and confirms is now
     ;; caught, rather than silently accepted the way it was when this
     ;; mutual EVEN/ODD example was first written).
-    (test-inductive-mutual-even-odd (bootstrap-kernel :arithmetic t))
-    (test-inductive-nary-sumr (bootstrap-kernel :arithmetic t))
+    (test-inductive-mutual-even-odd (fol-kernel :arithmetic t))
+    (test-inductive-nary-sumr (fol-kernel :arithmetic t))
     (format t "~%Inductive-definition self-tests complete.~%")))

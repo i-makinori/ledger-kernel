@@ -287,7 +287,7 @@ flat LET*, calling one named test-phase function per step: each phase
 takes the ledger as it stood after the previous phase and returns the
 ledger as it should stand afterward (unchanged, for a phase that only
 checks; extended, for one that also grows Sigma or the ledger itself)."
-  (let* ((ledger (bootstrap-kernel))
+  (let* ((ledger (fol-kernel))
          (ledger (test-basic-formation ledger))
          (ledger (test-axiom-and-inference ledger))
          (ledger (test-vacuous-gen-and-bad-ith ledger))

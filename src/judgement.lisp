@@ -35,6 +35,8 @@ to proceed.
 OPEN-HYPS is Gamma, passed straight through to CHECK-CONDITIONS
 unchanged (this function never extends it -- only CHECK-K-PROOF's own
 :HYP handling does that)."
+  (when (declared-symbol-judgement-p kind args ledger seen open-hyps)
+    (return-from judgement-bind (values binds t)))
   (let ((key (cons kind args)))
     (if (member key seen :test #'equal)
         (values binds nil)
@@ -67,3 +69,30 @@ JUDGEMENT-BIND); an ordinary top-level caller leaves it NIL. OPEN-HYPS is
 Gamma, likewise NIL for a call made outside of any proof currently being
 checked."
   (nth-value 1 (judgement-bind kind (list expr) nil ledger seen open-hyps)))
+
+;;; Base cases read directly off Sigma rather than from formation rules:
+;;; a generic rule such as (wff? ?A) would match ANY expression, including
+;;; undeclared symbols, so declared vocabulary is recognized here instead.
+
+(defun declared-symbol-judgement-p (kind args ledger seen open-hyps)
+  "T when (KIND . ARGS) holds because of a declaration: a declared atomic
+wff symbol is a wff, a declared variable is a var and a term, and a
+declared predicate schema applied to the right number of terms is a wff."
+  (and (= (length args) 1)
+       (let ((x (car args)))
+         (if (symbolp x)
+             (case kind
+               (wff? (atomic-wff-symbol-p x ledger))
+               ((var? term?) (variable-p x ledger)))
+             (and (eq kind 'wff?)
+                  (predicate-schema-application-wff-p x ledger seen open-hyps))))))
+
+(defun predicate-schema-application-wff-p (expr ledger seen open-hyps)
+  "EXPR is (P t1 ... tn) with P a declared predicate schema of arity n and
+every ti a term."
+  (and (consp expr)
+       (let ((arity (predicate-schema-arity (car expr) ledger)))
+         (and arity
+              (listp (cdr expr))
+              (= (length (cdr expr)) arity)
+              (every (lambda (arg) (judgement? 'term? arg ledger seen open-hyps)) (cdr expr))))))

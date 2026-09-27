@@ -94,10 +94,8 @@ the identical check again."
                         (t nil)))
         when cmd collect cmd))
 
-(defun ledger-from-commands (commands &key (atomic-symbols '(A B C D E F G H))
-                                            (variables '(v0 v1 v2 v3 v4 v5))
-                                            (log (silent-log))
-                                            (ledger nil))
+(defun ledger-from-commands (commands &key (log (silent-log))
+                                            (ledger (error "LEDGER-FROM-COMMANDS: :LEDGER is required (e.g. one built by BOOTSTRAP-KERNEL-FROM-SPEC-FILE).")))
   "The inverse of LEDGER-COMMANDS: starting from LEDGER (a freshly
 bootstrapped kernel, with the given seed vocabulary, if LEDGER is not
 supplied -- this must match whatever the ORIGINAL ledger was bootstrapped
@@ -112,7 +110,7 @@ compiled object files rather than only ever assembling one monolithic
 source. Nothing about this is privileged: LEDGER, whatever grew it, is
 still just an ordinary ledger, and every command here still goes through
 the same CHECK-AND-EXTEND/CHECK-AND-EXTEND-ABBREV/DECLARE-* gates."
-  (let ((ledger (or ledger (bootstrap-kernel :atomic-symbols atomic-symbols :variables variables))))
+  (progn
     (dolist (cmd commands ledger)
       (destructuring-bind (op . args) cmd
         (setf ledger
@@ -174,10 +172,8 @@ gates: a hostile file can fail to load, but it cannot execute."
               until (eq form in)
               collect form)))))
 
-(defun read-ledger-from-file (path &key (atomic-symbols '(A B C D E F G H))
-                                         (variables '(v0 v1 v2 v3 v4 v5))
-                                         (log (silent-log))
-                                         (ledger nil))
+(defun read-ledger-from-file (path &key (log (silent-log))
+                                         (ledger (error "READ-LEDGER-FROM-FILE: :LEDGER is required (e.g. one built by BOOTSTRAP-KERNEL-FROM-SPEC-FILE).")))
   "Read a command stream written by WRITE-LEDGER-TO-FILE back into a
 genuine, freshly re-verified ledger (LEDGER-FROM-COMMANDS) -- reloading a
 ledger costs exactly as much re-verification work as building it live
@@ -189,6 +185,5 @@ this is how several files chain into one growing ledger, module by
 module: (READ-LEDGER-FROM-FILE \"b.ledger\" :LEDGER (READ-LEDGER-FROM-FILE
 \"a.ledger\"))."
   (ledger-from-commands (read-forms-from-file path)
-                        :atomic-symbols atomic-symbols
-                        :variables variables :log log
+                        :log log
                         :ledger ledger))

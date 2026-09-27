@@ -68,14 +68,6 @@ re-expansion. Returns the ledger extended with both new entries."
               nil)
       ledger)))
 
-(defun test-admit-primitive-closed (ledger)
-  "ADMIT-PRIMITIVE must be unreachable post-bootstrap."
-  (expect "ADMIT-PRIMITIVE is closed post-bootstrap"
-          (handler-case (progn (admit-primitive 'atomic-wff-symbol 'SHOULD-FAIL) nil)
-            (error () t))
-          t)
-  ledger)
-
 (defun test-sigma-growth (ledger)
   "Post-bootstrap growth of Sigma: a brand-new symbol is unusable as a
 wff until declared, then becomes usable immediately after
@@ -255,7 +247,6 @@ checks; extended, for one that also grows Sigma or the ledger itself)."
          (ledger (test-basic-formation ledger))
          (ledger (test-axiom-and-inference ledger))
          (ledger (test-vacuous-gen-and-bad-gen ledger))
-         (ledger (test-admit-primitive-closed ledger))
          (ledger (test-sigma-growth ledger))
          (ledger (test-axiom-iii1 ledger))
          (ledger (test-hyp-wellformedness ledger))

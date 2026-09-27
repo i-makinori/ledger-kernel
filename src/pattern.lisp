@@ -1,23 +1,17 @@
-;;;; pattern.lisp -- Section 1: pattern matching
-;;;; Part of the ledger-kernel system (see ledger-kernel.asd).
+;;;; pattern.lisp -- pattern matching and instantiation
 
 (in-package :ledger-kernel)
 
-;;; ---------------------------------------------------------------------
-;;; 1. Pattern matching
-;;; ---------------------------------------------------------------------
-;;;
-;;; A pattern variable is any symbol whose name begins with "?" (e.g. ?A,
-;;; ?x, ?t). Matching produces an alist of (pat-var . value) bindings, or
-;;; the distinguished value +FAIL+ if no consistent match exists. NIL is a
-;;; legitimate "matched, zero bindings" result, so it must not be
-;;; conflated with failure -- hence the dedicated sentinel.
+;;; Pattern variables are symbols named ?... (?A, ?x). Matching returns an
+;;; alist of (pat-var . value) or the sentinel +FAIL+; NIL cannot signal
+;;; failure because it is the valid "matched, no bindings" result.
 
 (defconstant +fail+ '+fail+)
 
 (defun match-fail-p (x) (eq x +fail+))
 
 (defun pat-var-p (x)
+  "T iff X is a pattern variable (a symbol named ?...)."
   (and (symbolp x)
        (> (length (symbol-name x)) 1)
        (char= (char (symbol-name x) 0) #\?)))
@@ -34,16 +28,12 @@
         (t nil)))
 
 (defun meta-constructor-p (sym)
-  "Alist entry (@name . function) for meta-forms that EXPAND to a value
-(e.g. @subst) rather than testing a boolean (e.g. @subst-ok?), or NIL if
-SYM names none. META-CONSTRUCTORS-TABLE (section 4) builds the table
-fresh on every call rather than caching it in a special variable."
+  "Entry (@name . function) for a meta-constructor SYM (a meta-form that
+computes a value, like @subst), or NIL."
   (assoc sym (meta-constructors-table) :test #'eq))
 
 (defun instantiate-with-binds (pat binds)
-  "Replace every pattern variable in PAT with its binding. A pattern
-variable with no binding is left as-is (caller's responsibility to check
-completeness first)."
+  "Replace bound pattern variables in PAT; unbound ones are left as-is."
   (cond
     ((pat-var-p pat)
      (let ((b (lookup-binding pat binds)))
@@ -54,19 +44,12 @@ completeness first)."
     (t pat)))
 
 (defun match-template (pat expr &optional (binds nil))
-  "Match PAT against EXPR, extending BINDS. Returns an alist of bindings,
-or +FAIL+. A repeated pattern variable must match consistently (EQUAL)
-across occurrences.
-
-PAT may contain an embedded meta-constructor call, e.g. (@subst ?x ?t
-?A) inside axiom III.1's conclusion pattern. Such a node is evaluated --
-not structurally matched -- once ALL of its arguments are already ground
-under BINDS (typically because an earlier part of the same template
-bound them, matched left-to-right, or they were seeded in beforehand as
-an axiom's extra parameter). If some argument is still a free pattern
-variable at this point, matching FAILS outright rather than trying to
-unify/back-solve it: the caller must supply it from outside (see
-CHECK-K-AXIOM-LINE's EXTRA-ARGS) instead of the matcher guessing it."
+  "Match PAT against EXPR, extending BINDS; returns bindings or +FAIL+.
+A repeated pattern variable must match EQUAL values. An embedded
+meta-constructor call, e.g. (@subst ?x ?t ?A), is evaluated and its value
+matched; if any argument is still unbound at that point (matching is
+left to right) the match fails rather than solving for it, so such
+arguments must be supplied up front (e.g. an axiom's extra arguments)."
   (cond
     ((match-fail-p binds) +fail+)
     ((pat-var-p pat)
@@ -88,39 +71,32 @@ CHECK-K-AXIOM-LINE's EXTRA-ARGS) instead of the matcher guessing it."
     ((equal pat expr) binds)
     (t +fail+)))
 
-;;; A predicate schema symbol P (see PREDICATE-SCHEMA-ARITY) is bound to a
-;;; LAMBDA BINDING, (:LAMBDA (x1 ... xn) BODY): "the formula BODY, with
-;;; x1..xn as its argument places". An occurrence (P t1 ... tn) then
-;;; instantiates to BODY with t1..tn substituted simultaneously for
-;;; x1..xn (SCHEMA-BETA). This substitution does not rename bound
-;;; variables to avoid capture; it does not have to, because an
-;;; instantiated proof is always re-verified in full (see
-;;; TRY-DERIVED-ENTRY), so an instance where capture would matter is
-;;; simply rejected.
+;;; A predicate schema symbol P is bound to a lambda binding
+;;; (:LAMBDA (x1 ... xn) BODY); (P t1 ... tn) instantiates to BODY with
+;;; t1..tn substituted simultaneously for x1..xn (SCHEMA-BETA). This is
+;;; not capture-avoiding; that is safe because an instantiated proof is
+;;; always re-verified in full (TRY-DERIVED-ENTRY), which rejects any
+;;; instance where capture matters.
 
 (defun lambda-binding-p (x)
+  "T iff X has the shape (:LAMBDA params body)."
   (and (consp x) (eq (car x) :lambda) (= (length x) 3) (listp (second x))))
 
 (defun schema-beta (lam args)
-  "Apply the lambda binding LAM to ARGS (see above). Returns NIL if the
-number of arguments does not match."
+  "Beta-reduce lambda binding LAM applied to ARGS; NIL on arity mismatch."
   (destructuring-bind (params body) (cdr lam)
     (and (= (length params) (length args))
          (substitute-wff-multi params args body))))
 
 (defun distinct-variables-p (xs ledger)
+  "T iff XS are pairwise distinct declared variables."
   (and (every (lambda (x) (and (symbolp x) (variable-p x ledger))) xs)
        (= (length xs) (length (remove-duplicates xs :test #'eq)))))
 
 (defun match-schema-atoms (pat expr ledger &optional (binds nil))
-  "Like MATCH-TEMPLATE, but the pattern variables are declared ATOMIC-WFF
-SYMBOLS (A, B, C, ... per Sigma) rather than ?-prefixed symbols. This is
-the matcher used for a :DERIVED entry's own stored proof, whose schema
-hypotheses/conclusion were written using bare atomic-wff symbols as
-schema placeholders. Declared VARIABLE symbols (v0, v1, ...) are
-deliberately NOT treated as schema placeholders here: a schema's own
-bound/generalized variables are always written as concrete literals,
-matched structurally as-is."
+  "Like MATCH-TEMPLATE, for a derived entry's stored schema: the pattern
+variables are the declared atomic-wff symbols (A, B, ...) and predicate
+schema symbols. Declared object variables are matched literally."
   (cond
     ((match-fail-p binds) +fail+)
     ((and (symbolp pat) (atomic-wff-symbol-p pat ledger))
@@ -128,11 +104,10 @@ matched structurally as-is."
        (if existing
            (if (equal (cdr existing) expr) binds +fail+)
            (cons (cons pat expr) binds))))
-    ;; (P t1 ... tn) for a predicate schema symbol P. Already bound: the
-    ;; instance must be EXPR exactly. Unbound: bound here only when the
-    ;; arguments are distinct variables (the higher-order "pattern" case,
-    ;; where the solution is unique: P := (lambda (t1..tn) EXPR));
-    ;; otherwise matching fails and the citation must supply P via :INST.
+    ;; (P t1 ... tn), P a predicate schema. If P is bound, its beta
+    ;; instance must equal EXPR. If unbound, bind P := (lambda (t1..tn)
+    ;; EXPR) only when the ti are distinct variables (then the solution is
+    ;; unique); otherwise fail, and the citation must give P via :INST.
     ((and (consp pat) (predicate-schema-arity (car pat) ledger))
      (let ((existing (lookup-binding (car pat) binds))
            (args (instantiate-schema-atoms (cdr pat) binds)))
@@ -155,13 +130,11 @@ matched structurally as-is."
     (t +fail+)))
 
 (defun instantiate-schema-atoms (template binds)
-  "Substitute bound atomic-wff schema symbols throughout TEMPLATE using
-BINDS (an alist produced by MATCH-SCHEMA-ATOMS). An unbound schema atom
-is left as-is."
+  "Instantiate TEMPLATE under BINDS from MATCH-SCHEMA-ATOMS, beta-reducing
+predicate-schema applications. Unbound schema symbols are left as-is."
   (cond
     ((and (symbolp template) (lookup-binding template binds)) (cdr (lookup-binding template binds)))
-    ;; (P t1 ... tn) with P bound to a lambda binding: beta-reduce, after
-    ;; instantiating the arguments themselves.
+    ;; (P t1 ... tn), P bound to a lambda: instantiate args, beta-reduce.
     ((and (consp template) (symbolp (car template))
           (let ((b (lookup-binding (car template) binds)))
             (and b (lambda-binding-p (cdr b)))))

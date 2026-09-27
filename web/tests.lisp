@@ -18,6 +18,8 @@
               (string= (r '(.exists1 v0 (.and (p v0) (.neg (.eq v0 (empty)))))) "∃!v₀(P(v₀) ∧ v₀ ≠ ∅)") t)
       (expect "render: arithmetic terms keep only the parentheses they need"
               (string= (r '(.eq (* (+ v0 v1) (s zero)) (s (+ v0 zero)))) "(v₀ + v₁) · S(0) = S(v₀ + 0)") t)
+      (expect "render: order relations"
+              (string= (r '(.to (.le v0 v1) (.lt v0 (s v1)))) "v₀ ≤ v₁ → v₀ < S(v₁)") t)
       (expect "render: substitution in schemas as A[t/x]"
               (string= (r '(.to (.forall ?x ?a) (@subst ?x ?t ?a))) "(∀?X ?A) → ?A[?T/?X]") t)
       (expect "render: malformed input falls back to the S-expression"

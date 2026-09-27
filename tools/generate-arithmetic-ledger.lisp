@@ -142,7 +142,7 @@
 
 (defparameter *bound-vars* '(x1 x2 x3))
 
-(defun close-law (name open-proof-fn vars)
+(defun close-law (name open-proof-fn vars &optional (bound *bound-vars*))
   "Admit NAME: the universal closure over *BOUND-VARS* of the formula that
 OPEN-PROOF-FN proves (in the working VARS). Each working variable a_i is
 generalized, instantiated to x_i by III.1 and generalized again."
@@ -150,7 +150,7 @@ generalized, instantiated to x_i by III.1 and generalized again."
           (with-proof
             (let ((n (funcall open-proof-fn)))
               (loop for a in (reverse vars)
-                    for x in (reverse (subseq *bound-vars* 0 (length vars)))
+                    for x in (reverse (subseq bound 0 (length vars)))
                     do (setf n (gen (forall-elim (gen n a) x) x)))))))
     (admit-th name proof)
     (setf (gethash name *closed*) (proof-conclusion proof))
@@ -343,7 +343,19 @@ STEP receives the line of the hypothesis PHI and builds PHI[S VAR/VAR]."
                   (th-or-intro-l '(.to a (.or a b)))
                   (th-or-intro-r '(.to b (.or a b)))
                   (th-or-elim '(.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
-                  (th-ex-falso '(.to (.neg a) (.to a b))))))
+                  (th-ex-falso '(.to (.neg a) (.to a b)))
+                  (th-raa '(.to (.to a b) (.to (.to a (.neg b)) (.neg a))))
+                  (th-and-intro '(.to a (.to b (.and a b))))
+                  (th-and-elim-l '(.to (.and a b) a))
+                  (th-and-elim-r '(.to (.and a b) b)))))
+
+(defun and-intro (i j)
+  (mp (mp (prop 'th-and-intro `((a . ,(fm i)) (b . ,(fm j)))) i) j))
+(defun and-l (n) (mp (prop 'th-and-elim-l `((a . ,(second (fm n))) (b . ,(third (fm n))))) n))
+(defun and-r (n) (mp (prop 'th-and-elim-r `((a . ,(second (fm n))) (b . ,(third (fm n))))) n))
+(defun ex-falso (n-neg n-pos goal)
+  "From (.neg X) and X derive GOAL."
+  (mp (mp (prop 'th-ex-falso `((a . ,(fm n-pos)) (b . ,goal))) n-neg) n-pos))
 
 (defun prop (name alist &rest lines) (apply #'cite name (schema name alist) lines))
 
@@ -503,6 +515,328 @@ rest. Returns the discharged statement (.to DIS C)."
                      (cite 'th-le-total-s6 `(.to (.le ,b ,a) ,goal))
                      h)))))))
 
+;;; --- division by a successor (10) ---------------------------------------------
+;;;
+;;; a = q * S b + r with r <= b: division by S b, which is never zero, so the
+;;; quotient and remainder are total functions of (a, b).
+
+(defun define-fn (name arg-vars y-var y2-var a-formula ex-name un-name)
+  (setf *L* (define-function-by-description *L* name arg-vars y-var y2-var a-formula ex-name un-name))
+  (push (list :define-function-by-description name arg-vars y-var y2-var a-formula ex-name un-name)
+        *commands*))
+
+(defun build-division ()
+  (dolist (v '(x5 x6 v6 v7)) (declare-var v))
+  (with-vars (a b q r q2 r2 k j)
+    (let* ((sb `(s ,b))
+           (falsum '(.eq (s zero) zero)))
+
+      ;; not (S b <= b)
+      (let ((e `(.eq (+ (s ,b) ,r) ,b)))
+        (ded 'th-not-succ-le-s1 nil e
+             (lambda (ne)
+               (let* ((sr0 (mp (use 'th-add-cancel-l `(s ,r) 'zero b)
+                               (chain (p5 b r) (sym (use 'th-add-succ-l b r)) ne (sym (p4 b)))))
+                      (np1 (ax `(.neg ,(fm sr0)) 'p1)))
+                 (ex-falso np1 sr0 falsum))))
+        (ded 'th-not-succ-le-s2 nil `(.le (s ,b) ,b)
+             (lambda (m) (exists-elim (le-unfold m) (cite 'th-not-succ-le-s1 `(.to ,e ,falsum)) r)))
+        (close-law 'th-not-succ-le
+                   (lambda ()
+                     (let* ((le `(.le (s ,b) ,b))
+                            (raa (prop 'th-raa `((a . ,le) (b . ,falsum))))
+                            (np1 (ax `(.neg ,falsum) 'p1))
+                            (k2 (mp (ax `(.to (.neg ,falsum) (.to ,le (.neg ,falsum))) 'ii.1) np1)))
+                       (mp (mp raa (cite 'th-not-succ-le-s2 `(.to ,le ,falsum))) k2)))
+                   (list b)))
+
+      ;; r <= b -> r = b  v  S r <= b
+      (let* ((goal `(.or (.eq ,r ,b) (.le (s ,r) ,b)))
+             (e1 `(.eq (+ ,r ,q) ,b)) (d0 `(.eq ,q zero)) (ds `(.eq ,q (s ,k)))
+             (exd `(.exists x4 (.eq ,q (s x4)))))
+        (ded 'th-le-cases-s1 (list e1) d0
+             (lambda (n1 nd)
+               (or-intro-l (chain (sym (p4 r)) (rw+r r (sym nd)) n1) `(.le (s ,r) ,b))))
+        (ded 'th-le-cases-s2 (list e1) ds
+             (lambda (n1 nd)
+               (or-intro-r `(.eq ,r ,b)
+                           (le-intro (chain (use 'th-add-succ-l r k) (sym (p5 r k))
+                                            (rw+r r (sym nd)) n1)))))
+        (ded 'th-le-cases-s3 (list e1) exd
+             (lambda (n1 nx) (exists-elim nx (cite 'th-le-cases-s2 `(.to ,ds ,goal) n1) k)))
+        (ded 'th-le-cases-s4 nil e1
+             (lambda (n1)
+               (or-elim (cite 'th-le-cases-s1 `(.to ,d0 ,goal) n1)
+                        (cite 'th-le-cases-s3 `(.to ,exd ,goal) n1)
+                        (use 'th-zero-or-succ q))))
+        (let ((st (ded 'th-le-cases-s5 nil `(.le ,r ,b)
+                       (lambda (m) (exists-elim (le-unfold m) (cite 'th-le-cases-s4 `(.to ,e1 ,goal)) q)))))
+          (close-law 'th-le-cases (lambda () (cite 'th-le-cases-s5 st)) (list r b))))
+
+      ;; existence: forall a b. exists x3 x5. a = x5 * S b + x3  and  x3 <= b
+      (flet ((body (tm qq rr) `(.and (.eq ,tm (+ (* ,qq ,sb) ,rr)) (.le ,rr ,b))))
+        (let ((phi-of (lambda (tm) `(.exists x3 (.exists x5 ,(body tm 'x5 'x3))))))
+          (flet ((pack (n-eq n-le)
+                   ;; n-eq: T = Q * S b + R,  n-le: R <= b  ==>  phi(T)
+                   (destructuring-bind (eq tm (plus (times qq sbb) rr)) (fm n-eq)
+                     (declare (ignore eq plus times sbb))
+                     (let* ((c (and-intro n-eq n-le))
+                            (e5 (exists-intro c 'x5 (body tm 'x5 rr) qq)))
+                       (exists-intro e5 'x3 `(.exists x5 ,(body tm 'x5 'x3)) rr)))))
+            (induction-law 'th-divmod-exists a (funcall phi-of a) (list a b)
+              (lambda ()
+                (pack (sym (trans (p4 `(* zero ,sb)) (use 'th-mul-zero-l sb)))
+                      (use 'th-le-zero-l b)))
+              (lambda (h)
+                (let* ((goal (funcall phi-of `(s ,a)))
+                       (eq `(.eq ,a (+ (* ,q ,sb) ,r)))
+                       (le `(.le ,r ,b)) (rb `(.eq ,r ,b)) (rs `(.le (s ,r) ,b))
+                       (and-f (body a q r))
+                       (ex5 `(.exists x5 ,(body a 'x5 r))))
+                  (flet ((sa (neq) ; S a = q * S b + S r
+                           (trans (cong-s neq) (sym (p5 `(* ,q ,sb) r)))))
+                    (ded 'th-divmod-exists-k1 (list eq) rb
+                         (lambda (neq nrb)
+                           (pack (chain (sa neq) (rw+r `(* ,q ,sb) (cong-s nrb))
+                                        (sym (use 'th-mul-succ-l q sb)) (sym (p4 `(* (s ,q) ,sb))))
+                                 (use 'th-le-zero-l b))))
+                    (ded 'th-divmod-exists-k2 (list eq) rs
+                         (lambda (neq nrs) (pack (sa neq) nrs))))
+                  (ded 'th-divmod-exists-k3 (list eq) le
+                       (lambda (neq nle)
+                         (or-elim (cite 'th-divmod-exists-k1 `(.to ,rb ,goal) neq)
+                                  (cite 'th-divmod-exists-k2 `(.to ,rs ,goal) neq)
+                                  (mp (use 'th-le-cases r b) nle))))
+                  (ded 'th-divmod-exists-k4 nil and-f
+                       (lambda (nc) (mp (cite 'th-divmod-exists-k3 `(.to ,le ,goal) (and-l nc)) (and-r nc))))
+                  (ded 'th-divmod-exists-k5 nil ex5
+                       (lambda (nx) (exists-elim nx (cite 'th-divmod-exists-k4 `(.to ,and-f ,goal)) q)))
+                  (exists-elim h (cite 'th-divmod-exists-k5 `(.to ,ex5 ,goal)) r)))))))
+
+      ;; core of uniqueness:
+      ;; q S b + r = q2 S b + r2 -> r <= b -> q <= q2 -> q = q2 and r = r2
+      (let* ((qsb `(* ,q ,sb)) (q2sb `(* ,q2 ,sb)) (ksb `(* ,k ,sb))
+             (he `(.eq (+ ,qsb ,r) (+ ,q2sb ,r2)))
+             (hr `(.le ,r ,b))
+             (goal `(.and (.eq ,q ,q2) (.eq ,r ,r2)))
+             (ek `(.eq (+ ,q ,k) ,q2))
+             (er `(.eq ,r (+ ,ksb ,r2)))
+             (kz `(.eq ,k zero)) (ks `(.eq ,k (s ,j)))
+             (exk `(.exists x4 (.eq ,k (s x4)))))
+        (ded 'th-divmod-unique-u1 (list ek er) kz
+             (lambda (nek ner nkz)
+               (and-intro (chain (sym (p4 q)) (rw+r q (sym nkz)) nek)
+                          (chain ner (rw+l (trans (rw*l nkz sb) (use 'th-mul-zero-l sb)) r2)
+                                 (use 'th-add-zero-l r2)))))
+        (ded 'th-divmod-unique-u2 (list er hr) ks
+             (lambda (ner nhr nks)
+               (let* ((jsb `(* ,j ,sb))
+                      (r-big (chain ner
+                                    (rw+l (chain (rw*l nks sb) (use 'th-mul-succ-l j sb)
+                                                 (use 'th-add-comm jsb sb))
+                                          r2)
+                                    (use 'th-add-assoc sb jsb r2)))
+                      (sb-le-r (le-intro (sym r-big)))
+                      (sb-le-b (mp (mp (use 'th-le-trans sb r b) sb-le-r) nhr)))
+                 (ex-falso (use 'th-not-succ-le b) sb-le-b goal))))
+        (ded 'th-divmod-unique-u3 (list er hr) exk
+             (lambda (ner nhr nx) (exists-elim nx (cite 'th-divmod-unique-u2 `(.to ,ks ,goal) ner nhr) j)))
+        (ded 'th-divmod-unique-u4 (list ek hr) er
+             (lambda (nek nhr ner)
+               (or-elim (cite 'th-divmod-unique-u1 `(.to ,kz ,goal) nek ner)
+                        (cite 'th-divmod-unique-u3 `(.to ,exk ,goal) ner nhr)
+                        (use 'th-zero-or-succ k))))
+        (ded 'th-divmod-unique-u5 (list he hr) ek
+             (lambda (nhe nhr nek)
+               (let* ((q2sb= (trans (rw*l (sym nek) sb) (use 'th-mul-distrib-r q k sb)))
+                      (e2 (chain nhe (rw+l q2sb= r2) (use 'th-add-assoc qsb ksb r2)))
+                      (nr (mp (use 'th-add-cancel-l r `(+ ,ksb ,r2) qsb) e2)))
+                 (mp (cite 'th-divmod-unique-u4 `(.to ,er ,goal) nek nhr) nr))))
+        (ded 'th-divmod-unique-u6 (list he hr) `(.le ,q ,q2)
+             (lambda (nhe nhr nq)
+               (exists-elim (le-unfold nq) (cite 'th-divmod-unique-u5 `(.to ,ek ,goal) nhe nhr) k)))
+        (ded 'th-divmod-unique-u7 (list he) hr
+             (lambda (nhe nhr) (cite 'th-divmod-unique-u6 `(.to (.le ,q ,q2) ,goal) nhe nhr)))
+        (let ((st (ded 'th-divmod-unique-u8 nil he
+                       (lambda (nhe) (cite 'th-divmod-unique-u7 `(.to ,hr (.to (.le ,q ,q2) ,goal)) nhe)))))
+          (close-law 'th-divmod-unique-core (lambda () (cite 'th-divmod-unique-u8 st))
+                     (list b q r q2 r2) '(x1 x2 x3 x5 x6))))
+
+      ;; both quotient and remainder agree
+      (let* ((qsb `(* ,q ,sb)) (q2sb `(* ,q2 ,sb))
+             (he `(.eq (+ ,qsb ,r) (+ ,q2sb ,r2)))
+             (hr `(.le ,r ,b)) (hr2 `(.le ,r2 ,b))
+             (goal `(.and (.eq ,q ,q2) (.eq ,r ,r2)))
+             (goal2 `(.and (.eq ,q2 ,q) (.eq ,r2 ,r))))
+        (ded 'th-divmod-unique-p1 nil goal2
+             (lambda (n) (and-intro (sym (and-l n)) (sym (and-r n)))))
+        (ded 'th-divmod-unique-p2 (list he hr2) `(.le ,q2 ,q)
+             (lambda (nhe nhr2 nq)
+               (mp (cite 'th-divmod-unique-p1 `(.to ,goal2 ,goal))
+                   (mp (mp (mp (use 'th-divmod-unique-core b q2 r2 q r) (sym nhe)) nhr2) nq))))
+        (ded 'th-divmod-unique-p3 (list he hr) hr2
+             (lambda (nhe nhr nhr2)
+               (or-elim (mp (mp (use 'th-divmod-unique-core b q r q2 r2) nhe) nhr)
+                        (cite 'th-divmod-unique-p2 `(.to (.le ,q2 ,q) ,goal) nhe nhr2)
+                        (use 'th-le-total q q2)))))
+
+      (close-law 'th-divmod-unique
+                 (lambda ()
+                   (let* ((qsb `(* ,q ,sb)) (q2sb `(* ,q2 ,sb))
+                          (he `(.eq (+ ,qsb ,r) (+ ,q2sb ,r2)))
+                          (hr `(.le ,r ,b)) (hr2 `(.le ,r2 ,b))
+                          (goal `(.and (.eq ,q ,q2) (.eq ,r ,r2))))
+                     (ded 'th-divmod-unique-p4 (list he) hr
+                          (lambda (nhe nhr) (cite 'th-divmod-unique-p3 `(.to ,hr2 ,goal) nhe nhr)))
+                     (let ((st (ded 'th-divmod-unique-p5 nil he
+                                    (lambda (nhe) (cite 'th-divmod-unique-p4
+                                                        `(.to ,hr (.to ,hr2 ,goal)) nhe)))))
+                       (cite 'th-divmod-unique-p5 st))))
+                 (list b q r q2 r2) '(x1 x2 x3 x5 x6))
+
+      ;; The defining formulas below contain no binders (<= and < are atomic),
+      ;; so no instance of the defining axioms can capture a variable.
+
+      ;; x <= y -> x * z <= y * z
+      (let* ((h `(.le ,q ,q2)) (goal `(.le (* ,q ,k) (* ,q2 ,k))) (e1 `(.eq (+ ,q ,j) ,q2)))
+        (ded 'th-le-mul-mono-s1 nil e1
+             (lambda (n1) (le-intro (trans (sym (use 'th-mul-distrib-r q j k)) (rw*l n1 k)))))
+        (let ((st (ded 'th-le-mul-mono-s2 nil h
+                       (lambda (m) (exists-elim (le-unfold m) (cite 'th-le-mul-mono-s1 `(.to ,e1 ,goal)) j)))))
+          (close-law 'th-le-mul-mono (lambda () (cite 'th-le-mul-mono-s2 st)) (list q q2 k))))
+
+      ;; the quotient: q * S b <= a < S q * S b
+      (let* ((aq (lambda (qq) `(.and (.le (* ,qq ,sb) ,a) (.lt ,a (* (s ,qq) ,sb)))))
+             (h1 `(.le ,q ,q2)) (h2 `(.le (* ,q2 ,sb) ,a)) (h3 `(.lt ,a (* (s ,q) ,sb)))
+             (g `(.eq ,q ,q2)))
+        ;; q <= q2 -> q2 S b <= a -> a < S q S b -> q = q2
+        (ded 'th-div-s-unique-d1 (list h2 h3) `(.le (s ,q) ,q2)
+             (lambda (n2 n3 nsq)
+               (let* ((m (mp (use 'th-le-mul-mono `(s ,q) q2 sb) nsq))
+                      (t1 (mp (mp (use 'th-le-trans `(* (s ,q) ,sb) `(* ,q2 ,sb) a) m) n2))
+                      (lt (mp (ax `(.to ,h3 (.le (s ,a) (* (s ,q) ,sb))) 'lt-unfold) n3))
+                      (t2 (mp (mp (use 'th-le-trans `(s ,a) `(* (s ,q) ,sb) a) lt) t1)))
+                 (ex-falso (use 'th-not-succ-le a) t2 g))))
+        (ded 'th-div-s-unique-d2 (list h2 h3) h1
+             (lambda (n2 n3 n1)
+               (or-elim (cite 'th-identity `(.to ,g ,g))
+                        (cite 'th-div-s-unique-d1 `(.to (.le (s ,q) ,q2) ,g) n2 n3)
+                        (mp (use 'th-le-cases q q2) n1))))
+        (ded 'th-div-s-unique-d3 (list h2) h3
+             (lambda (n2 n3) (cite 'th-div-s-unique-d2 `(.to ,h1 ,g) n2 n3)))
+        (let ((st (ded 'th-div-s-unique-d4 nil h2
+                       (lambda (n2) (cite 'th-div-s-unique-d3 `(.to ,h3 (.to ,h1 ,g)) n2)))))
+          (close-law 'th-div-s-unique-core (lambda () (cite 'th-div-s-unique-d4 st))
+                     (list b q q2 a) '(x1 x2 x3 x5)))
+        ;; A(q) -> A(q2) -> q = q2
+        (let ((c1 (funcall aq q)) (c2 (funcall aq q2)))
+          (ded 'th-div-s-unique-v0 (list c1 c2) `(.le ,q2 ,q)
+               (lambda (n1 n2 nle)
+                 (sym (mp (mp (mp (use 'th-div-s-unique-core b q2 q a) (and-l n1)) (and-r n2)) nle))))
+          (ded 'th-div-s-unique-v1 (list c1) c2
+               (lambda (n1 n2)
+                 (or-elim (mp (mp (use 'th-div-s-unique-core b q q2 a) (and-l n2)) (and-r n1))
+                          (cite 'th-div-s-unique-v0 `(.to (.le ,q2 ,q) ,g) n1 n2)
+                          (use 'th-le-total q q2))))
+          (let ((st (ded 'th-div-s-unique-v2 nil c1
+                         (lambda (n1) (cite 'th-div-s-unique-v1 `(.to ,c2 ,g) n1)))))
+            (close-law 'th-div-s-unique (lambda () (cite 'th-div-s-unique-v2 st))
+                       (list a b q q2) '(x1 x2 x3 x6))))
+        ;; a = q S b + r -> r <= b -> A(q)
+        (let* ((ceq `(.eq ,a (+ (* ,q ,sb) ,r)))
+               (er `(.eq (+ ,r ,k) ,b))
+               (c (funcall aq q))
+               (body `(.and (.eq ,a (+ (* ,q ,sb) ,r)) (.le ,r ,b)))
+               (ex5 `(.exists x5 (.and (.eq ,a (+ (* x5 ,sb) ,r)) (.le ,r ,b))))
+               (goal `(.exists x3 ,(funcall aq 'x3))))
+          (ded 'th-div-s-exists-x1 (list ceq) er
+               (lambda (nc ne)
+                 (let* ((qsb `(* ,q ,sb))
+                        (le1 (le-intro (sym nc)))
+                        (sum (chain (rw+l (trans (cong-s nc) (sym (p5 qsb r))) k)
+                                    (use 'th-add-assoc qsb `(s ,r) k)
+                                    (rw+r qsb (trans (use 'th-add-succ-l r k) (cong-s ne)))
+                                    (sym (use 'th-mul-succ-l q sb))))
+                        (lt (mp (ax `(.to (.le (s ,a) (* (s ,q) ,sb)) (.lt ,a (* (s ,q) ,sb))) 'lt-fold)
+                                (le-intro sum))))
+                   (and-intro le1 lt))))
+          (ded 'th-div-s-exists-x2 (list ceq) `(.le ,r ,b)
+               (lambda (nc nle) (exists-elim (le-unfold nle) (cite 'th-div-s-exists-x1 `(.to ,er ,c) nc) k)))
+          (ded 'th-div-s-exists-x3 nil body
+               (lambda (nb)
+                 (exists-intro (mp (cite 'th-div-s-exists-x2 `(.to (.le ,r ,b) ,c) (and-l nb)) (and-r nb))
+                               'x3 (funcall aq 'x3) q)))
+          (ded 'th-div-s-exists-x4 nil ex5
+               (lambda (nx) (exists-elim nx (cite 'th-div-s-exists-x3 `(.to ,body ,goal)) q)))
+          (close-law 'th-div-s-exists
+                     (lambda ()
+                       (exists-elim (use 'th-divmod-exists a b) (cite 'th-div-s-exists-x4 `(.to ,ex5 ,goal)) r))
+                     (list a b))
+          (define-fn 'div-s '(x1 x2) 'x3 'x6
+                     '(.and (.le (* x3 (s x2)) x1) (.lt x1 (* (s x3) (s x2))))
+                     'th-div-s-exists 'th-div-s-unique)
+
+          ;; the remainder: a = div-s(a, b) * S b + r
+          (let* ((dd `(div-s ,a ,b)) (dsb `(* ,dd ,sb))
+                 (ar (lambda (rr) `(.eq ,a (+ ,dsb ,rr))))
+                 (def (lambda () (ax `(.and (.le ,dsb ,a) (.lt ,a (* (s ,dd) ,sb))) 'div-s-def))))
+            (ded 'th-mod-s-exists-y1 nil `(.eq (+ ,dsb ,r) ,a)
+                 (lambda (n) (exists-intro (sym n) 'x3 (funcall ar 'x3) r)))
+            (close-law 'th-mod-s-exists
+                       (lambda ()
+                         (exists-elim (le-unfold (and-l (funcall def)))
+                                      (cite 'th-mod-s-exists-y1 `(.to (.eq (+ ,dsb ,r) ,a) (.exists x3 ,(funcall ar 'x3))))
+                                      r))
+                       (list a b))
+            (let ((st (ded 'th-mod-s-unique-z1 (list (funcall ar r)) (funcall ar r2)
+                           (lambda (n1 n2)
+                             (mp (use 'th-add-cancel-l r r2 dsb) (trans (sym n1) n2))))))
+              (ded 'th-mod-s-unique-z2 nil (funcall ar r)
+                   (lambda (n1) (cite 'th-mod-s-unique-z1 st n1)))
+              (close-law 'th-mod-s-unique
+                         (lambda () (cite 'th-mod-s-unique-z2 `(.to ,(funcall ar r) ,st)))
+                         (list a b r r2) '(x1 x2 x3 x6)))
+            (define-fn 'mod-s '(x1 x2) 'x3 'x6
+                       '(.eq x1 (+ (* (div-s x1 x2) (s x2)) x3))
+                       'th-mod-s-exists 'th-mod-s-unique)
+
+            ;; mod-s(a, b) <= b
+            (let* ((md `(mod-s ,a ,b)) (goal `(.le ,md ,b)))
+              (ded 'th-mod-s-le-m1 (list ceq) `(.le ,r ,b)
+                   (lambda (nc nle)
+                     (let* ((dq (mp (mp (use 'th-div-s-unique a b dd q) (funcall def))
+                                    (mp (cite 'th-div-s-exists-x2 `(.to (.le ,r ,b) ,c) nc) nle)))
+                            (a-dr (trans nc (rw+l (rw*l (sym dq) sb) r)))
+                            (mdef (ax `(.eq ,a (+ ,dsb ,md)) 'mod-s-def))
+                            (mr (mp (mp (use 'th-mod-s-unique a b md r) mdef) a-dr))
+                            (m-le-r (le-intro (trans (p4 md) mr))))
+                       (mp (mp (use 'th-le-trans md r b) m-le-r) nle))))
+              (ded 'th-mod-s-le-m2 nil body
+                   (lambda (nb) (mp (cite 'th-mod-s-le-m1 `(.to (.le ,r ,b) ,goal) (and-l nb)) (and-r nb))))
+              (ded 'th-mod-s-le-m3 nil ex5
+                   (lambda (nx) (exists-elim nx (cite 'th-mod-s-le-m2 `(.to ,body ,goal)) q)))
+              (close-law 'th-mod-s-le
+                         (lambda ()
+                           (exists-elim (use 'th-divmod-exists a b) (cite 'th-mod-s-le-m3 `(.to ,ex5 ,goal)) r))
+                         (list a b))))))
+
+      ;; Goedel's beta function: beta(c, d, i) = c mod (1 + (i + 1) d)
+      ;;                                        = mod-s(c, S i * d)
+      (with-vars (c d i y y2)
+        (let ((tm `(mod-s ,c (* (s ,i) ,d))))
+          (close-law 'th-beta-exists
+                     (lambda () (exists-intro (refl tm) 'x5 `(.eq x5 ,tm) tm))
+                     (list c d i))
+          (let ((st (ded 'th-beta-unique-s1 (list `(.eq ,y ,tm)) `(.eq ,y2 ,tm)
+                         (lambda (n1 n2) (trans n1 (sym n2))))))
+            (ded 'th-beta-unique-s2 nil `(.eq ,y ,tm)
+                 (lambda (n1) (cite 'th-beta-unique-s1 st n1)))
+            (close-law 'th-beta-unique
+                       (lambda () (cite 'th-beta-unique-s2 `(.to (.eq ,y ,tm) ,st)))
+                       (list c d i y y2) '(x1 x2 x3 x5 x6))))
+        (define-fn 'beta '(x1 x2 x3) 'x5 'x6 '(.eq x5 (mod-s x1 (* (s x3) x2)))
+                   'th-beta-exists 'th-beta-unique)))))
+
 (defparameter *header-09* ";;; 09-order.ledger -- generated by tools/generate-arithmetic-ledger.lisp
 ;;;
 ;;; The order of the natural numbers (00-peano-order.system: s <= t is
@@ -532,13 +866,43 @@ rest. Returns the discharged statement (.to DIS C)."
         (pprint cmd out)
         (terpri out)))))
 
+(defparameter *header-10* ";;; 10-division.ledger -- generated by tools/generate-arithmetic-ledger.lisp
+;;;
+;;; Division by a successor, S b (never zero), and the functions it defines.
+;;; Load after 09-order.ledger.
+;;;
+;;;   th-not-succ-le          not (S x <= x)
+;;;   th-le-cases             x <= y -> x = y  v  S x <= y
+;;;   th-divmod-exists        forall a b. exists r q. a = q * S b + r  and  r <= b
+;;;   th-divmod-unique-core   q S b + r = q' S b + r' -> r <= b -> q <= q' -> q = q' and r = r'
+;;;   th-divmod-unique        q S b + r = q' S b + r' -> r <= b -> r' <= b -> q = q' and r = r'
+;;;   th-le-mul-mono          x <= y -> x * z <= y * z
+;;;   th-div-s-unique, th-div-s-exists, th-mod-s-unique, th-mod-s-exists
+;;;   th-mod-s-le             mod-s(a, b) <= b
+;;;
+;;;   div-s(a, b)   the quotient of a divided by S b:
+;;;                 div-s(a,b) * S b <= a < S div-s(a,b) * S b      (DIV-S-DEF)
+;;;   mod-s(a, b)   the remainder: a = div-s(a,b) * S b + mod-s(a,b)  (MOD-S-DEF)
+;;;   beta(c, d, i) Goedel's beta function, mod-s(c, S i * d), i.e. the
+;;;                 remainder of c divided by 1 + (i + 1) d   (BETA-DEF)
+;;;
+;;; All three are admitted by DEFINE-FUNCTION-BY-DESCRIPTION, which re-checks
+;;; the existence and uniqueness theorems above before adding the symbol.
+;;; Their defining formulas contain no binders (<= and < are atomic), so no
+;;; instance of a defining axiom can capture a variable.
+
+")
+
 (enable-derived-entry-memoization)
 (setf *L* (peano-base-ledger))
 (build-arithmetic)
-(let ((arith (reverse *commands*)))
+(let ((arith (reverse *commands*)) order)
   (setf *commands* nil)
   (build-order)
+  (setf order (reverse *commands*) *commands* nil)
+  (build-division)
   (write-library (library-file "08-arithmetic.ledger") *header-08* arith)
-  (write-library (library-file "09-order.ledger") *header-09* (reverse *commands*))
-  (format t "~&Wrote ~D + ~D commands to 08-arithmetic.ledger and 09-order.ledger~%"
-          (length arith) (length *commands*)))
+  (write-library (library-file "09-order.ledger") *header-09* order)
+  (write-library (library-file "10-division.ledger") *header-10* (reverse *commands*))
+  (format t "~&Wrote ~D + ~D + ~D commands to 08-arithmetic, 09-order, 10-division~%"
+          (length arith) (length order) (length *commands*)))

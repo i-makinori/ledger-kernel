@@ -50,12 +50,13 @@ Web UI も付いています。
 - 命題論理・述語論理・等号・古典論理・結合子・量化子の補題、ZF の空集合（存在・
   一意性・定義）
 - 自然数論: 加法・乗法の交換律・結合律・分配律・簡約律（`08`）、順序の反射律・
-  推移律・反対称律・全順序性、「0 か後者か」（`09`）。すべて P1〜P10 から帰納法で証明
+  推移律・反対称律・全順序性、「0 か後者か」（`09`）、割り算の存在と一意性、商 `div-s`・
+  余り `mod-s`・ゲーデルの β 関数 `beta` の定義（`10`）。すべて P1〜P10 から帰納法で証明
 - Web UI: ライブラリの閲覧（式は教科書風の記法）、証明の表と証明図、記号や引用先への
   リンク、依存している公理と「この定理を使っている定理」の表示、ブラウザ上での
   証明の検証
 
-テスト: カーネル 248 件、Web 41 件がすべて通り、コンパイル警告 0 の状態です。
+テスト: カーネル 252 件、Web 41 件がすべて通り、コンパイル警告 0 の状態です。
 
 カーネル（`src/`）はコメント込みで約 1650 行です。論理そのものはコードに書かず、
 すべて `.system` ファイルに置いています。使われていない機能は `backup/` に、元の
@@ -73,7 +74,7 @@ Web UI も付いています。
 (require :asdf)
 (asdf:load-asd (merge-pathnames "ledger-kernel.asd"))
 (asdf:load-system :ledger-kernel)
-(asdf:test-system :ledger-kernel)      ; 最後に "248/248 self-tests passed." と出る
+(asdf:test-system :ledger-kernel)      ; 最後に "252/252 self-tests passed." と出る
 (in-package :ledger-kernel)
 ```
 
@@ -107,7 +108,7 @@ ZF 集合論の場合:
 ```
 
 ペアノ算術なら、`00-classical-fol-equality.system`・`00-connectives.system`・
-`00-peano-arithmetic.system`・`00-peano-order.system` の上に `01`〜`06`、`08`、`09` を
+`00-peano-arithmetic.system`・`00-peano-order.system` の上に `01`〜`06`、`08`〜`10` を
 積みます（Web UI の「Peano arithmetic」と同じ順です）。読み込むときに、すべての証明が
 検証し直されます。
 
@@ -242,13 +243,14 @@ GitHub Pages などの静的ホスティングに置けます。画面はサー�
 | `hilbert-library/07-quantifier-schemas.ledger` | P(x) についての量化子の補題（∀除去、∃導入、単調性、∃! → ∃、∃! の一意性） |
 | `hilbert-library/08-arithmetic.ledger` | 加法・乗法の交換律・結合律・分配律・簡約律、0 と 1 の性質（`tools/generate-arithmetic-ledger.lisp` で生成） |
 | `hilbert-library/09-order.ledger` | ≤ の反射律・推移律・反対称律・全順序性、x ≤ Sx、0 か後者か、x + y = 0 → y = 0（同上） |
+| `hilbert-library/10-division.ledger` | S b による割り算の存在と一意性、商 `div-s(a,b)`・余り `mod-s(a,b)`・β 関数 `beta(c,d,i)` = c mod (1+(i+1)d) の定義（同上） |
 | `zf-library/00-zf.system` | ZF の公理系 |
 | `zf-library/01-empty-set.ledger` | 空集合の存在・一意性、∅ の定義、¬(x ∈ ∅) |
 
 読み込み順は、`.system` → `01`, `02`, `03`, `05`, `06`, `07` → `zf-library/01` です
 （「ライブラリを読み込む」の例のとおり）。
 
-`08` と `09` の法則は、束縛専用の変数 x1, x2, x3 で全称閉包した形で登録されています
+`08`〜`10` の法則は、束縛専用の変数 x1, x2, x3 で全称閉包した形で登録されています
 （例: `th-add-comm` は ∀x1 ∀x2 (x1 + x2 = x2 + x1)）。使うときは引用してから III.1 で
 好きな項を代入します。代入する項に x1〜x3 が現れないので、変数の捕獲は起きません。
 
@@ -330,7 +332,7 @@ tools/
   serve.lisp                        Web UI を起動する
   export-static.lisp                Web UI を静的サイトとして書き出す
   generate-connectives-ledger.lisp  06-connectives.ledger を生成し直す
-  generate-arithmetic-ledger.lisp   08-arithmetic.ledger と 09-order.ledger を生成し直す
+  generate-arithmetic-ledger.lisp   08-arithmetic / 09-order / 10-division を生成し直す
 docs/guide.md            機能ごとの詳しい説明
 backup/                  カーネルから外した機能（元のコードと復元の手順。読み込まれない）
 ```
@@ -342,7 +344,7 @@ backup/                  カーネルから外した機能（元のコードと�
 sbcl --non-interactive \
      --eval '(require :asdf)' \
      --eval '(asdf:load-asd (merge-pathnames "ledger-kernel.asd"))' \
-     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（248 件）
+     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（252 件）
 ```
 
 Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（41 件。HTTP は使いません）。

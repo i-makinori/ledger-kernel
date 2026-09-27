@@ -32,7 +32,8 @@
       "hilbert-library/05-classical-logic.ledger"
       "hilbert-library/06-connectives.ledger"
       "hilbert-library/08-arithmetic.ledger"
-      "hilbert-library/09-order.ledger")))
+      "hilbert-library/09-order.ledger"
+      "hilbert-library/10-division.ledger")))
   "(ID TITLE FILES) for every world, FILES relative to the repository.")
 
 (defstruct world id title ledger modules symbols deps)

@@ -149,6 +149,57 @@ variables bound around it; dependence is written P(x)."
             nil))
   ledger)
 
+(defun test-rule-binder-names (ledger)
+  "A rule's bound pattern variables are registered as ?BV1, ?BV2, ... in
+order of first appearance; other pattern variables keep their names."
+  (flet ((rule (kind name)
+           (find name (entries-of-kind kind ledger) :key (lambda (e) (first (entry-payload e))))))
+    (let ((ledger (bootstrap-kernel-from-spec-file (library-path "00-connectives.system") :ledger ledger)))
+      (flet ((rule (kind name)
+               (find name (entries-of-kind kind ledger) :key (lambda (e) (first (entry-payload e))))))
+        (let ((e (rule 'axiom 'exists1-unfold)))
+          (expect "EXISTS1-UNFOLD: ?x, ?u become ?BV1, ?BV2 in the form"
+                  (equal (third (entry-payload e))
+                         '(nil (.to (.exists1 ?bv1 ?a)
+                                (.exists ?bv1 (.and ?a (.forall ?bv2 (.to (@subst ?bv1 ?bv2 ?a)
+                                                                         (.eq ?bv2 ?bv1))))))))
+                  t)
+          (expect "... and in the side conditions, renamed together"
+                  (equal (second (entry-payload e))
+                         '((var? ?bv1) (var? ?bv2) (wff? ?a)
+                           (@not-free-in? ?bv2 ?bv1) (@not-free-in? ?bv2 ?a)
+                           (@subst-ok? ?bv1 ?bv2 ?a)))
+                  t)
+          (expect "... and the names as written are kept in the origin"
+                  (equal (getf (cdr (entry-origin e)) :source-names) '((?x . ?bv1) (?u . ?bv2)))
+                  t))))
+    (expect "Gen: ?x, used free in the extra argument and bound in the result, is ?BV1 throughout"
+            (equal (third (entry-payload (rule 'irule 'gen))) '((?a) (?bv1) :=> (.forall ?bv1 ?a)))
+            t)
+    (expect "III.1: the bound ?x is ?BV1; ?A and ?t keep their names"
+            (equal (third (entry-payload (rule 'axiom 'iii.1)))
+                   '((?t) (.to (.forall ?bv1 ?a) (@subst ?bv1 ?t ?a))))
+            t)
+    (expect "MP has no binder, nothing is renamed"
+            (equal (third (entry-payload (rule 'irule 'mp))) '(((.to ?a ?b) ?a) nil :=> ?b))
+            t))
+  (expect "Attack: a rule that already uses ?BV1 for another variable -- must error"
+          (handler-case
+              (progn (bootstrap-kernel-from-spec
+                      '((:axiom bad ((var? ?x) (term? ?bv1)) (nil (.forall ?x (.eq ?x ?bv1)))))
+                      :ledger ledger)
+                     :admitted)
+            (error () :refused))
+          :refused)
+  (expect "a rule written with ?BVn names already is admitted unchanged"
+          (let* ((l (bootstrap-kernel-from-spec
+                     '((:axiom refl-all ((var? ?bv1)) (nil (.forall ?bv1 (.eq ?bv1 ?bv1)))))
+                     :ledger ledger))
+                 (e (find 'refl-all (entries-of-kind 'axiom l) :key (lambda (e) (first (entry-payload e))))))
+            (equal (third (entry-payload e)) '(nil (.forall ?bv1 (.eq ?bv1 ?bv1)))))
+          t)
+  ledger)
+
 (defun run-debruijn-self-tests ()
   (format t "~&--- de Bruijn (machine B) ---~%")
   (let ((ledger (fol-kernel)))
@@ -157,4 +208,5 @@ variables bound around it; dependence is written P(x)."
     (test-debruijn-substitution ledger)
     (test-debruijn-fresh-variables ledger)
     (test-debruijn-schema-capture ledger)
+    (test-rule-binder-names ledger)
     t))

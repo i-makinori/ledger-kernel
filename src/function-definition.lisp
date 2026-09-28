@@ -47,7 +47,7 @@ only to state uniqueness."
            (schema-y (intern "?Y" (symbol-package name)))
            (schema-a (rename-many (append (mapcar #'cons arg-vars schema-xs) (list (cons y-var schema-y)))
                                    a-formula))
-           (schema-a-at-name (substitute-wff schema-y (cons name schema-xs) schema-a))
+           (schema-a-at-name (substitute-named schema-y (cons name schema-xs) schema-a))
            (term-cmd (list :term-formation
                             (intern (format nil "~A-TERM" (symbol-name name)) (symbol-package name))
                             (mapcar (lambda (x) (list 'term? x)) schema-xs)

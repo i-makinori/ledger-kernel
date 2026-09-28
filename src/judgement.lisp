@@ -38,15 +38,22 @@ through unchanged to CHECK-CONDITIONS."
 Returns (values new-binds ok-p)."
   (destructuring-bind (name conditions form) (entry-payload entry)
     (declare (ignore name))
+    ;; No SEED-FRESH: a formation rule's binder is the whole expression
+    ;; being judged, so TAKE-FRESH's fallback (scan that expression)
+    ;; already avoids everything in play.
     (let ((b0 (match-template form (cons kind args) binds)))
       (if (match-fail-p b0)
           (values binds nil)
           (check-conditions conditions b0 ledger seen open-hyps)))))
 
-(defun judgement? (kind expr ledger &optional (seen nil) (open-hyps nil))
-  "T iff EXPR (a concrete expression) holds as a KIND judgement in LEDGER.
-SEEN and OPEN-HYPS are as in JUDGEMENT-BIND; top-level callers omit them."
+(defun %judgement? (kind expr ledger &optional (seen nil) (open-hyps nil))
+  "T iff kernel-form EXPR holds as a KIND judgement in LEDGER. SEEN and
+OPEN-HYPS are as in JUDGEMENT-BIND; top-level callers omit them."
   (nth-value 1 (judgement-bind kind (list expr) nil ledger seen open-hyps)))
+
+(defun judgement? (kind expr ledger &optional (seen nil) (open-hyps nil))
+  "As %JUDGEMENT?, for EXPR in surface or kernel form."
+  (%judgement? kind (named->db expr ledger) ledger seen open-hyps))
 
 ;;; Declared symbols are base cases read off Sigma, not formation rules:
 ;;; a generic rule such as (wff? ?A) would match any expression, including
@@ -73,4 +80,4 @@ every ti a term."
          (and arity
               (listp (cdr expr))
               (= (length (cdr expr)) arity)
-              (every (lambda (arg) (judgement? 'term? arg ledger seen open-hyps)) (cdr expr))))))
+              (every (lambda (arg) (%judgement? 'term? arg ledger seen open-hyps)) (cdr expr))))))

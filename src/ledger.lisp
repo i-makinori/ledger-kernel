@@ -139,8 +139,11 @@ nothing by itself, and every proof step still comes from an entry before K."
        (second (assoc x (sigma-predicate-schemas ledger) :test #'eq))))
 
 (defun variable-p (x ledger)
-  "True iff X is a declared variable symbol."
-  (member x (sigma-variable-symbols ledger) :test #'eq))
+  "True iff X is a declared variable symbol, or one of the kernel's fresh
+variables %0, %1, ... (debruijn.lisp), which are variables of every
+ledger and can never be declared as anything else."
+  (or (fresh-var-name-p x)
+      (member x (sigma-variable-symbols ledger) :test #'eq)))
 
 ;;; --- Growth paths -------------------------------------------------------
 ;;;
@@ -179,11 +182,13 @@ never be declared. (BINDER-HEADS) must be LIST*'s last argument."
 (defun fresh-symbol-name-p (sym ledger)
   "T iff SYM may be declared: a symbol that is not a pattern variable,
 meta-tag or reserved head, and not already declared in any Sigma
-namespace (atomic wffs, variables and predicate schemas share one pool)."
+namespace (atomic wffs, variables and predicate schemas share one pool),
+nor a fresh variable %n."
   (and (symbolp sym)
        (not (pat-var-p sym))
        (not (at-symbol-p sym))
        (not (reserved-head-symbol-p sym))
+       (not (fresh-var-name-p sym))
        (not (atomic-wff-symbol-p sym ledger))
        (not (variable-p sym ledger))
        (not (predicate-schema-arity sym ledger))))

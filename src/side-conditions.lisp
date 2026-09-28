@@ -44,7 +44,7 @@ OPEN-HYPS (the open hypotheses) is passed to every meta-predicate."
      ;; Object-level (kind arg): ARG is already bound by matching the
      ;; rule's FORM, so check the instantiated judgement.
      (let ((inst-arg (instantiate-with-binds (second cond-form) binds)))
-       (values binds (judgement? (car cond-form) inst-arg ledger seen open-hyps))))))
+       (values binds (%judgement? (car cond-form) inst-arg ledger seen open-hyps))))))
 
 (defun check-conditions (conditions binds ledger &optional (seen nil) (open-hyps nil))
   "Check CONDITIONS in order, stopping at the first failure. Returns

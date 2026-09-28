@@ -58,6 +58,7 @@
                (:file "render")
                (:file "worlds")
                (:file "deps")
+               (:file "safe-read")
                (:file "api")
                (:file "server")
                (:file "static-export"))

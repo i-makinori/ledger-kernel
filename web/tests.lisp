@@ -53,7 +53,7 @@
                     #("accepted" "accepted" "rejected"))
             t)
     (expect "api-check: #. is never evaluated"
-            (and (eq (gethash "ok" evil) 'yason:false) (search "READ-EVAL" (gethash "error" evil))) t)
+            (and (eq (gethash "ok" evil) 'yason:false) (search "not allowed" (gethash "error" evil))) t)
     (expect "api-check: a malformed line is reported, not checked"
             (and (eq (gethash "ok" junk) 'yason:false) (search "Line 1" (gethash "error" junk))) t)))
 
@@ -171,6 +171,35 @@
                      t)))
       (uiop:delete-directory-tree dir :validate t :if-does-not-exist :ignore))))
 
+(defun test-web-safe-read ()
+  (flet ((rejects (text)
+           (handler-case (progn (safe-read-forms text) nil)
+             (safe-read-error () t))))
+    (expect "safe-read: a proof made of known symbols, keywords and numbers reads as with READ"
+            (equal (safe-read-forms "((0 (.to a a) :th (th-identity)) ; comment
+                                      (1 (.eq v0 v0) :axiom (iv.1)))")
+                   '(((0 (.to a a) :th (th-identity)) (1 (.eq v0 v0) :axiom (iv.1)))))
+            t)
+    (let ((name (format nil "NO-SUCH-SYMBOL-~D" (random 1000000000 (make-random-state t)))))
+      (expect "safe-read: an unknown symbol is refused"
+              (rejects (format nil "((0 (.eq ~A v0) :hyp nil))" name)) t)
+      (expect "safe-read: ... and is not interned"
+              (nth-value 1 (find-symbol name :ledger-kernel)) nil)
+      (expect "api-check: an unknown symbol yields an error, and nothing is interned"
+              (and (gethash "error" (api-check "zf" (format nil "((0 (.eq ~A v0) :hyp nil))" name)))
+                   (not (nth-value 1 (find-symbol name :ledger-kernel))))
+              t))
+    (expect "safe-read: #. is refused" (rejects "((0 #.(+ 1 2) :hyp nil))") t)
+    (expect "safe-read: strings, quote and |...| are refused"
+            (and (rejects "((0 \"x\" :hyp nil))") (rejects "((0 'a :hyp nil))") (rejects "((0 |a| :hyp nil))"))
+            t)
+    (expect "safe-read: a lone dot is refused" (rejects "((0 . a))") t)
+    (expect "safe-read: nesting beyond the limit is refused, not a stack overflow"
+            (rejects (concatenate 'string (make-string 100000 :initial-element #\()
+                                  (make-string 100000 :initial-element #\))))
+            t)
+    (expect "safe-read: an unclosed list is refused" (rejects "((0 (.eq v0 v0) :hyp nil)") t)))
+
 (defun run-web-self-tests ()
   (let ((*expect-results* (cons 0 0)))
     (unless *worlds* (load-worlds))
@@ -179,6 +208,7 @@
     (test-web-links)
     (test-web-deps)
     (test-web-static-export)
+    (test-web-safe-read)
     (destructuring-bind (passed . failed) *expect-results*
       (format t "~%~D/~D web self-tests passed.~%" passed (+ passed failed))
       (zerop failed))))

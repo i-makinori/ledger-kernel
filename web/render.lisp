@@ -73,15 +73,21 @@
                      c))
        string))
 
+(defun render-pattern-variable (sym)
+  "?BV1 -> ?BV₁ (a rule's canonical bound pattern variable); others as is."
+  (if (bound-pattern-variable-name-p sym)
+      (concatenate 'string "?BV" (subscript-digits (subseq (symbol-name sym) 3)))
+      (symbol-name sym)))
+
 (defun render-symbol (sym ledger)
   (if (pat-var-p sym)
-      (symbol-name sym)
+      (render-pattern-variable sym)
       (link sym (render-symbol-text sym ledger))))
 
 (defun render-symbol-text (sym ledger)
   (let ((name (symbol-name sym)))
     (cond
-      ((pat-var-p sym) name)
+      ((pat-var-p sym) (render-pattern-variable sym))
       ((and ledger (variable-p sym ledger))
        ;; v0 -> v₀
        (let ((pos (position-if #'digit-char-p name)))

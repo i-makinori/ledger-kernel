@@ -21,7 +21,8 @@ Common Lisp で書かれた、自前実装の Hilbert 流の証明検証系（pr
   `(.forall (.forall (.eq (:bv 1) (:bv 0))))` になり、束縛変数の名前だけが違う
   （α同値な）式は文字通り同じ値です。自由変数は意味を持つので名前のまま残します。
   変換は証明が台帳に入るときに一度だけ行い、書かれたままの文面は表示と保存の
-  ために別に残します。
+  ために別に残します。`.system` の規則でも、束縛子の変数になっているパターン変数を
+  登録時に `?BV1`, `?BV2`, … に付け替えます。
 
 ブラウザでライブラリを閲覧し、証明を証明図で眺め、書いた証明をその場で検証できる
 Web UI も付いています。
@@ -63,7 +64,7 @@ Web UI も付いています。
   リンク、依存している公理と「この定理を使っている定理」の表示、ブラウザ上での
   証明の検証
 
-テスト: カーネル 287 件、Web 41 件がすべて通り、コンパイル警告 0 の状態です。
+テスト: カーネル 295 件、Web 41 件がすべて通り、コンパイル警告 0 の状態です。
 
 カーネル（`src/`）はコメント込みで約 2000 行です。論理そのものはコードに書かず、
 すべて `.system` ファイルに置いています。使われていない機能は `backup/` に、元の
@@ -81,7 +82,7 @@ Web UI も付いています。
 (require :asdf)
 (asdf:load-asd (merge-pathnames "ledger-kernel.asd"))
 (asdf:load-system :ledger-kernel)
-(asdf:test-system :ledger-kernel)      ; 最後に "287/287 self-tests passed." と出る
+(asdf:test-system :ledger-kernel)      ; 最後に "295/295 self-tests passed." と出る
 (in-package :ledger-kernel)
 ```
 
@@ -358,7 +359,7 @@ backup/                  カーネルから外した機能（元のコードと�
 sbcl --non-interactive \
      --eval '(require :asdf)' \
      --eval '(asdf:load-asd (merge-pathnames "ledger-kernel.asd"))' \
-     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（287 件）
+     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（295 件）
 ```
 
 Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（41 件。HTTP は使いません）。

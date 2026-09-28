@@ -117,31 +117,73 @@ defining axiom NAME-DEF, which says what it means."
       ((atomic-wff-symbol variable-symbol) p)
       (t (if (consp p) (car p) p)))))
 
+;;; Every entry is shown with its bound variables named ?BV1, ?BV2, ...
+;;; (displayed ?bV₁, ?bV₂, ...): a theorem's, which the kernel stores
+;;; nameless (de Bruijn), numbered per formula in order of appearance; a
+;;; rule's, as registered (system-spec.lisp). Free variables, atoms and
+;;; the rule's other pattern variables keep their names.
+
+(defun display-proof (raw-proof)
+  "Kernel-form RAW-PROOF with every formula and justification argument
+given ?BVn names (DB->BV-NAMED, per expression)."
+  (let ((numbers (mapcar #'first raw-proof)))
+    (mapcar (lambda (line)
+              (destructuring-bind (num formula role by) line
+                (list num (db->bv-named formula) role
+                      (if (consp by)
+                          (cons (car by)
+                                (mapcar (lambda (a) (if (member a numbers :test #'equal) a (db->bv-named a)))
+                                        (cdr by)))
+                          by))))
+            raw-proof)))
+
+(defun rule-bound-name-start (payload)
+  "1 + the largest n of a ?BVn name in a rule's PAYLOAD."
+  (let ((best 0))
+    (labels ((walk (x)
+               (cond ((consp x) (walk (car x)) (walk (cdr x)))
+                     ((bound-pattern-variable-name-p x)
+                      (setf best (max best (parse-integer (symbol-name x) :start 3)))))))
+      (walk payload))
+    (1+ best)))
+
+(defun display-pattern (x payload)
+  "A rule pattern X for display: a binder over a concrete variable (as in
+a definition's defining axiom) is named ?BVn too, numbered after the
+rule's own ?BVn names."
+  (db->bv-named (pattern->db x) (rule-bound-name-start payload)))
+
 (defun entry-proof (e)
-  "The stored raw proof of a derived entry, or NIL."
+  "The stored proof of a derived entry, for display, or NIL."
   (case (entry-kind e)
-    (th (second (entry-source-payload e)))
-    (th-ded (third (entry-source-payload e)))))
+    (th (display-proof (second (entry-payload e))))
+    (th-ded (display-proof (third (entry-payload e))))))
+
+(defun entry-discharged (e)
+  "The hypothesis a TH-DED entry discharges, for display."
+  (db->bv-named (second (entry-payload e))))
 
 (defun entry-statement (e)
   "(VALUES PREMISES CONCLUSION) -- what the entry asserts. PREMISES are
 the formulas it needs cited (hypotheses of a derived entry, premises of
 an inference rule); CONCLUSION is what it yields. Axiom and rule schemas
-contain ?-pattern variables. Derived entries are shown as written
-(ENTRY-SOURCE-PAYLOAD), not in the kernel's de Bruijn form."
-  (let ((p (entry-source-payload e)))
+contain ?-pattern variables. Bound variables are named ?BVn (see
+DISPLAY-PROOF)."
+  (let ((p (entry-payload e)))
     (case (entry-kind e)
       (th
-       (values (proof-hypotheses (second p)) (proof-conclusion (second p))))
+       (values (mapcar #'db->bv-named (proof-hypotheses (second p)))
+               (db->bv-named (proof-conclusion (second p)))))
       (th-ded
        (destructuring-bind (name hyp raw) p
          (declare (ignore name))
-         (values (remove hyp (proof-hypotheses raw) :test #'equal)
-                 (list '.to hyp (proof-conclusion raw)))))
-      (axiom (values nil (second (third p))))
+         (values (mapcar #'db->bv-named (remove hyp (proof-hypotheses raw) :test #'equal))
+                 (db->bv-named (list '.to hyp (proof-conclusion raw))))))
+      (axiom (values nil (display-pattern (second (third p)) p)))
       (irule (let ((form (third p)))
-               (values (first form) (car (last form)))))
-      ((wff? term? var?) (values nil (third p)))
+               (values (mapcar (lambda (f) (display-pattern f p)) (first form))
+                       (display-pattern (car (last form)) p))))
+      ((wff? term? var?) (values nil (display-pattern (third p) p)))
       (predicate-schema-symbol
        (values nil (cons (first p) (loop for i from 1 to (second p)
                                          collect (intern (format nil "?X~D" i) :ledger-kernel)))))

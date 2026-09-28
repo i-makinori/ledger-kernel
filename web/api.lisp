@@ -105,7 +105,7 @@ each symbol/operator linked to the entry that introduced it -- when
               (gethash "premiseFormulas" h) (json-arr (mapcar (lambda (f) (formula-json f ledger)) premises))
               (gethash "conditions" h) (json-arr (mapcar #'render-sexp (entry-conditions e)))
               (gethash "discharged" h) (if (eq (entry-kind e) 'th-ded)
-                                           (formula-json (second (entry-payload e)) ledger)
+                                           (formula-json (entry-discharged e) ledger)
                                            nil)
               (gethash "proof" h) (if proof (proof-lines-json w proof ledger) nil)
               (gethash "usedBy" h) (json-arr (mapcar (lambda (c) (entry-ref-json w c))

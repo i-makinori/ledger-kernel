@@ -149,6 +149,11 @@ variables bound around it; dependence is written P(x)."
             nil))
   ledger)
 
+(defun alexandria-flatten (x)
+  "All atoms of tree X."
+  (cond ((null x) nil) ((atom x) (list x))
+        (t (append (alexandria-flatten (car x)) (alexandria-flatten (cdr x))))))
+
 (defun test-rule-binder-names (ledger)
   "A rule's bound pattern variables are registered as ?BV1, ?BV2, ... in
 order of first appearance; other pattern variables keep their names."
@@ -173,9 +178,40 @@ order of first appearance; other pattern variables keep their names."
           (expect "... and the names as written are kept in the origin"
                   (equal (getf (cdr (entry-origin e)) :source-names) '((?x . ?bv1) (?u . ?bv2)))
                   t))))
-    (expect "Gen: ?x, used free in the extra argument and bound in the result, is ?BV1 throughout"
-            (equal (third (entry-payload (rule 'irule 'gen))) '((?a) (?bv1) :=> (.forall ?bv1 ?a)))
+    (expect "Gen: ?x is also the extra argument (free), so it keeps its name -- no ?BVn outside a binder"
+            (equal (third (entry-payload (rule 'irule 'gen))) '((?a) (?x) :=> (.forall ?x ?a)))
             t)
+    (expect "III.3: ?x is also an extra argument, so it keeps its name"
+            (equal (first (third (entry-payload (rule 'axiom 'iii.3)))) '(?x ?a ?t))
+            t)
+    (expect "IOTA: ?x, ?y, ?z occur only within their scope (incl. A[t/x]) and become ?BV1-3"
+            (equal (third (entry-payload (rule 'irule 'iota)))
+                   '(((.exists ?bv1 ?a)
+                      (.forall ?bv2 (.forall ?bv3 (.to (@subst ?bv1 ?bv2 ?a)
+                                                      (.to (@subst ?bv1 ?bv3 ?a) (.eq ?bv2 ?bv3))))))
+                     nil :=> (@subst ?bv1 (.iota ?bv1 ?a) ?a)))
+            t)
+    (expect "no rule has a ?BVn outside the scope of its binder"
+            (every (lambda (e)
+                     (let ((form (third (entry-payload e))))
+                       (every (lambda (v) (only-bound-in-form-p v form))
+                              (remove-if-not #'bound-pattern-variable-name-p
+                                             (remove-duplicates (alexandria-flatten form))))))
+                   (append (entries-of-kind 'axiom ledger) (entries-of-kind 'irule ledger)
+                           (entries-of-kind 'wff? ledger) (entries-of-kind 'term? ledger)))
+            t)
+    (expect "P3: ?x is also an extra argument, so it keeps its name"
+            (let ((l (fol-kernel :arithmetic t)))
+              (equal (first (third (entry-payload (find 'p3 (entries-of-kind 'axiom l)
+                                                         :key (lambda (e) (first (entry-payload e)))))))
+                     '(?x ?a)))
+            t)
+    (expect "?bv1 is accepted as the variable of a binder in a proof"
+            (check-k-proof '((0 (.to (.forall ?bv1 (.eq ?bv1 ?bv1)) (.eq v2 v2)) :axiom (iii.1 v2))) ledger)
+            t)
+    (expect "Attack: ?bv1 outside any binder is not a term -- must reject"
+            (check-k-proof '((0 (.eq ?bv1 ?bv1) :axiom (iv.1))) ledger)
+            nil)
     (expect "III.1: the bound ?x is ?BV1; ?A and ?t keep their names"
             (equal (third (entry-payload (rule 'axiom 'iii.1)))
                    '((?t) (.to (.forall ?bv1 ?a) (@subst ?bv1 ?t ?a))))

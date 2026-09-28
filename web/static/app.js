@@ -114,6 +114,7 @@ function kindGroup(kind) {
 
 async function loadWorlds() {
   const worlds = await api("/api/worlds");
+  state.worlds = worlds;
   const select = document.getElementById("world");
   select.replaceChildren(...worlds.map(w => el("option", { value: w.id }, `${w.title}（${w.entries}）`)));
   const fromHash = parseHash();
@@ -129,7 +130,7 @@ async function loadEntries() {
   renderList();
   if (!state.selectedK) {
     document.getElementById("entry-detail").replaceChildren(
-      STATIC ? staticIntro() : el("p", { class: "placeholder" }, "左の一覧から定義・公理・定理を選んでください。"));
+      intro());
   }
 }
 
@@ -376,18 +377,22 @@ function copyButton(text) {
 }
 
 // The static site's landing text, in place of "pick an entry".
-function staticIntro() {
-  const worlds = STATIC.worlds.map(w => `${w.title}（${w.entries} エントリ）`).join("、");
+// The landing text shown until an entry is picked.
+function intro() {
+  const worlds = (state.worlds || []).map(w => `${w.title}（${w.entries} エントリ）`).join("、");
+  const mode = STATIC
+    ? "これは静的に書き出した閲覧専用の版です。書き出しの時点で、すべての証明をカーネルが最初から検証し直しています"
+      + `（${STATIC.generated}${STATIC.revision ? "、commit " + STATIC.revision : ""}）。`
+      + "新しい証明の検証は、サーバー版のエディタで行えます。"
+    : "上の「エディタ」タブで証明を書くと、選んでいる体系の台帳に対してその場で検証されます（台帳には追加されません）。"
+      + "定理のページの「エディタで開く」で、その証明を編集して試せます。";
   return el("div", { class: "static-intro" },
     el("h1", {}, "Ledger Kernel"),
     el("p", {}, "追記専用の台帳（ledger）で「証明可能」を管理する、Hilbert 流の証明検証系のライブラリです。"
       + "左の一覧から公理・定理を選ぶと、命題・証明（表と証明図）・依存している公理・その定理を使っている定理を見られます。"
       + "式の記号や規則名をクリックすると、導入元・引用先のエントリが新しいタブで開きます。"),
-    el("p", {}, "収録：" + worlds + "。"),
-    el("p", { class: "muted small" },
-      "これは静的に書き出した閲覧専用の版です。書き出しの時点で、すべての証明をカーネルが最初から検証し直しています"
-      + `（${STATIC.generated}${STATIC.revision ? "、commit " + STATIC.revision : ""}）。`
-      + "新しい証明の検証は、サーバー版（tools/serve.lisp）のエディタで行えます。"),
+    worlds ? el("p", {}, "収録：" + worlds + "。") : null,
+    el("p", { class: "muted small" }, mode),
     el("p", { class: "muted small" },
       "AI の支援を受けて作成した実験的なソフトウェアで、第三者による監査は受けていません。"));
 }

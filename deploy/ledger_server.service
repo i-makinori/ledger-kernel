@@ -1,0 +1,62 @@
+# systemd service for the Ledger Kernel web UI (browse + check proofs).
+#
+# how to setup:
+# # 1. cp
+# sudo cp deploy/ledger_server.service /etc/systemd/system/
+# # 2. systemd reload
+# sudo systemctl daemon-reload
+# # 3. start service
+# sudo systemctl start ledger_server
+# # 4. auto start each OS boot
+# sudo systemctl enable ledger_server
+# # 5. test status. if (Active: active (running)) is printed, it is success.
+# sudo systemctl status ledger_server
+# # logs
+# journalctl -u ledger_server -f
+
+[Unit]
+Description=Ledger Kernel Web UI
+After=network.target
+
+[Service]
+User=centos
+Group=centos
+
+# The repository root (ledger-kernel.asd lives here).
+WorkingDirectory=/home/centos/public/ledger-kernel
+
+# Listen only on localhost; nginx is the public face (ledger_server.conf).
+Environment=ADDRESS=127.0.0.1
+Environment=PORT=35938
+# Limits for a public server (see tools/serve.lisp).
+Environment=LEDGER_CHECK_TIMEOUT=5
+Environment=LEDGER_MAX_CHECKS=2
+Environment=LEDGER_MAX_THREADS=16
+
+# A bounded Lisp heap: running out of it is an error inside SBCL, not an
+# OOM kill of the whole machine. Startup takes ~10 s (every proof of every
+# library is re-verified), resident memory is ~150 MB.
+ExecStart=/usr/bin/sbcl --dynamic-space-size 512 --load tools/serve.lisp
+
+# Restart 5 s after a crash.
+Restart=always
+RestartSec=5
+
+StandardOutput=inherit
+StandardError=inherit
+
+# --- Hardening -------------------------------------------------------------
+# The server only reads the repository; SBCL/ASDF write compiled files to
+# ~/.cache/common-lisp. If startup fails with a permission error, check
+# that path (or comment these lines out while investigating).
+MemoryMax=768M
+CPUQuota=100%
+TasksMax=64
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/centos/.cache/common-lisp
+
+[Install]
+WantedBy=multi-user.target

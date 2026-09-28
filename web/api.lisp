@@ -170,16 +170,13 @@ entries that are not axioms, rules or derived entries."
 (defparameter *max-proof-text-length* 200000)
 
 (defun read-proof-text (text)
-  "Parse TEXT into a raw proof, never evaluating anything (#. is refused).
-Accepts either one list of lines, ((0 ...) (1 ...)), or the lines
+  "Parse TEXT into a raw proof with SAFE-READ-FORMS: nothing is evaluated
+and no symbol is created. Accepts either one list of lines, ((0 ...) (1 ...)), or the lines
 themselves one after another. Returns (VALUES RAW-PROOF ERROR-STRING)."
   (when (> (length text) *max-proof-text-length*)
     (return-from read-proof-text (values nil "The proof text is too long.")))
   (handler-case
-      (let* ((*read-eval* nil)
-             (*package* (find-package :ledger-kernel))
-             (forms (with-input-from-string (in text)
-                      (loop for form = (read in nil in) until (eq form in) collect form)))
+      (let* ((forms (safe-read-forms text))
              (proof (if (and (= (length forms) 1) (consp (first forms)) (consp (first (first forms))))
                         (first forms)
                         forms)))
@@ -203,7 +200,10 @@ themselves one after another. Returns (VALUES RAW-PROOF ERROR-STRING)."
     #+sbcl (sb-ext:timeout ()
              (values nil nil (format nil "Checking took longer than ~D seconds and was stopped."
                                      *check-timeout-seconds*)))
-    (error (c) (values nil nil (format nil "The checker signalled an error: ~A" c)))))
+    (error (c) (values nil nil (format nil "The checker signalled an error: ~A" c)))
+    ;; e.g. SB-KERNEL::CONTROL-STACK-EXHAUSTED, a STORAGE-CONDITION, not an ERROR
+    (serious-condition (c)
+      (values nil nil (format nil "The checker ran out of resources: ~A" (type-of c))))))
 
 (defun api-check (world-id text)
   "Check the proof in TEXT against the world's ledger. Reports, per line,

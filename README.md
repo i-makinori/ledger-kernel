@@ -64,7 +64,7 @@ Web UI も付いています。
   リンク、依存している公理と「この定理を使っている定理」の表示、ブラウザ上での
   証明の検証
 
-テスト: カーネル 301 件、Web 41 件がすべて通り、コンパイル警告 0 の状態です。
+テスト: カーネル 301 件、Web 50 件がすべて通り、コンパイル警告 0 の状態です。
 
 カーネル（`src/`）はコメント込みで約 2000 行です。論理そのものはコードに書かず、
 すべて `.system` ファイルに置いています。使われていない機能は `backup/` に、元の
@@ -174,6 +174,12 @@ GitHub Pages などの静的ホスティングに置けます。画面はサー�
 返すはずの答えをすべて `site/data/*.js` に書き出してあります。書き出しの時点で全証明を
 再検証しているので、載るのはカーネルが受理したものだけです。閲覧専用のため、
 エディタでの検証はできません（証明の S 式はコピーできます）。
+
+検証もできるサーバー版を VPS などで公開するときは、nginx の後ろに置きます。
+systemd のユニットと nginx の設定例、手順を [deploy/](deploy/README.md) にまとめて
+あります。送られた証明は Lisp の `read` を使わずに読み（既存の記号だけを受け付け、
+新しい記号を作らない）、1 件の検証時間・同時に走る検証の数・要求の大きさに上限を
+設けています。
 
 
 ## 証明の書き方
@@ -340,6 +346,7 @@ web/                     Web UI（ledger-kernel/web。カーネルの外側）
   worlds.lisp            表示する世界（ZF、ペアノ算術）
   deps.lisp              引用関係（依存している公理、使っている定理）
   api.lisp, server.lisp  JSON API と Hunchentoot のルーティング
+  safe-read.lisp         送られた証明を読む（新しい記号を作らない）
   static-export.lisp     静的サイトとして書き出す
   static/                画面（HTML / JS / CSS）
   tests.lisp             表示と API のテスト
@@ -350,6 +357,7 @@ tools/
   generate-arithmetic-ledger.lisp   08-arithmetic / 09-order / 10-division を生成し直す
 docs/guide.md            機能ごとの詳しい説明
 backup/                  カーネルから外した機能（元のコードと復元の手順。読み込まれない）
+deploy/                  サーバー版を公開するための systemd / nginx の設定例
 ```
 
 
@@ -362,7 +370,7 @@ sbcl --non-interactive \
      --eval '(asdf:test-system :ledger-kernel)'        # カーネル（301 件）
 ```
 
-Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（41 件。HTTP は使いません）。
+Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（50 件。HTTP は使いません）。
 各チェックが `[pass]` / `[FAIL]` を出力し、最後に集計を表示します。`[FAIL]` が
 1つでもあると `asdf:test-system` はエラーになります。
 
@@ -393,4 +401,3 @@ Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（41 件�
 - **信頼の範囲**: 上の「信頼モデル」のとおり。独立な検証器（あるいは Metamath
   形式への書き出し）は今後の課題です。
 - **Web UI**: 検証はできますが、証明を定理として登録する機能はまだありません。
-  `/api/check` は読み込みの際に記号を作るので、外部に公開するには追加の制限が必要です。

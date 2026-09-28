@@ -37,9 +37,13 @@ Other entries are returned unchanged."
                   p))
       (t p))))
 
-(defun ledger-commands (ledger)
+(defun ledger-commands (ledger &key canonical)
   "The command stream that rebuilds LEDGER's non-primitive entries, in
-admission order (read from LEDGER's own ALL index, up to its BOUND)."
+admission order (read from LEDGER's own ALL index, up to its BOUND).
+Theorems are written as they were written (ENTRY-SOURCE-PAYLOAD), or,
+with CANONICAL, in the canonical form that was checked and stored
+(canonical.lisp): the verified facts, independent of how they were named.
+Either stream replays to the same ledger."
   (loop for e in (treap-values-below (ledger-all ledger) (ledger-bound ledger))
         for origin = (entry-origin e)
         for cmd = (if (eq (car origin) :primitive)
@@ -55,10 +59,12 @@ admission order (read from LEDGER's own ALL index, up to its BOUND)."
                         (predicate-schema-symbol
                          (list* :declare-predicate-schema-symbol (entry-payload e)))
                         (th
-                         (destructuring-bind (name raw-proof) (entry-source-payload e)
+                         (destructuring-bind (name raw-proof)
+                             (if canonical (entry-payload e) (entry-source-payload e))
                            (list :th name raw-proof)))
                         (th-ded
-                         (destructuring-bind (name hyp-formula raw-proof) (entry-source-payload e)
+                         (destructuring-bind (name hyp-formula raw-proof)
+                             (if canonical (entry-payload e) (entry-source-payload e))
                            (list :th-ded name hyp-formula raw-proof)))
                         (t nil)))
         when cmd collect cmd))
@@ -96,9 +102,10 @@ is bound to LEDGER-KERNEL so symbols read back as the same symbols."
         (terpri out))))
   path)
 
-(defun write-ledger-to-file (ledger path)
-  "Write LEDGER's command stream (LEDGER-COMMANDS) to PATH."
-  (write-commands-to-file (ledger-commands ledger) path))
+(defun write-ledger-to-file (ledger path &key canonical)
+  "Write LEDGER's command stream (LEDGER-COMMANDS) to PATH; with
+CANONICAL, the canonical form of every theorem."
+  (write-commands-to-file (ledger-commands ledger :canonical canonical) path))
 
 (defun read-forms-from-file (path)
   "Every top-level form in PATH, read as data only: standard readtable,

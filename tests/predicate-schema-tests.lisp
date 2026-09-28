@@ -71,8 +71,13 @@ set: automatic and explicit instantiation, later vocabulary, attacks."
             (check-k-proof '((0 (.to (.forall v0 (.in v0 v3)) (.in (empty) v3))
                                 :th (th-forall-elim :inst ((v1 (empty))))))
                            ledger) t)
-    (expect "Attack: th-forall-elim at (empty) WITHOUT :inst -- no such instance, must reject"
+    ;; A cited entry's free variables are schematic (canonical.lisp), so
+    ;; the lemma's v1 is found to be (empty) without :inst.
+    (expect "th-forall-elim at (empty) WITHOUT :inst: the free variable is found by matching"
             (check-k-proof '((0 (.to (.forall v0 (.in v0 v3)) (.in (empty) v3)) :th (th-forall-elim))) ledger)
+            t)
+    (expect "Attack: th-forall-elim where the instance differs in the other atom -- must reject"
+            (check-k-proof '((0 (.to (.forall v0 (.in v0 v3)) (.in (empty) v2)) :th (th-forall-elim))) ledger)
             nil)
     (expect "th-exists-intro instantiated with (empty), defined AFTER the lemma"
             (check-k-proof '((0 (.to (.eq v1 (empty)) (.exists v0 (.eq v0 (empty)))) :th (th-exists-intro)))
@@ -93,9 +98,12 @@ set: automatic and explicit instantiation, later vocabulary, attacks."
                                           (.to (.forall v3 (.neg (.in v3 v2))) (.eq v1 v2))))
                                 :th-ded (th-exists1-unique)))
                            ledger) t)
-    (expect "Attack: th-exists1-exists at P(y) := y = v4 (captures the lemma's witness v4) -- must reject"
+    ;; A cited entry's own variables are renamed apart from the citing
+    ;; proof's (standardizing apart, canonical.lisp), so the lemma's
+    ;; internal witness can no longer collide with v4 here.
+    (expect "th-exists1-exists at P(y) := y = v4 (the lemma's own witness is kept apart)"
             (check-k-proof '((0 (.to (.exists1 v0 (.eq v0 v4)) (.exists v0 (.eq v0 v4))) :th-ded (th-exists1-exists)))
-                           ledger) nil)
+                           ledger) t)
     (expect "... and accepted once the witness is moved out of the way: :inst ((v4 v3))"
             (check-k-proof '((0 (.to (.exists1 v0 (.eq v0 v4)) (.exists v0 (.eq v0 v4)))
                                 :th-ded (th-exists1-exists :inst ((v4 v3)))))

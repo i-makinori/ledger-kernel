@@ -21,6 +21,7 @@ check and a final summary. Returns T if every check passed, NIL otherwise
     (run-predicate-schema-self-tests)
     (run-peano-library-self-tests)
     (run-debruijn-self-tests)
+    (run-canonical-self-tests)
     (destructuring-bind (passed . failed) *expect-results*
       (format t "~%~D/~D self-tests passed~:[, ~D FAILED~;~*~].~%"
               passed (+ passed failed) (zerop failed) failed)

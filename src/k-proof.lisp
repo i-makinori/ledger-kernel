@@ -300,23 +300,10 @@ format. OK is NIL if any item is malformed."
           (t (return (values nil nil nil))))))))
 
 (defun instantiate-raw-proof (raw-proof binds)
-  "Apply BINDS to every formula and BY argument of RAW-PROOF, leaving rule
-names and references to RAW-PROOF's own line numbers alone (steps 1, 3)."
-  (let ((numbers (mapcar #'first raw-proof)))
-    (mapcar (lambda (raw)
-              (destructuring-bind (num formula role by) raw
-                (list num
-                      (instantiate-schema-atoms formula binds)
-                      role
-                      (if (consp by)
-                          (cons (car by)
-                                (mapcar (lambda (arg)
-                                          (if (member arg numbers :test #'equal)
-                                              arg
-                                              (instantiate-schema-atoms arg binds)))
-                                        (cdr by)))
-                          by))))
-            raw-proof)))
+  "Apply BINDS to every expression of RAW-PROOF (MAP-PROOF-EXPRESSIONS):
+formulas, extra arguments and :INST values, leaving rule names,
+references to RAW-PROOF's own lines and :INST keys alone (steps 1, 3)."
+  (map-proof-expressions (lambda (x) (instantiate-schema-atoms x binds)) raw-proof))
 
 (defun cited-formulas (nums proven-alist)
   "The formulas proven at line numbers NUMS, or :MISSING if one is absent."
@@ -329,28 +316,36 @@ LINE (steps 1-5 above). LEDGER is used exactly as received: it may be a
 restricted view, and widening it would let a proof reach later entries."
   (destructuring-bind (name stored) (entry-payload e)
     (declare (ignore name))
+    ;; The stored proof is in canonical form (canonical.lisp). Its free
+    ;; symbols FVk / LFk / PSk/n are shifted above every such name on the
+    ;; citing side, so the two can never coincide, and its FV variables
+    ;; become schematic (bound by matching, like LF and PS).
+    (let* ((actual-hyps (cited-formulas cited proven-alist))
+           (offset (max-canonical-index (k-line-formula line)
+                                        (and (listp actual-hyps) actual-hyps) inst))
+           (inst (standardize-inst inst (entry-canonical-map e) offset)))
     (multiple-value-bind (renaming seed ok) (parse-citation-inst inst ledger)
-      ;; The gates store kernel form already; converting again is a no-op
-      ;; for them and makes a hand-built payload safe to cite as well.
-      (let* ((stored-proof (named->db-proof stored ledger))
+      (let* ((stored-proof (standardize-proof-apart (named->db-proof stored ledger) offset))
              (raw-proof (if renaming (instantiate-raw-proof stored-proof renaming) stored-proof))
              (schema-hyps (proof-hypotheses raw-proof))
-             (schema-concl (proof-conclusion raw-proof))
-             (actual-hyps (cited-formulas cited proven-alist)))
+             (schema-concl (proof-conclusion raw-proof)))
         (and ok
              (listp actual-hyps)
              (= (length schema-hyps) (length actual-hyps))
              (let ((b1 (match-schema-hyps-against-cited
                         schema-hyps cited proven-alist ledger
-                        (seed-fresh seed raw-proof actual-hyps (k-line-formula line)))))
+                        (seed-fresh (acons :schematic-from (1+ offset) seed)
+                                    raw-proof actual-hyps (k-line-formula line)))))
                (and (not (match-fail-p b1))
-                    (let ((b2 (match-schema-atoms schema-concl (k-line-formula line) ledger b1)))
+                    (let ((b2 (resolve-deferred
+                               (match-schema-atoms schema-concl (k-line-formula line) ledger b1)
+                               ledger)))
                       (and (not (match-fail-p b2))
                            (let ((instantiated (instantiate-raw-proof raw-proof b2)))
                              (and (equal (proof-hypotheses instantiated) actual-hyps)
                                   (equal (proof-conclusion instantiated) (k-line-formula line))
                                   (verify-derived-instantiation e (cons renaming b2) instantiated
-                                                                ledger log))))))))))))
+                                                                ledger log)))))))))))))
 
 (defun try-deduction-entry (e cited line proven-alist ledger &optional (log (silent-log)) (inst nil))
   "As TRY-DERIVED-ENTRY, for a TH-DED entry E with payload (NAME H PROOF)
@@ -361,22 +356,29 @@ Gamma |- H -> PHI, not |- H -> PHI. (Dropping Gamma would turn
 A, (.to A B) |- B into the non-tautology (.to (.to A B) B).)"
   (destructuring-bind (name stored-hyp-0 stored-proof-0) (entry-payload e)
     (declare (ignore name))
+    ;; Standardized apart as in TRY-DERIVED-ENTRY.
+    (let* ((actual-hyps (cited-formulas cited proven-alist))
+           (offset (max-canonical-index (k-line-formula line)
+                                        (and (listp actual-hyps) actual-hyps) inst))
+           (inst (standardize-inst inst (entry-canonical-map e) offset)))
     (multiple-value-bind (renaming seed ok) (parse-citation-inst inst ledger)
-      (let* ((stored-hyp (named->db stored-hyp-0 ledger))
-             (stored-proof (named->db-proof stored-proof-0 ledger))
+      (let* ((stored-hyp (shift-canonical-names (named->db stored-hyp-0 ledger) offset))
+             (stored-proof (standardize-proof-apart (named->db-proof stored-proof-0 ledger) offset))
              (hyp-formula (if renaming (instantiate-schema-atoms stored-hyp renaming) stored-hyp))
              (raw-proof (if renaming (instantiate-raw-proof stored-proof renaming) stored-proof))
-             (gamma (remove hyp-formula (proof-hypotheses raw-proof) :test #'equal))
-             (actual-hyps (cited-formulas cited proven-alist)))
+             (gamma (remove hyp-formula (proof-hypotheses raw-proof) :test #'equal)))
         (and ok
              (listp actual-hyps)
              (= (length gamma) (length actual-hyps))
              (let ((b1 (match-schema-hyps-against-cited
                         gamma cited proven-alist ledger
-                        (seed-fresh seed hyp-formula raw-proof actual-hyps (k-line-formula line)))))
+                        (seed-fresh (acons :schematic-from (1+ offset) seed)
+                                    hyp-formula raw-proof actual-hyps (k-line-formula line)))))
                (and (not (match-fail-p b1))
                     (let* ((schema-concl (list '.to hyp-formula (proof-conclusion raw-proof)))
-                           (b2 (match-schema-atoms schema-concl (k-line-formula line) ledger b1)))
+                           (b2 (resolve-deferred
+                                (match-schema-atoms schema-concl (k-line-formula line) ledger b1)
+                                ledger)))
                       (and (not (match-fail-p b2))
                            (let ((instantiated (instantiate-raw-proof raw-proof b2))
                                  (inst-hyp (instantiate-schema-atoms hyp-formula b2)))
@@ -386,7 +388,7 @@ A, (.to A B) |- B into the non-tautology (.to (.to A B) B).)"
                                   (equal (list '.to inst-hyp (proof-conclusion instantiated))
                                          (k-line-formula line))
                                   (verify-derived-instantiation e (cons renaming b2) instantiated
-                                                                ledger log))))))))))))
+                                                                ledger log)))))))))))))
 
 (defun check-k-derived-line (line proven-alist ledger &optional (log (silent-log)))
   "Check a derived citation: BY = (name cited-line... [:inst binds]).
@@ -425,12 +427,13 @@ and the overall verdict."
             TH/TH-DED entry -- refused to avoid an ambiguous or ~
             shadowing citation." name))
   ;; LEDGER does not yet contain the new entry, so it is already the
-  ;; "entries strictly before" view. The payload, which citations read,
-  ;; is the kernel form; the ORIGIN keeps the proof as written, for
-  ;; display and saving (ENTRY-SOURCE-PAYLOAD).
-  (let ((db-proof (named->db-proof raw-proof ledger)))
-    (unless (%check-k-proof db-proof ledger log)
+  ;; "entries strictly before" view. What is checked and stored is the
+  ;; canonical form (canonical.lisp); the ORIGIN keeps the proof as
+  ;; written and the renaming map (ENTRY-SOURCE-PAYLOAD,
+  ;; ENTRY-CANONICAL-MAP).
+  (multiple-value-bind (canonical map) (canonicalize-proof raw-proof ledger)
+    (unless (%check-k-proof (named->db-proof canonical ledger) ledger log)
       (log-admission-result log name nil)
       (error "CHECK-AND-EXTEND: proof of ~S rejected." name))
     (log-admission-result log name t)
-    (ledger-append ledger kind (list name db-proof) (list :derived raw-proof))))
+    (ledger-append ledger kind (list name canonical) (list :derived raw-proof map))))

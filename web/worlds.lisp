@@ -120,16 +120,16 @@ defining axiom NAME-DEF, which says what it means."
 (defun entry-proof (e)
   "The stored raw proof of a derived entry, or NIL."
   (case (entry-kind e)
-    (th (second (entry-source-payload e)))
-    (th-ded (third (entry-source-payload e)))))
+    (th (second (entry-payload e)))
+    (th-ded (third (entry-payload e)))))
 
 (defun entry-statement (e)
   "(VALUES PREMISES CONCLUSION) -- what the entry asserts. PREMISES are
 the formulas it needs cited (hypotheses of a derived entry, premises of
 an inference rule); CONCLUSION is what it yields. Axiom and rule schemas
-contain ?-pattern variables. Derived entries are shown as written
-(ENTRY-SOURCE-PAYLOAD), not in the kernel's de Bruijn form."
-  (let ((p (entry-source-payload e)))
+contain ?-pattern variables. Derived entries are shown in the canonical
+form that was checked and stored (canonical.lisp)."
+  (let ((p (entry-payload e)))
     (case (entry-kind e)
       (th
        (values (proof-hypotheses (second p)) (proof-conclusion (second p))))

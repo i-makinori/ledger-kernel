@@ -31,30 +31,50 @@
 ;;; are renamed ?BV1, ?BV2, ... ("bound variable 1, 2, ...") in the order
 ;;; in which they first appear as a binder's variable, walking the rule's
 ;;; FORM and then its CONDITIONS. The renaming is per rule and applied to
-;;; the whole rule at once (form, conditions, extra parameters), so a
-;;; variable that is also used free, like Gen's ?x, is renamed everywhere.
-;;; Other pattern variables (?A, ?t, ?w, ...) keep their names, as the
-;;; free variables and atoms of a theorem do. The names as written are
-;;; kept in the entry's ORIGIN under :SOURCE-NAMES.
+;;; the whole rule at once (form, conditions, extra parameters). Other
+;;; pattern variables (?A, ?t, ?w, ...) keep their names, as the free
+;;; variables and atoms of a theorem do. The names as written are kept in
+;;; the entry's ORIGIN under :SOURCE-NAMES. The Web UI shows ?BV1 as ?bV₁
+;;; (upper or lower case is not distinguished by the Lisp reader).
 
-(defun bound-pattern-variable-name-p (sym)
-  "T iff SYM is a canonical bound pattern variable ?BVn."
-  (and (pat-var-p sym)
-       (let ((s (symbol-name sym)))
-         (and (> (length s) 3) (string= (subseq s 0 3) "?BV")
-              (every #'digit-char-p (subseq s 3))))))
+;;; Only a variable that is used as a bound variable and nothing else is
+;;; renamed. Its occurrences in FORM must all be within its own scope:
+;;; the binder's variable slot, the binder's body, or the variable slot of
+;;; a substitution (@subst x t A) or (@substitutes? x t A B), the notation
+;;; A[t/x], which itself binds x in A. A variable that also occurs
+;;; elsewhere -- Gen's ?x, which is the extra argument naming the
+;;; variable to generalize; P3's and III.3's ?x, also extra arguments --
+;;; is a free variable of the rule as well, and keeps its name: calling it
+;;; ?BVn would put a bound-variable name outside any binder. Side
+;;; conditions such as (var? ?x) are statements about the rule's
+;;; variables, not occurrences in a formula, and do not count.
+
+(defun only-bound-in-form-p (var form)
+  "T iff every occurrence of pattern variable VAR in FORM is within its own
+scope (see above)."
+  (labels ((ok (x in-scope)
+             (cond
+               ((eq x var) in-scope)
+               ((atom x) t)
+               ((and (named-binder-p x) (eq (second x) var))
+                (ok (third x) t))
+               ((and (member (car x) '(@subst @substitutes?)) (consp (cdr x))
+                     (eq (second x) var))
+                (every (lambda (a) (ok a in-scope)) (cddr x)))
+               (t (and (ok (car x) in-scope) (ok (cdr x) in-scope))))))
+    (ok form nil)))
 
 (defun rule-binder-renaming (conditions form)
-  "Alist ?x -> ?BVn for the pattern variables bound by a binder in FORM or
-CONDITIONS, numbered in order of first appearance."
+  "Alist ?x -> ?BVn for the pattern variables of FORM that are only ever
+used as bound variables (ONLY-BOUND-IN-FORM-P), numbered in order of
+first appearance as a binder's variable, walking FORM then CONDITIONS."
   (let ((map nil) (n 0))
     (labels ((walk (x)
                (when (consp x)
                  (when (and (named-binder-p x) (pat-var-p (second x))
-                            (not (assoc (second x) map :test #'eq)))
-                   (push (cons (second x)
-                               (intern (format nil "?BV~D" (incf n)) :ledger-kernel))
-                         map))
+                            (not (assoc (second x) map :test #'eq))
+                            (only-bound-in-form-p (second x) form))
+                   (push (cons (second x) (bound-pattern-variable (incf n))) map))
                  (walk (car x))
                  (walk (cdr x)))))
       (walk form)

@@ -92,6 +92,25 @@ everything above it is fresh for TREES."
       (walk trees))
     (1+ best)))
 
+;;; --- Bound-variable names ?BV1, ?BV2, ... -------------------------------
+;;;
+;;; The one name a bound variable is shown and written with, in a theorem
+;;; as in a rule (system-spec.lisp): "bound variable n". It has the shape
+;;; of a pattern variable, so it can never be a declared symbol, and it is
+;;; accepted as the variable of a binder in any input.
+
+(defun bound-pattern-variable (n)
+  "The name ?BVn."
+  (intern (format nil "?BV~D" n) :ledger-kernel))
+
+(defun bound-pattern-variable-name-p (sym)
+  "T iff SYM is a bound-variable name ?BVn (n = 1, 2, ...)."
+  (and (symbolp sym)
+       (let ((s (symbol-name sym)))
+         (and (> (length s) 3) (string= (subseq s 0 3) "?BV")
+              (every #'digit-char-p (subseq s 3))
+              (char/= (char s 3) #\0)))))
+
 ;;; --- Surface <-> kernel ---------------------------------------------------
 
 (defun named->db (x ledger)
@@ -106,7 +125,9 @@ rules later as it always did."
                ((symbolp x)
                 (let ((pos (position x env :test #'eq)))
                   (if pos (bvar pos) x)))
-               ((and (named-binder-p x) (variable-p (second x) ledger))
+               ((and (named-binder-p x)
+                     (or (variable-p (second x) ledger)
+                         (bound-pattern-variable-name-p (second x))))
                 (list (first x) (conv (third x) (cons (second x) env))))
                ((consp x) (cons (conv (car x) env) (conv (cdr x) env)))
                (t x))))
@@ -187,6 +208,23 @@ occurrence of a variable is a free occurrence."
         (t nil)))
 
 ;;; --- Back to the surface (for display only) -----------------------------
+
+(defun db->bv-named (x &optional (start 1))
+  "Kernel form X with its binders named ?BV<start>, ?BV<start+1>, ... in
+order of appearance (a preorder walk), for display. Distinct binders get
+distinct names, so nothing is shadowed and NAMED->DB gives back X. A
+rule's own binders over pattern variables, (Q ?x P), are left as they
+are and not counted."
+  (let ((n (1- start)))
+    (labels ((conv (x env)
+               (cond
+                 ((bvar-p x) (or (nth (second x) env) x))
+                 ((db-binder-p x)
+                  (let ((v (bound-pattern-variable (incf n))))
+                    (list (first x) v (conv (second x) (cons v env)))))
+                 ((consp x) (cons (conv (car x) env) (conv (cdr x) env)))
+                 (t x))))
+      (conv x nil))))
 
 (defun db->named (x ledger)
   "A surface form of kernel form X, naming each binder with the first

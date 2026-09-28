@@ -74,10 +74,23 @@
        string))
 
 (defun render-pattern-variable (sym)
-  "?BV1 -> ?BV₁ (a rule's canonical bound pattern variable); others as is."
+  "?BV1 -> ?bV₁ (a bound variable's name); others as is."
   (if (bound-pattern-variable-name-p sym)
-      (concatenate 'string "?BV" (subscript-digits (subseq (symbol-name sym) 3)))
+      (concatenate 'string "?bV" (subscript-digits (subseq (symbol-name sym) 3)))
       (symbol-name sym)))
+
+(defun bv-case (string)
+  "STRING with each ?bv<digit> (a printed ?BVn) written ?bV<digit>. The
+Lisp reader does not distinguish case, so this is display only."
+  (let ((out (make-string-output-stream)) (i 0) (n (length string)))
+    (loop while (< i n)
+          do (if (and (<= (+ i 4) n)
+                      (string-equal "?bv" string :start2 i :end2 (+ i 3))
+                      (digit-char-p (char string (+ i 3)))
+                      (or (= i 0) (not (alphanumericp (char string (1- i))))))
+                 (progn (write-string "?bV" out) (incf i 3))
+                 (progn (write-char (char string i) out) (incf i))))
+    (get-output-stream-string out)))
 
 (defun render-symbol (sym ledger)
   (if (pat-var-p sym)
@@ -107,7 +120,7 @@
   (let ((*package* (find-package :ledger-kernel))
         (*print-case* :downcase)
         (*print-pretty* nil))
-    (prin1-to-string x)))
+    (bv-case (prin1-to-string x))))
 
 (defun render-at (f min-prec ledger)
   "Render F; parenthesise it if it binds more loosely than MIN-PREC."

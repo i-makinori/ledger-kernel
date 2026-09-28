@@ -121,10 +121,8 @@ nothing by itself, and every proof step still comes from an entry before K."
 ;;; hypotheses never leak between proofs.
 
 (defun atomic-wff-symbol-p (x ledger)
-  "True iff X is a declared atomic-wff symbol, or a canonical one LFk
-(canonical.lisp), which is an atomic-wff symbol of every ledger."
-  (or (canonical-atom-name-p x)
-      (member x (sigma-atomic-symbols ledger) :test #'eq)))
+  "True iff X is a declared atomic-wff symbol."
+  (member x (sigma-atomic-symbols ledger) :test #'eq))
 
 ;;; Predicate schema symbols P of arity N >= 1: (P t1 ... tN) is a wff.
 ;;; In a theorem they stand for any formula with N argument places, and
@@ -138,16 +136,13 @@ nothing by itself, and every proof step still comes from an entry before K."
 (defun predicate-schema-arity (x ledger)
   "ARITY if X is a declared predicate schema symbol, else NIL."
   (and (symbolp x)
-       (or (canonical-schema-arity x)
-           (second (assoc x (sigma-predicate-schemas ledger) :test #'eq)))))
+       (second (assoc x (sigma-predicate-schemas ledger) :test #'eq))))
 
 (defun variable-p (x ledger)
   "True iff X is a declared variable symbol, or one of the kernel's fresh
-variables %0, %1, ... (debruijn.lisp) or a canonical variable FVk / BVk
-(canonical.lisp): these are variables of every ledger and can never be
-declared as anything else."
+variables %0, %1, ... (debruijn.lisp), which are variables of every
+ledger and can never be declared as anything else."
   (or (fresh-var-name-p x)
-      (canonical-variable-name-p x)
       (member x (sigma-variable-symbols ledger) :test #'eq)))
 
 ;;; --- Growth paths -------------------------------------------------------
@@ -188,13 +183,12 @@ never be declared. (BINDER-HEADS) must be LIST*'s last argument."
   "T iff SYM may be declared: a symbol that is not a pattern variable,
 meta-tag or reserved head, and not already declared in any Sigma
 namespace (atomic wffs, variables and predicate schemas share one pool),
-nor a fresh variable %n or a canonical name (FVk, BVk, LFk, PSk/n)."
+nor a fresh variable %n."
   (and (symbolp sym)
        (not (pat-var-p sym))
        (not (at-symbol-p sym))
        (not (reserved-head-symbol-p sym))
        (not (fresh-var-name-p sym))
-       (not (canonical-name-p sym))
        (not (atomic-wff-symbol-p sym ledger))
        (not (variable-p sym ledger))
        (not (predicate-schema-arity sym ledger))))

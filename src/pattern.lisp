@@ -159,10 +159,7 @@ binder, and the final comparison fails. Dependence on a bound variable is
 written with a predicate schema and its argument, P(x)."
   (cond
     ((match-fail-p binds) +fail+)
-    ;; An atomic symbol, or a free variable of a standardized-apart cited
-    ;; entry (SCHEMATIC-VARIABLE-P), stands for any (locally closed)
-    ;; expression; the re-verification decides whether it fits.
-    ((and (symbolp pat) (or (atomic-wff-symbol-p pat ledger) (schematic-variable-p pat binds)))
+    ((and (symbolp pat) (atomic-wff-symbol-p pat ledger))
      (let ((existing (lookup-binding pat binds)))
        (cond (existing (if (equal (cdr existing) expr) binds +fail+))
              ((locally-closed-p expr) (cons (cons pat expr) binds))
@@ -182,15 +179,6 @@ written with a predicate schema and its argument, P(x)."
        (cond
          ((/= (length args) (predicate-schema-arity (car pat) ledger)) +fail+)
          ((not (locally-closed-p expr)) +fail+)
-         ;; An argument is a schematic variable x not bound yet. If P is
-         ;; known, P(x) is an ordinary pattern in x: match P's body. If
-         ;; not, P(x) against the expression cannot be solved until x is
-         ;; known: set it aside (RESOLVE-DEFERRED) for the rest of the
-         ;; match to bind x.
-         ((some (lambda (a) (unbound-schematic-p a binds)) args)
-          (if (and existing (lambda-binding-p (cdr existing)))
-              (match-schematic-variables (schema-beta (cdr existing) args) expr binds)
-              (acons :deferred (cons (cons pat expr) (cdr (assoc :deferred binds))) binds)))
          (existing
           (if (and (lambda-binding-p (cdr existing))
                    (equal (schema-beta (cdr existing) args) expr))
@@ -206,47 +194,6 @@ written with a predicate schema and its argument, P(x)."
     ((and (null pat) (null expr)) binds)
     ((equal pat expr) binds)
     (t +fail+)))
-
-(defun unbound-schematic-p (x binds)
-  (and (schematic-variable-p x binds) (not (lookup-binding x binds))))
-
-(defun match-schematic-variables (pat expr binds)
-  "Match PAT against EXPR where only the unbound schematic variables of
-PAT are pattern variables; everything else must be EQUAL."
-  (cond
-    ((match-fail-p binds) +fail+)
-    ((schematic-variable-p pat binds)
-     (let ((b (lookup-binding pat binds)))
-       (cond (b (if (equal (cdr b) expr) binds +fail+))
-             ((or (atom expr) (locally-closed-p expr)) (cons (cons pat expr) binds))
-             (t +fail+))))
-    ((and (consp pat) (consp expr))
-     (match-schematic-variables (cdr pat) (cdr expr)
-                                (match-schematic-variables (car pat) (car expr) binds)))
-    ((equal pat expr) binds)
-    (t +fail+)))
-
-(defun resolve-deferred (binds ledger)
-  "Match again the predicate-schema applications MATCH-SCHEMA-ATOMS set
-aside, now that more schematic variables are bound. While that makes
-progress, repeat. When it does not -- P(x) where nothing else says what
-x is -- x is taken to be a fresh variable, so P is read as not depending
-on its argument there; the re-verification and the final comparison
-decide whether that reading fits."
-  (loop
-    (when (match-fail-p binds) (return +fail+))
-    (let ((pending (cdr (assoc :deferred binds))))
-      (when (null pending) (return binds))
-      (let ((b (acons :deferred nil binds)))
-        (dolist (item (reverse pending))
-          (setf b (match-schema-atoms (car item) (cdr item) ledger b)))
-        (when (match-fail-p b) (return +fail+))
-        (if (< (length (cdr (assoc :deferred b))) (length pending))
-            (setf binds b)
-            (let* ((args (instantiate-schema-atoms (cdr (car (car pending))) binds))
-                   (x (find-if (lambda (a) (unbound-schematic-p a binds)) args)))
-              (multiple-value-bind (f b1) (take-fresh binds)
-                (setf binds (cons (cons x f) b1)))))))))
 
 (defun instantiate-schema-atoms (template binds &optional next)
   "Instantiate TEMPLATE under BINDS from MATCH-SCHEMA-ATOMS, beta-reducing

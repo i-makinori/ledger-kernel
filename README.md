@@ -19,13 +19,9 @@ Common Lisp で書かれた、自前実装の Hilbert 流の証明検証系（pr
 - **束縛変数には名前がない**（マシン B）: カーネルの内部では、束縛変数を
   de Bruijn インデックスで表します。`∀v0 ∀v1 (v0 = v1)` は
   `(.forall (.forall (.eq (:bv 1) (:bv 0))))` になり、束縛変数の名前だけが違う
-  （α同値な）式は文字通り同じ値です。
-- **定理は正準形で記録する**: 台帳に入る定理は、名前の付け方によらない形に
-  直してから検証・記録します。束縛変数は式ごとに現れた順に BV1, BV2, …、自由変数・
-  原子記号・述語スキーマはエントリごとに現れた順に FV1, …, LF1, …, PS1/n, … です。
-  関数記号・述語記号・定理名・定義名は、それを導入したエントリを指すアクセサ
-  なので名前のままです。名前の付け方だけが違う2つの定理は、同じ正準形になります。
-  書かれたままの文面と名前の対応表は、別に残します。
+  （α同値な）式は文字通り同じ値です。自由変数は意味を持つので名前のまま残します。
+  変換は証明が台帳に入るときに一度だけ行い、書かれたままの文面は表示と保存の
+  ために別に残します。
 
 ブラウザでライブラリを閲覧し、証明を証明図で眺め、書いた証明をその場で検証できる
 Web UI も付いています。
@@ -67,9 +63,9 @@ Web UI も付いています。
   リンク、依存している公理と「この定理を使っている定理」の表示、ブラウザ上での
   証明の検証
 
-テスト: カーネル 311 件、Web 41 件がすべて通り、コンパイル警告 0 の状態です。
+テスト: カーネル 287 件、Web 41 件がすべて通り、コンパイル警告 0 の状態です。
 
-カーネル（`src/`）はコメント込みで約 2300 行です。論理そのものはコードに書かず、
+カーネル（`src/`）はコメント込みで約 2000 行です。論理そのものはコードに書かず、
 すべて `.system` ファイルに置いています。使われていない機能は `backup/` に、元の
 コードと復元の手順を添えて退避してあります（[backup/README.md](backup/README.md)）。
 
@@ -85,7 +81,7 @@ Web UI も付いています。
 (require :asdf)
 (asdf:load-asd (merge-pathnames "ledger-kernel.asd"))
 (asdf:load-system :ledger-kernel)
-(asdf:test-system :ledger-kernel)      ; 最後に "311/311 self-tests passed." と出る
+(asdf:test-system :ledger-kernel)      ; 最後に "287/287 self-tests passed." と出る
 (in-package :ledger-kernel)
 ```
 
@@ -197,7 +193,7 @@ GitHub Pages などの静的ホスティングに置けます。画面はサー�
 決まります。決まらないときや、定理の中の変数を置き換えたいときは、`:inst` で明示します。
 
 ```lisp
-(th-forall-elim :inst ((v1 (empty))))          ; 変数 v1 を項 (empty) に置き換える（照合でも見つかる）
+(th-forall-elim :inst ((v1 (empty))))          ; 変数 v1 を項 (empty) に置き換える
 (th-forall-mono :inst ((p (v3) (.in v3 v1))))  ; 述語スキーマ P に λv3. v3 ∈ v1 を代入
 (th-and-elim-l  :inst ((a (.in v0 v1))))       ; 原子記号 A に論理式を代入
 ```
@@ -326,7 +322,6 @@ src/                     カーネル本体
   treap.lisp             台帳の索引に使う永続 treap
   ledger.lisp            台帳、記号の宣言、束縛子の一覧
   debruijn.lisp          束縛変数の de Bruijn 表現（変換、束縛子の展開と閉包、新しい変数）
-  canonical.lisp         定理の正準形（BV / FV / LF / PS の名前、引用時の standardize apart）
   side-conditions.lisp   側条件
   meta.lisp              メタ述語・メタ構成子（自由変数、代入 など）
   judgement.lisp         形成規則の判定（JUDGEMENT?）
@@ -363,7 +358,7 @@ backup/                  カーネルから外した機能（元のコードと�
 sbcl --non-interactive \
      --eval '(require :asdf)' \
      --eval '(asdf:load-asd (merge-pathnames "ledger-kernel.asd"))' \
-     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（311 件）
+     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（287 件）
 ```
 
 Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（41 件。HTTP は使いません）。
@@ -392,11 +387,8 @@ Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（41 件�
   変数を含まない式しか表せません（束縛変数に名前がないので、捕獲が起こりえない）。
   束縛変数に依存する式は、述語スキーマ `(p x)` で書きます。現在のライブラリは
   すべてこの形で書かれていて、変更なしで通ります。
-- **速度**: 束縛子を開くたびに式をたどり、定理を正準形に直すため、ペアノ算術の
-  ライブラリの読み込みは名前付きの版より遅くなっています（手元で 2〜3 倍）。
-- **正準形のファイル**: `(write-ledger-to-file L path :canonical t)` で、検証済みの
-  定理を正準形で書き出せ、そのまま読み戻せます。同梱の `.ledger` は今のところ
-  書かれたままの形で、正準形の数学的事実のファイルへ置き換えるのはこれからです。
+- **速度**: 束縛子を開くたびに式をたどるため、ペアノ算術のライブラリの読み込みは
+  名前付きの版の約 1.5 倍の時間がかかります。
 - **信頼の範囲**: 上の「信頼モデル」のとおり。独立な検証器（あるいは Metamath
   形式への書き出し）は今後の課題です。
 - **Web UI**: 検証はできますが、証明を定理として登録する機能はまだありません。

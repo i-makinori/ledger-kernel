@@ -10,7 +10,6 @@
 ;;;;   (.neg (.in s t))     s ∉ t          (.neg (.eq s t)) s ≠ t
 ;;;;   (+ s t) / (* s t)    s + t / s · t  (S t) / zero    S(t) / 0
 ;;;;   (f t1 .. tn)         f(t1, .., tn)  v0, v12         v₀, v₁₂
-;;;;   fv1, bv2, lf3, ps1/2 fV₁, bV₂, LF₃, PS₁  (canonical names, canonical.lisp)
 ;;;;
 ;;;; Precedence: ¬ and the quantifiers bind tightest, then ∧, ∨, →, ↔
 ;;;; (→ associates to the right). A quantified formula is still put in
@@ -79,20 +78,10 @@
       (symbol-name sym)
       (link sym (render-symbol-text sym ledger))))
 
-(defun render-canonical-name (sym)
-  "fV₁, bV₁, LF₁, PS₁ for the canonical names FV1, BV1, LF1, PS1/n
-(canonical.lisp), or NIL."
-  (multiple-value-bind (kind n) (canonical-name-parts sym)
-    (when kind
-      (concatenate 'string
-                   (ecase kind (:fv "fV") (:bv "bV") (:lf "LF") (:ps "PS"))
-                   (subscript-digits (princ-to-string n))))))
-
 (defun render-symbol-text (sym ledger)
   (let ((name (symbol-name sym)))
     (cond
       ((pat-var-p sym) name)
-      ((render-canonical-name sym))
       ((and ledger (variable-p sym ledger))
        ;; v0 -> v₀
        (let ((pos (position-if #'digit-char-p name)))

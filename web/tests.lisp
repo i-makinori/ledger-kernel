@@ -65,16 +65,14 @@
          (linked (remove-if-not (lambda (s) (gethash "k" s)) (coerce segments 'list))))
     (flet ((target (text) (let ((s (find text linked :key (lambda (s) (gethash "t" s)) :test #'string=)))
                             (and s (find-entry-by-k w (gethash "k" s))))))
-      ;; Theorems are shown in canonical form (src/canonical.lisp): the
-      ;; lemma's v0 is its first free variable, fV₁.
       (expect "links: the plain text is unchanged by linking"
-              (string= (gethash "text" (gethash "conclusion" detail)) "fV₁ ∉ ∅") t)
+              (string= (gethash "text" (gethash "conclusion" detail)) "v₀ ∉ ∅") t)
       (expect "links: the segments spell out the same text"
               (string= (apply #'concatenate 'string (map 'list (lambda (s) (gethash "t" s)) segments))
-                       "fV₁ ∉ ∅")
+                       "v₀ ∉ ∅")
               t)
-      (expect "links: a canonical variable fV₁ has no declaration to link to"
-              (target "fV₁") nil)
+      (expect "links: v₀ goes to the variable's declaration"
+              (eq (entry-kind (target "v₀")) 'variable-symbol) t)
       (expect "links: ∉ goes to the formation rule of ∈"
               (eq (entry-kind (target "∉")) 'wff?) t)
       (expect "links: ∅ goes to its defining axiom EMPTY-DEF"

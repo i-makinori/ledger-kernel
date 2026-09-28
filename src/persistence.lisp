@@ -24,6 +24,19 @@
 ;;; ordinary gates, so a corrupted or hand-edited file can fail to load
 ;;; but cannot smuggle in an unverified entry.
 
+(defun entry-source-payload (e)
+  "E's payload as it was written: for a TH / TH-DED entry the payload holds
+the kernel (de Bruijn) form that citations use, and the ORIGIN keeps the
+surface text, with its variable names, which is what is saved and shown.
+Other entries are returned unchanged."
+  (let ((origin (entry-origin e)) (p (entry-payload e)))
+    (case (entry-kind e)
+      (th (if (eq (car origin) :derived) (list (first p) (second origin)) p))
+      (th-ded (if (eq (car origin) :derived-by-deduction)
+                  (list (first p) (second origin) (third origin))
+                  p))
+      (t p))))
+
 (defun ledger-commands (ledger)
   "The command stream that rebuilds LEDGER's non-primitive entries, in
 admission order (read from LEDGER's own ALL index, up to its BOUND)."
@@ -42,10 +55,10 @@ admission order (read from LEDGER's own ALL index, up to its BOUND)."
                         (predicate-schema-symbol
                          (list* :declare-predicate-schema-symbol (entry-payload e)))
                         (th
-                         (destructuring-bind (name raw-proof) (entry-payload e)
+                         (destructuring-bind (name raw-proof) (entry-source-payload e)
                            (list :th name raw-proof)))
                         (th-ded
-                         (destructuring-bind (name hyp-formula raw-proof) (entry-payload e)
+                         (destructuring-bind (name hyp-formula raw-proof) (entry-source-payload e)
                            (list :th-ded name hyp-formula raw-proof)))
                         (t nil)))
         when cmd collect cmd))

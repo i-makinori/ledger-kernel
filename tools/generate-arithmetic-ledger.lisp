@@ -101,7 +101,7 @@
   "From line N, (.forall x A), derive A[term/x] by III.1."
   (destructuring-bind (q x a) (fm n)
     (assert (eq q '.forall))
-    (mp (ax `(.to (.forall ,x ,a) ,(substitute-wff x term a)) 'iii.1 term) n)))
+    (mp (ax `(.to (.forall ,x ,a) ,(substitute-named x term a)) 'iii.1 term) n)))
 
 (defun use (name &rest terms)
   "Cite closed law NAME and instantiate its leading quantifiers with TERMS."
@@ -161,8 +161,8 @@ generalized, instantiated to x_i by III.1 and generalized again."
 BASE is a function building a proof of PHI[0/VAR]; it may return
 (:ded HYP) to have the proof admitted by the Deduction Theorem instead.
 STEP receives the line of the hypothesis PHI and builds PHI[S VAR/VAR]."
-  (let* ((phi0 (substitute-wff var 'zero phi))
-         (phis (substitute-wff var `(s ,var) phi))
+  (let* ((phi0 (substitute-named var 'zero phi))
+         (phis (substitute-named var `(s ,var) phi))
          (base-name (intern (format nil "~A-BASE" name)))
          (step-name (intern (format nil "~A-STEP" name)))
          (ind-name (intern (format nil "~A-IND" name))))

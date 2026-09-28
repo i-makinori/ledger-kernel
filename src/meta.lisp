@@ -1,75 +1,58 @@
 ;;;; meta.lisp -- meta predicates (@...? side conditions) and
-;;;; meta-constructors (@subst): free variables and substitution.
+;;;; meta-constructors (@subst): free variables and substitution,
+;;;; on kernel (de Bruijn) formulas.
 
 (in-package :ledger-kernel)
 
+;;; Kernel formulas are in de Bruijn form (debruijn.lisp): a bound
+;;; variable is an index, never a symbol. So "the free variables" are just
+;;; the variable symbols that occur, and substitution is plain replacement
+;;; -- neither needs to know where the binders are.
+
+(defun %free-vars (expr ledger)
+  "The variables (declared, or fresh %n) occurring in kernel form EXPR."
+  (let ((acc nil))
+    (labels ((walk (x)
+               (cond ((consp x) (walk (car x)) (walk (cdr x)))
+                     ((and x (symbolp x) (variable-p x ledger)) (pushnew x acc :test #'eq)))))
+      (walk expr))
+    (nreverse acc)))
+
 (defun free-vars-wff (wff ledger)
-  "Declared variables (per LEDGER's signature) occurring in WFF outside
-any binder for them."
-  (labels ((walk (form bound)
-             (cond
-               ((and (symbolp form) (variable-p form ledger) (not (member form bound :test #'eq)))
-                (list form))
-               ((symbolp form) nil)
-               ((and (consp form) (member (car form) (binder-heads) :test #'eq))
-                (let ((x (second form)) (body (third form)))
-                  (walk body (cons x bound))))
-               ((consp form)
-                (union (walk (car form) bound) (walk (cdr form) bound) :test #'eq))
-               (t nil))))
-    (walk wff nil)))
+  "The free variables of WFF (surface or kernel form)."
+  (%free-vars (named->db wff ledger) ledger))
 
 (defun meta-not-free-in? (ledger open-hyps var wff)
-  "@not-free-in?: T iff VAR is not free in WFF."
+  "@not-free-in?: T iff VAR is not free in WFF (kernel form; a surface
+form is converted first)."
   (declare (ignore open-hyps))
-  (not (member var (free-vars-wff wff ledger) :test #'eq)))
+  (not (occurs-symbol-p var (named->db wff ledger))))
 
 (defun meta-not-free-in-dependencies? (ledger open-hyps var)
   "@not-free-in-dependencies?: Gen's restriction. T iff VAR is free in
 none of OPEN-HYPS, the hypotheses open at this point of the current proof."
   (every (lambda (hyp-wff) (meta-not-free-in? ledger nil var hyp-wff)) open-hyps))
 
-(defun count-bound-occurrences (var wff)
-  "Number of binders for VAR in WFF."
-  (labels ((walk (form)
-             (cond
-               ((and (consp form) (member (car form) (binder-heads) :test #'eq))
-                (+ (if (eq (second form) var) 1 0) (walk (third form))))
-               ((consp form) (+ (walk (car form)) (walk (cdr form))))
-               (t 0))))
-    (walk wff)))
-
 (defun substitute-wff (var term wff)
-  "WFF with TERM replacing the free occurrences of VAR. Not
-capture-avoiding: guard with @subst-ok? where capture matters."
+  "Kernel form WFF with TERM replacing the variable VAR. Every occurrence
+of the symbol VAR is free (bound ones are indices), and TERM is locally
+closed, so this is capture-free by construction."
   (cond
     ((eq wff var) term)
-    ((and (consp wff) (member (car wff) (binder-heads) :test #'eq))
-     (if (eq (second wff) var)
-         wff ;; VAR is shadowed: stop
-         (list (first wff) (second wff) (substitute-wff var term (third wff)))))
     ((consp wff) (cons (substitute-wff var term (car wff)) (substitute-wff var term (cdr wff))))
     (t wff)))
 
 (defun meta-subst-ok? (ledger open-hyps var term wff)
-  "@subst-ok?: T iff substituting TERM for VAR in WFF captures nothing.
-Fails if any binder not shadowing VAR binds a free variable of TERM
-(conservatively, even when VAR does not occur beneath it)."
-  (declare (ignore open-hyps))
-  (let ((before (count-bound-occurrences var wff))
-        (term-vars (free-vars-wff term ledger)))
-    (declare (ignore before))
-    (labels ((walk (form)
-               (cond
-                 ((eq form var) t)
-                 ((and (consp form) (member (car form) (binder-heads) :test #'eq))
-                  (if (eq (second form) var)
-                      t ;; shadowed: no substitution below
-                      (and (not (member (second form) term-vars :test #'eq))
-                           (walk (third form)))))
-                 ((consp form) (and (walk (car form)) (walk (cdr form))))
-                 (t t))))
-      (walk wff))))
+  "@subst-ok?: T iff substituting TERM for VAR in WFF can capture nothing.
+In kernel form that is a property of the shapes alone: TERM and WFF are
+locally closed (no index points outside them) and VAR is a symbol.
+It holds for every formula the kernel builds; it is checked anyway, so
+that a bug in the conversion or in opening binders is caught here
+instead of silently admitting a captured instance."
+  (declare (ignore ledger open-hyps))
+  (and (symbolp var) var
+       (locally-closed-p term)
+       (locally-closed-p wff)))
 
 (defun meta-subst (ledger var term wff)
   "SUBSTITUTE-WFF with the meta-predicate calling convention."

@@ -42,14 +42,17 @@ must be supplied when the entry is cited. Returns the new ledger."
     (log-admission-result log name nil)
     (error "CHECK-AND-EXTEND-BY-DEDUCTION-DIRECT: HYP-FORMULA ~S is not a ~
             well-formed formula." hyp-formula))
-  (unless (member hyp-formula (proof-hypotheses raw-proof) :test #'equal)
-    (log-admission-result log name nil)
-    (error "CHECK-AND-EXTEND-BY-DEDUCTION-DIRECT: HYP-FORMULA ~S does not ~
-            occur as one of RAW-PROOF's own :HYP lines -- nothing would be ~
-            discharged." hyp-formula))
-  (unless (check-k-proof raw-proof ledger log)
-    (log-admission-result log name nil)
-    (error "CHECK-AND-EXTEND-BY-DEDUCTION-DIRECT: proof of ~S rejected." name))
-  (log-admission-result log name t)
-  (ledger-append ledger 'th-ded (list name hyp-formula raw-proof)
-                 (list :derived-by-deduction hyp-formula raw-proof)))
+  (let ((db-hyp (named->db hyp-formula ledger))
+        (db-proof (named->db-proof raw-proof ledger)))
+    (unless (member db-hyp (proof-hypotheses db-proof) :test #'equal)
+      (log-admission-result log name nil)
+      (error "CHECK-AND-EXTEND-BY-DEDUCTION-DIRECT: HYP-FORMULA ~S does not ~
+              occur as one of RAW-PROOF's own :HYP lines -- nothing would be ~
+              discharged." hyp-formula))
+    (unless (%check-k-proof db-proof ledger log)
+      (log-admission-result log name nil)
+      (error "CHECK-AND-EXTEND-BY-DEDUCTION-DIRECT: proof of ~S rejected." name))
+    (log-admission-result log name t)
+    ;; Kernel form in the payload, the text as written in the ORIGIN.
+    (ledger-append ledger 'th-ded (list name db-hyp db-proof)
+                   (list :derived-by-deduction hyp-formula raw-proof))))

@@ -98,8 +98,18 @@ distinct-variable or freshness side condition are rejected."
           (zf-axiom-ok-p ledger (zf-separation 'v0 'v1 'v0 '(.eq v0 v0)) 'zf-separation) nil)
   (expect "Attack: ZF-REPLACEMENT with b free in phi -- must reject"
           (zf-axiom-ok-p ledger (zf-replacement 'v0 'v1 'v2 'v3 '(.in v3 v1)) 'zf-replacement) nil)
-  (expect "Attack: ZF-REPLACEMENT with y := x -- must reject"
-          (zf-axiom-ok-p ledger (zf-replacement 'v0 'v1 'v2 'v2 '(.eq v2 v2)) 'zf-replacement) nil)
+  ;; With y := x the inner binder of y shadows x, so this text is
+  ;; alpha-equivalent to the instance with x, y distinct and phi = (y = y),
+  ;; which does not mention x. Bound variables are compared up to
+  ;; renaming (de Bruijn form), so it is accepted as that instance.
+  (expect "ZF-REPLACEMENT with y := x is read as the instance phi = (y = y) (alpha-equivalent)"
+          (zf-axiom-ok-p ledger (zf-replacement 'v0 'v1 'v2 'v2 '(.eq v2 v2)) 'zf-replacement) t)
+  (expect "Attack: ZF-REPLACEMENT with y := x and phi mentioning x outside y's scope -- must reject"
+          (zf-axiom-ok-p ledger
+                         '(.forall v0 (.to (.forall v2 (.to (.in v2 v0) (.exists1 v2 (.eq v2 v2))))
+                                          (.exists v1 (.forall v2 (.to (.in v2 v0)
+                                                                        (.exists v3 (.and (.in v3 v1) (.eq v2 v2))))))))
+                         'zf-replacement) nil)
   (expect "Attack: ZF-SEPARATION written with the expanded conjunction instead of .and -- must reject"
           (zf-axiom-ok-p ledger
                          '(.forall v0 (.exists v1 (.forall v2 (.iff (.in v2 v1)

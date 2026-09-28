@@ -10,7 +10,7 @@
 ;;;; uses no special variables and no mutation.
 ;;;;
 ;;;; Layers:
-;;;;   kernel -- pattern, treap, ledger, side-conditions, meta, judgement,
+;;;;   kernel -- pattern, treap, ledger, debruijn, side-conditions, meta, judgement,
 ;;;;             k-proof: the trusted checker.
 ;;;;   tools  -- persistence, deduction, tautology, system-spec,
 ;;;;             function-definition: build or load ledgers and proofs;

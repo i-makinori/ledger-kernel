@@ -2,8 +2,9 @@
 
 (defsystem "ledger-kernel"
   :description "A minimal Hilbert-style proof checker built on an append-only ledger."
+  :license "MIT"
   :author "i-makinori"
-  :version "0.1.0"
+  :version "0.0.1" ;; prepre-alpha
   :pathname "src/"
   :serial t
   :components ((:file "package")
@@ -24,6 +25,7 @@
 
 (defsystem "ledger-kernel/tests"
   :description "Self tests for ledger-kernel."
+  :license "MIT"
   :depends-on ("ledger-kernel")
   :pathname "tests/"
   :serial t
@@ -51,6 +53,7 @@
 
 (defsystem "ledger-kernel/web"
   :description "Web UI for browsing ledgers and checking proofs (outside the trusted kernel)."
+  :license "MIT"
   :depends-on ("ledger-kernel" "hunchentoot" "yason")
   :pathname "web/"
   :serial t

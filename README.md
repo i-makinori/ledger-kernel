@@ -1,98 +1,113 @@
-# Ledger Kernel — 追記専用台帳による Hilbert 流証明検証系
+# Ledger Kernel — A Hilbert-style Proof Checker Built on an Append-only Ledger
 
-Common Lisp で書かれた、自前実装の Hilbert 流の証明検証系（proof checker）です。
-「証明可能である」（⊢）という関係を、**一度検証されたら二度と書き換えられない
-追記専用の台帳（ledger）の1エントリ**として、文字通りに実装しています。
+[日本語版 README](README_JP.md)
 
-設計の芯は3つです。
+A Hilbert-style proof checker written in Common Lisp. This is a prototype.
+The relation "is provable" (⊢) is recorded as an entry in an append-only ledger,
+and each entry is checked line by line to see whether it can be derived from
+the existing axioms, inference rules, theorems and derived rules.
 
-- **追記専用の台帳**: 記号・形成規則・公理・推論規則・定理・定義は、すべて台帳の
-  エントリです。エントリには登録順の番号 k が付き、証明は自分より前に登録された
-  エントリしか引用できません（循環が起きません）。
-- **毎回ゼロから再検証する**: 定理を引用するたびに、保存されている証明に代入を
-  施して、最初から検証し直します（LCF 的な "always re-verify" の徹底）。
-  「正しい証明に代入しても正しい」というメタ定理すら仮定しません。
-- **体系はデータ**: 論理そのもの（公理・推論規則・形成規則）を `.system`
-  ファイルとして書き、差し替えられます。命題論理・一階述語論理・等号・ペアノ算術・
-  ZF 集合論は、どれもこの仕組みで定義しています。
+The design rests on three core ideas:
 
-- **束縛変数には名前がない**（マシン B）: カーネルの内部では、束縛変数を
-  de Bruijn インデックスで表します。`∀v0 ∀v1 (v0 = v1)` は
-  `(.forall (.forall (.eq (:bv 1) (:bv 0))))` になり、束縛変数の名前だけが違う
-  （α同値な）式は文字通り同じ値です。自由変数は意味を持つので名前のまま残します。
-  変換は証明が台帳に入るときに一度だけ行い、書かれたままの文面は表示と保存の
-  ために別に残します。束縛変数の名前は、公理・規則・定義・定理のどれでも `?bV₁`, `?bV₂`, … に
-  そろえて表示します（規則は登録時に付け替え、定理は表示時に番号を振る）。
+- **An append-only ledger**: symbols, formation rules, axioms, inference rules,
+  theorems and definitions are all entries in the ledger. Each entry is given a
+  number k in order of registration. A proof can (as a rule) cite only entries
+  registered before it, so (as a rule) no circularity can arise.
+- **Re-verify from scratch, every time**: whenever a theorem is cited, its stored
+  proof is instantiated with the substitution and verified again from the beginning
+  (a thorough application of the LCF-style "always re-verify" principle). Not even
+  the meta-theorem "a substitution instance of a correct proof is correct" is assumed.
+- **The system is data**: the logic itself (axioms, inference rules, formation rules)
+  is written as a `.system` file and can be swapped out. Propositional logic,
+  first-order predicate logic, equality, Peano arithmetic and ZF set theory are all
+  defined through this mechanism.
 
-ブラウザでライブラリを閲覧し、証明を証明図で眺め、書いた証明をその場で検証できる
-Web UI も付いています。
+- **Bound variables have no names** (machine B): inside the kernel, bound variables
+  are represented by de Bruijn indices. `∀v0 ∀v1 (v0 = v1)` becomes
+  `(.forall (.forall (.eq (:bv 1) (:bv 0))))`, so formulas that differ only in the
+  names of their bound variables (α-equivalent formulas) are literally the same value.
+  Free variables carry meaning, so they keep their names. The conversion happens
+  exactly once, when a proof enters the ledger; the text as written is kept separately
+  for display and storage. Bound variable names are displayed uniformly as
+  `?bV₁`, `?bV₂`, … in axioms, rules, definitions and theorems alike (rules are
+  renamed at registration time; theorems are numbered at display time).
 
-> 各機能の詳しい説明は [docs/guide.md](docs/guide.md) にあります。
+It also comes with a Web UI for browsing the library in a browser, viewing proofs as
+proof trees, and verifying proofs you write on the spot.
 
-
-## できること
-
-**論理と体系**
-- 命題論理（Łukasiewicz の3公理 + 場合分け II.4）、一階述語論理（∀・∃、Gen、
-  存在汎化 III.3、存在除去 `EXISTS-ELIM`）、等号（IV.1〜IV.4）
-- 定義された結合子 ∧ ∨ ↔ ∃!（`00-connectives.system`）
-- ペアノ算術（P1〜P10）と、その上の順序 ≤ ・ <（`00-peano-order.system`）
-- ZF 集合論（外延性・対・和集合・冪集合・無限・正則性・分出図式・置換図式。
-  選択公理なし）
-- 確定記述 `(.iota x A)`（「A を満たすただ1つの x」）
-
-**定義の仕組み**
-- `DEFINE-FUNCTION-BY-DESCRIPTION`: 存在と一意性を証明済みの性質から、新しい
-  関数記号を定義する（例: 空集合 ∅）
-- 述語スキーマ変数「A(x)」: `(p v0)` を「x を含む任意の論理式」として定理に書き、
-  引用時に具体的な式を代入する（自動、または `:inst` で明示）
-
-**自動化**
-- `PROVE-TAUTOLOGY`: 命題論理の恒真式を、Kalmar の完全性定理の構成に従って自動で
-  証明する（∧ ∨ ↔ も扱い、任意の論理式を原子として使える）
-
-どの道具が作った証明も、台帳に入る前に必ずカーネルが検証します。道具そのものは
-信頼しなくて構いません。
-
-**ライブラリと Web UI**
-- 命題論理・述語論理・等号・古典論理・結合子・量化子の補題、ZF の空集合（存在・
-  一意性・定義）
-- 自然数論: 加法・乗法の交換律・結合律・分配律・簡約律（`08`）、順序の反射律・
-  推移律・反対称律・全順序性、「0 か後者か」（`09`）、割り算の存在と一意性、商 `div-s`・
-  余り `mod-s`・ゲーデルの β 関数 `beta` の定義（`10`）。すべて P1〜P10 から帰納法で証明
-- Web UI: ライブラリの閲覧（式は教科書風の記法）、証明の表と証明図、記号や引用先への
-  リンク、依存している公理と「この定理を使っている定理」の表示、ブラウザ上での
-  証明の検証
-
-テスト: カーネル 301 件、Web 50 件がすべて通り、コンパイル警告 0 の状態です。
-
-カーネル（`src/`）はコメント込みで約 2000 行です。論理そのものはコードに書かず、
-すべて `.system` ファイルに置いています。使われていない機能は `backup/` に、元の
-コードと復元の手順を添えて退避してあります（[backup/README.md](backup/README.md)）。
+> Detailed descriptions of each feature are in [docs/guide.md](docs/guide.md).
 
 
-## 動かしてみる
+## Features
 
-### 読み込みとテスト
+**Logic and systems**
+- Propositional logic (Łukasiewicz's three axioms + proof by cases II.4), first-order
+  predicate logic (∀, ∃, Gen, existential generalization III.3, existential elimination
+  `EXISTS-ELIM`), equality (IV.1–IV.4)
+- Defined connectives ∧ ∨ ↔ ∃! (`00-connectives.system`)
+- Peano arithmetic (P1–P10) and the orders ≤ and < on top of it (`00-peano-order.system`)
+- ZF set theory (extensionality, pairing, union, power set, infinity, regularity,
+  separation schema, replacement schema; without the axiom of choice)
+- Definite descriptions `(.iota x A)` ("the unique x satisfying A")
 
-必要なのは SBCL（他の Common Lisp 処理系でもおおむね動くはずです）と ASDF だけです。
-リポジトリのルートで SBCL を起動します。
+**Definition mechanisms**
+- `DEFINE-FUNCTION-BY-DESCRIPTION`: defines a new function symbol from a property whose
+  existence and uniqueness have been proved (e.g. the empty set ∅)
+- Predicate schema variables "A(x)": write `(p v0)` in a theorem to mean "any formula
+  containing x", and substitute a concrete formula when citing it (automatically, or
+  explicitly with `:inst`)
+
+**Automation**
+- `PROVE-TAUTOLOGY`: automatically proves tautologies of propositional logic, following
+  the construction in Kalmár's proof of the completeness theorem (handles ∧ ∨ ↔ as well,
+  and any formula can be used as an atom)
+
+Every proof, whichever tool produced it, is verified by the kernel before it enters the
+ledger. The tools themselves need not be trusted.
+
+**Library and Web UI**
+- Lemmas for propositional logic, predicate logic, equality, classical logic,
+  connectives and quantifiers; the empty set in ZF (existence, uniqueness, definition)
+- Number theory: commutativity, associativity, distributivity and cancellation for
+  addition and multiplication (`08`); reflexivity, transitivity, antisymmetry and
+  totality of the order, and "zero or a successor" (`09`); existence and uniqueness of
+  division, and definitions of the quotient `div-s`, the remainder `mod-s` and Gödel's
+  β function `beta` (`10`). All proved by induction from P1–P10
+- Web UI: browsing the library (formulas in textbook-style notation), proofs as tables
+  and proof trees, links to symbols and cited entries, display of the axioms an entry
+  depends on and of "the theorems that use this theorem", and in-browser proof checking
+
+Tests: all 301 kernel tests and 50 Web tests pass, with zero compiler warnings.
+
+The kernel (`src/`) is about 2000 lines including comments. The logic itself is not
+written in the code; it all lives in `.system` files. Unused features have been moved to
+`backup/`, together with the original code and instructions for restoring them
+([backup/README.md](backup/README.md)).
+
+
+## Getting started
+
+### Loading and testing
+
+All you need is SBCL (other Common Lisp implementations should mostly work as well) and
+ASDF. Start SBCL at the root of the repository:
 
 ```lisp
 (require :asdf)
 (asdf:load-asd (merge-pathnames "ledger-kernel.asd"))
 (asdf:load-system :ledger-kernel)
-(asdf:test-system :ledger-kernel)      ; 最後に "301/301 self-tests passed." と出る
+(asdf:test-system :ledger-kernel)      ; ends with "301/301 self-tests passed."
 (in-package :ledger-kernel)
 ```
 
-リポジトリを `~/common-lisp/` 以下（または Quicklisp の `local-projects/` 以下）に
-置けば、`asdf:load-asd` なしで `(asdf:load-system :ledger-kernel)` だけで読み込めます。
+If you place the repository under `~/common-lisp/` (or under Quicklisp's
+`local-projects/`), `(asdf:load-system :ledger-kernel)` alone is enough, without
+`asdf:load-asd`.
 
-### ライブラリを読み込む
+### Loading a library
 
-体系（`.system`）の上に、定理のライブラリ（`.ledger`）を順番に積みます。
-ZF 集合論の場合:
+Libraries of theorems (`.ledger`) are stacked in order on top of a system (`.system`).
+For ZF set theory:
 
 ```lisp
 (defun load-chain (files)
@@ -115,21 +130,22 @@ ZF 集合論の場合:
                 "zf-library/01-empty-set.ledger")))
 ```
 
-ペアノ算術なら、`00-classical-fol-equality.system`・`00-connectives.system`・
-`00-peano-arithmetic.system`・`00-peano-order.system` の上に `01`〜`06`、`08`〜`10` を
-積みます（Web UI の「Peano arithmetic」と同じ順です）。読み込むときに、すべての証明が
-検証し直されます。
+For Peano arithmetic, stack `01`–`06` and `08`–`10` on top of
+`00-classical-fol-equality.system`, `00-connectives.system`,
+`00-peano-arithmetic.system` and `00-peano-order.system` (the same order as
+"Peano arithmetic" in the Web UI). Every proof is re-verified as it is loaded.
 
-### 定理を引用する・証明を検証する
+### Citing theorems and checking proofs
 
-`check-k-proof` に証明を渡すと、台帳に対して1行ずつ検証し、通れば `T` を返します。
+Pass a proof to `check-k-proof` and it is checked line by line against the ledger,
+returning `T` if it passes.
 
 ```lisp
-;; 空集合には何も属さない: ¬(v0 ∈ ∅)
+;; Nothing belongs to the empty set: ¬(v0 ∈ ∅)
 (check-k-proof '((0 (.neg (.in v0 (empty))) :th (th-zf-not-in-empty))) *L*)
 ;=> T
 
-;; ∧ の除去（A ∧ B → A）を、集合の式に当てはめて使う
+;; Apply ∧-elimination (A ∧ B → A) to set-theoretic formulas
 (check-k-proof '((0 (.and (.in v0 v1) (.in v0 v2)) :hyp nil)
                  (1 (.to (.and (.in v0 v1) (.in v0 v2)) (.in v0 v1)) :th (th-and-elim-l))
                  (2 (.in v0 v1) :ir (mp 1 0)))
@@ -137,10 +153,11 @@ ZF 集合論の場合:
 ;=> T
 ```
 
-通らないときは `NIL` と、2つ目の値として最初に拒否された行の番号が返ります。
+If a proof fails, it returns `NIL`, with the number of the first rejected line as a
+second value.
 
-証明を定理として登録するには `check-and-extend` などを使います（下の「台帳を育てる」参照）。
-命題論理の恒真式なら、自動で証明できます。
+To register a proof as a theorem, use `check-and-extend` and friends (see "Growing the
+ledger" below). Tautologies of propositional logic can be proved automatically:
 
 ```lisp
 (setf *L* (prove-tautology *L* '(.to (.or a b) (.or b a)) 'th-my-or-comm))
@@ -148,256 +165,290 @@ ZF 集合論の場合:
 
 ### Web UI
 
-Hunchentoot と yason が必要です（Quicklisp なら `(ql:quickload '(:hunchentoot :yason))`、
-Debian/Ubuntu なら `apt install cl-hunchentoot cl-yason`）。カーネル本体はこれらに
-依存しません。
+Requires Hunchentoot and yason (with Quicklisp: `(ql:quickload '(:hunchentoot :yason))`;
+on Debian/Ubuntu: `apt install cl-hunchentoot cl-yason`). The kernel itself does not
+depend on them.
 
 ```bash
-sbcl --load tools/serve.lisp          # http://127.0.0.1:8080/ を開く
+sbcl --load tools/serve.lisp          # open http://127.0.0.1:8080/
 ```
 
-「ZF 集合論」と「ペアノ算術」の2つの世界を切り替えて閲覧できます。証明は表と
-証明図で表示でき、証明図の横線をクリックすると折りたたみ／展開、式の中の記号や
-規則名をクリックすると引用先・導入元のエントリが新しいタブで開きます。各エントリの
-ページには、依存している公理と、そのエントリを使っている定理も表示されます。
-エディタで書いた証明は、選んだ世界の台帳に対して検証されます（台帳には追加しません）。
-詳しくは [docs/guide.md](docs/guide.md) の Web UI の節を参照してください。
+You can switch between two worlds, "ZF set theory" and "Peano arithmetic". Proofs can be
+shown as tables or proof trees. Clicking a horizontal line in a proof tree folds or
+unfolds it, and clicking a symbol or rule name in a formula opens the entry it cites or
+was introduced by in a new tab. Each entry's page also shows the axioms it depends on and
+the theorems that use it. Proofs written in the editor are checked against the ledger of
+the selected world (they are not added to the ledger). See the Web UI section of
+[docs/guide.md](docs/guide.md) for details.
 
-サーバーなしで見せたいときは、静的サイトとして書き出せます。
+To show it without a server, you can export it as a static site:
 
 ```bash
-sbcl --non-interactive --load tools/export-static.lisp    # site/ に書き出す（OUT=... で変更可）
+sbcl --non-interactive --load tools/export-static.lisp    # writes to site/ (change with OUT=...)
 ```
 
-`site/index.html` はそのままブラウザで開け（file:// でも動きます）、フォルダごと
-GitHub Pages などの静的ホスティングに置けます。画面はサーバー版と同じで、サーバーが
-返すはずの答えをすべて `site/data/*.js` に書き出してあります。書き出しの時点で全証明を
-再検証しているので、載るのはカーネルが受理したものだけです。閲覧専用のため、
-エディタでの検証はできません（証明の S 式はコピーできます）。
+`site/index.html` can be opened directly in a browser (it works even over file://), and
+the whole folder can be placed on static hosting such as GitHub Pages. The screens are the
+same as the server version; every answer the server would return has been written out to
+`site/data/*.js`. All proofs are re-verified at export time, so only what the kernel has
+accepted is published. Since it is read-only, proofs cannot be checked in the editor
+(the S-expressions of proofs can be copied).
 
-検証もできるサーバー版を VPS などで公開するときは、nginx の後ろに置きます。
-systemd のユニットと nginx の設定例、手順を [deploy/](deploy/README.md) にまとめて
-あります。送られた証明は Lisp の `read` を使わずに読み（既存の記号だけを受け付け、
-新しい記号を作らない）、1 件の検証時間・同時に走る検証の数・要求の大きさに上限を
-設けています。
+To publish the server version, which can also check proofs, on a VPS or similar, put it
+behind nginx. Example systemd units, nginx configuration and instructions are collected
+in [deploy/](deploy/README.md). Submitted proofs are parsed without Lisp's `read` (only
+existing symbols are accepted; no new symbols are created), and there are limits on the
+time for a single check, the number of concurrent checks, and the size of a request.
 
 
-## 証明の書き方
+## Writing proofs
 
-### 1行の形
+### The shape of a line
 
-証明は行のリストです。1行は `(番号 論理式 役割 根拠)` の4つ組です。
+A proof is a list of lines. Each line is a 4-tuple `(number formula role justification)`.
 
-| 役割 | 根拠の形 | 意味 |
+| Role | Form of justification | Meaning |
 |---|---|---|
-| `:hyp` | `nil` | 仮定を置く |
-| `:axiom` | `(公理名 追加引数...)` | 公理のインスタンス。例: `(III.1 t)`、`(III.3 x A t)` |
-| `:ir` | `(規則名 行番号... 追加引数...)` | 推論規則の適用。例: `(mp 1 0)`、`(gen 3 v0)`、`(exists-elim 2 7 v3)` |
-| `:th`, `:th-ded` | `(定理名 行番号... [:inst 束縛])` | 定理の引用。行番号は、その定理が要求する前提を証明した行 |
+| `:hyp` | `nil` | Introduce a hypothesis |
+| `:axiom` | `(axiom-name extra-args...)` | An instance of an axiom. e.g. `(III.1 t)`, `(III.3 x A t)` |
+| `:ir` | `(rule-name line-numbers... extra-args...)` | Application of an inference rule. e.g. `(mp 1 0)`, `(gen 3 v0)`, `(exists-elim 2 7 v3)` |
+| `:th`, `:th-ded` | `(theorem-name line-numbers... [:inst bindings])` | Citation of a theorem. The line numbers are the lines proving the premises the theorem requires |
 
-`(mp 1 0)` は「1行目の `A → B` と0行目の `A` から `B`」です。定理の引用では、
-定理の中の原子記号 A, B, … や述語スキーマ P(x) に何を代入するかは、ふつう自動で
-決まります。決まらないときや、定理の中の変数を置き換えたいときは、`:inst` で明示します。
+`(mp 1 0)` means "from `A → B` on line 1 and `A` on line 0, conclude `B`". When citing a
+theorem, what to substitute for the atomic symbols A, B, … and predicate schemas P(x) in
+the theorem is usually determined automatically. When it cannot be determined, or when
+you want to replace variables in the theorem, specify it explicitly with `:inst`.
 
 ```lisp
-(th-forall-elim :inst ((v1 (empty))))          ; 変数 v1 を項 (empty) に置き換える
-(th-forall-mono :inst ((p (v3) (.in v3 v1))))  ; 述語スキーマ P に λv3. v3 ∈ v1 を代入
-(th-and-elim-l  :inst ((a (.in v0 v1))))       ; 原子記号 A に論理式を代入
+(th-forall-elim :inst ((v1 (empty))))          ; replace variable v1 with the term (empty)
+(th-forall-mono :inst ((p (v3) (.in v3 v1))))  ; substitute λv3. v3 ∈ v1 for the predicate schema P
+(th-and-elim-l  :inst ((a (.in v0 v1))))       ; substitute a formula for the atomic symbol A
 ```
 
-### 式の書き方
+### Writing formulas
 
-論理式は S 式で書きます。読み込み時に記号は大文字化されるので、`a` と `A` は同じです。
+Formulas are written as S-expressions. Symbols are upcased when read, so `a` and `A` are
+the same.
 
-| S 式 | 意味 | S 式 | 意味 |
+| S-expression | Meaning | S-expression | Meaning |
 |---|---|---|---|
 | `(.to A B)` | A → B | `(.forall x A)` | ∀x A |
 | `(.neg A)` | ¬A | `(.exists x A)` | ∃x A |
 | `(.and A B)` | A ∧ B | `(.exists1 x A)` | ∃!x A |
-| `(.or A B)` | A ∨ B | `(.iota x A)` | ιx A（A を満たすただ1つの x） |
+| `(.or A B)` | A ∨ B | `(.iota x A)` | ιx A (the unique x satisfying A) |
 | `(.iff A B)` | A ↔ B | `(.eq s t)` | s = t |
-| `(.in s t)` | s ∈ t（ZF） | `(empty)` | ∅（ZF） |
-| `zero`, `(S t)`, `(+ s t)`, `(* s t)` | 0, S(t), s+t, s·t（ペアノ算術） | `(p t)` | 述語スキーマ P(t) |
-| `a`, `b`, `c`, … | 命題記号（任意の論理式の代わり） | `v0`, `v1`, … | 個体変数 |
+| `(.in s t)` | s ∈ t (ZF) | `(empty)` | ∅ (ZF) |
+| `zero`, `(S t)`, `(+ s t)`, `(* s t)` | 0, S(t), s+t, s·t (Peano arithmetic) | `(p t)` | predicate schema P(t) |
+| `a`, `b`, `c`, … | propositional symbols (stand for any formula) | `v0`, `v1`, … | individual variables |
 
-束縛変数の名前は自由に選べます。`(.forall v0 (.eq v0 v0))` と
-`(.forall v3 (.eq v3 v3))` はカーネルの中では同じ式なので、どちらで書いても同じ
-定理・同じ規則に一致します（詳しくは [docs/guide.md](docs/guide.md) の13節）。
+You may choose any names for bound variables. `(.forall v0 (.eq v0 v0))` and
+`(.forall v3 (.eq v3 v3))` are the same formula inside the kernel, so either one matches
+the same theorems and rules (see section 13 of [docs/guide.md](docs/guide.md) for details).
 
-`.and` `.or` `.iff` `.exists1` は `00-connectives.system` で定義された結合子です。
-展開形（例: A ∧ B は ¬(A → ¬B)）とは別の式として扱われ、証明の中では定義公理
-`AND-UNFOLD` / `AND-FOLD` などで行き来します。
+`.and`, `.or`, `.iff` and `.exists1` are connectives defined in `00-connectives.system`.
+They are treated as formulas distinct from their unfolded forms (e.g. A ∧ B is
+¬(A → ¬B)); within a proof, you move between the two using the defining axioms
+`AND-UNFOLD` / `AND-FOLD` and so on.
 
 
-## 台帳を育てる
+## Growing the ledger
 
-| 関数 | 登録されるもの |
+| Function | What it registers |
 |---|---|
-| `check-and-extend` | 閉じた証明を、定理（`th`）として登録する |
-| `check-and-extend-by-deduction-direct` | 仮定 H を含む証明 Γ, H ⊢ Φ を、演繹定理により Γ ⊢ H → Φ として登録する（`th-ded`） |
-| `prove-tautology` | 命題論理の恒真式を自動で証明して登録する |
-| `define-function-by-description` | 存在・一意性の定理から、関数記号とその定義公理を追加する |
-| `declare-atomic-wff-symbol`, `declare-variable-symbol`, `declare-predicate-schema-symbol` | 新しい記号を宣言する |
+| `check-and-extend` | A closed proof, as a theorem (`th`) |
+| `check-and-extend-by-deduction-direct` | A proof Γ, H ⊢ Φ containing hypothesis H, registered as Γ ⊢ H → Φ via the deduction theorem (`th-ded`) |
+| `prove-tautology` | A tautology of propositional logic, proved automatically and registered |
+| `define-function-by-description` | A function symbol and its defining axiom, from existence and uniqueness theorems |
+| `declare-atomic-wff-symbol`, `declare-variable-symbol`, `declare-predicate-schema-symbol` | Declarations of new symbols |
 
-台帳は `write-ledger-to-file` でコマンド列として保存でき、`read-ledger-from-file`
-で読み戻せます。`.ledger` ファイルはこのコマンド列そのもので、手で書くこともできます。
-読み込むときは、全コマンドが上の関数を通って検証し直されます。
+A ledger can be saved as a sequence of commands with `write-ledger-to-file` and read back
+with `read-ledger-from-file`. A `.ledger` file is exactly this command sequence, and can
+also be written by hand. When it is read, every command goes through the functions above
+and is re-verified.
 
 
-## ライブラリ
+## Library
 
-| ファイル | 内容 |
+| File | Contents |
 |---|---|
-| `hilbert-library/00-classical-fol-equality.system` | 一階述語論理と等号の体系（形成規則、MP・Gen・IOTA・EXISTS-ELIM、II.1〜4、III.1〜3、IV.1〜4） |
-| `hilbert-library/00-connectives.system` | ∧ ∨ ↔ ∃! の形成規則と定義公理 |
-| `hilbert-library/00-peano-arithmetic.system` | ペアノ算術の語彙と公理 P1〜P10 |
-| `hilbert-library/00-peano-order.system` | 順序 ≤ ・ < の定義（s ≤ t :⇔ ∃z s + z = t、s < t :⇔ S s ≤ t） |
-| `hilbert-library/01-propositional-core.ledger` | 恒等律、仮言三段論法、前件の入れ替え |
-| `hilbert-library/02-predicate-core.ledger` | ∀ の順序交換 |
-| `hilbert-library/03-equality-core.ledger` | 等号の反射律・推移律 |
-| `hilbert-library/04-peano-arithmetic.ledger` | 0 + x = x（帰納法による証明） |
-| `hilbert-library/05-classical-logic.ledger` | ex falso、二重否定の導入・除去、背理法 など |
-| `hilbert-library/06-connectives.ledger` | ∧ ∨ ↔ の基本補題（導入・除去・対称・推移・ド・モルガン・排中律 など。`tools/generate-connectives-ledger.lisp` で生成） |
-| `hilbert-library/07-quantifier-schemas.ledger` | P(x) についての量化子の補題（∀除去、∃導入、単調性、∃! → ∃、∃! の一意性） |
-| `hilbert-library/08-arithmetic.ledger` | 加法・乗法の交換律・結合律・分配律・簡約律、0 と 1 の性質（`tools/generate-arithmetic-ledger.lisp` で生成） |
-| `hilbert-library/09-order.ledger` | ≤ の反射律・推移律・反対称律・全順序性、x ≤ Sx、0 か後者か、x + y = 0 → y = 0（同上） |
-| `hilbert-library/10-division.ledger` | S b による割り算の存在と一意性、商 `div-s(a,b)`・余り `mod-s(a,b)`・β 関数 `beta(c,d,i)` = c mod (1+(i+1)d) の定義（同上） |
-| `zf-library/00-zf.system` | ZF の公理系 |
-| `zf-library/01-empty-set.ledger` | 空集合の存在・一意性、∅ の定義、¬(x ∈ ∅) |
+| `hilbert-library/00-classical-fol-equality.system` | The system of first-order predicate logic with equality (formation rules, MP, Gen, IOTA, EXISTS-ELIM, II.1–4, III.1–3, IV.1–4) |
+| `hilbert-library/00-connectives.system` | Formation rules and defining axioms for ∧ ∨ ↔ ∃! |
+| `hilbert-library/00-peano-arithmetic.system` | The vocabulary and axioms P1–P10 of Peano arithmetic |
+| `hilbert-library/00-peano-order.system` | Definitions of the orders ≤ and < (s ≤ t :⇔ ∃z s + z = t, s < t :⇔ S s ≤ t) |
+| `hilbert-library/01-propositional-core.ledger` | Identity, hypothetical syllogism, exchange of antecedents |
+| `hilbert-library/02-predicate-core.ledger` | Exchanging the order of ∀ |
+| `hilbert-library/03-equality-core.ledger` | Reflexivity and transitivity of equality |
+| `hilbert-library/04-peano-arithmetic.ledger` | 0 + x = x (proved by induction) |
+| `hilbert-library/05-classical-logic.ledger` | Ex falso, double negation introduction and elimination, proof by contradiction, etc. |
+| `hilbert-library/06-connectives.ledger` | Basic lemmas for ∧ ∨ ↔ (introduction, elimination, symmetry, transitivity, De Morgan, excluded middle, etc.; generated by `tools/generate-connectives-ledger.lisp`) |
+| `hilbert-library/07-quantifier-schemas.ledger` | Quantifier lemmas about P(x) (∀-elimination, ∃-introduction, monotonicity, ∃! → ∃, uniqueness for ∃!) |
+| `hilbert-library/08-arithmetic.ledger` | Commutativity, associativity, distributivity and cancellation for addition and multiplication; properties of 0 and 1 (generated by `tools/generate-arithmetic-ledger.lisp`) |
+| `hilbert-library/09-order.ledger` | Reflexivity, transitivity, antisymmetry and totality of ≤; x ≤ Sx; zero or a successor; x + y = 0 → y = 0 (same as above) |
+| `hilbert-library/10-division.ledger` | Existence and uniqueness of division by S b; definitions of the quotient `div-s(a,b)`, the remainder `mod-s(a,b)` and the β function `beta(c,d,i)` = c mod (1+(i+1)d) (same as above) |
+| `zf-library/00-zf.system` | The axioms of ZF |
+| `zf-library/01-empty-set.ledger` | Existence and uniqueness of the empty set, the definition of ∅, ¬(x ∈ ∅) |
 
-読み込み順は、`.system` → `01`, `02`, `03`, `05`, `06`, `07` → `zf-library/01` です
-（「ライブラリを読み込む」の例のとおり）。
+The loading order is `.system` → `01`, `02`, `03`, `05`, `06`, `07` → `zf-library/01`
+(as in the example in "Loading a library").
 
-`08`〜`10` の法則は、束縛専用の変数 x1, x2, x3 で全称閉包した形で登録されています
-（例: `th-add-comm` は ∀x1 ∀x2 (x1 + x2 = x2 + x1)）。使うときは引用してから III.1 で
-好きな項を代入します。代入する項に x1〜x3 が現れないので、変数の捕獲は起きません。
-
-
-## 何を信頼しているか（信頼モデル）
-
-形式検証の結果を信じるには、「何を検証していて、何を無条件に信頼しているか」を
-知っておく必要があります。
-
-**検証していること**
-- すべての定理は、登録時に検証され、引用されるたびに代入後の証明全体が再検証
-  されます。引用時には、代入後の証明の仮定と結論が、引用している行・前提と完全に
-  一致することも確かめます。そのため、代入を探す照合の処理が誤っていても、誤った
-  引用は通りません（照合をわざと壊したテストで確認しています）。
-- 証明が引用できるのは、自分より前に登録された公理・規則・定理だけです。記号と
-  形成規則（何が式か）だけは、後から追加されたものも見えます。これにより、
-  論理の補題を後で定義した記号（∅ など）に対して使えます。形成規則は何も証明
-  しないので、健全性には影響しません。
-- `.ledger` / `.system` ファイルはデータとしてだけ読み込みます（`#.(...)` による
-  コード実行はできません）。`.ledger` ファイルが壊れていても書き換えられていても、
-  起こりうるのは「読み込みに失敗する」ことだけです。
-- `PROVE-TAUTOLOGY` などの道具が作った証明も、登録前に必ず検証されます。
-
-**無条件に信頼しているもの**
-- **カーネルのコード**: 照合、自由変数や代入可能性の判定（メタ述語）、再検証の
-  ロジック、そして書かれた式を de Bruijn 形式に直す変換（`src/debruijn.lisp`）。
-  束縛子の一覧（`.forall` `.exists` `.iota` `.exists1`）もカーネルに固定されて
-  います。代入は束縛変数を捕獲しようがない形で行いますが、`@subst-ok?` は
-  残してあり、変換や束縛子の展開に誤りがあれば、そこで検出して拒否します。
-- **`.system` ファイルの内容**: 公理・推論規則・形成規則は、読み込めばそのまま
-  信頼されます（`:PRIMITIVE`）。II.4 は II.1〜II.3 から導出可能ですが、公理として
-  置いています。公理系の無矛盾性は、体系の内側からは確かめられません
-  （ゲーデルの第二不完全性定理）。
-- **演繹定理**: `th-ded` の定理は、演繹定理をメタ定理として信頼して登録されて
-  います（Gen の制約は検査しています）。証明の中で他の定理を引用している場合への
-  拡張の論証は `src/deduction.lisp` に書いてあります（機械的な検証はしていません）。Web UI の「依存している基礎」に、この
-  信頼を使ったかどうかが表示されます。
-- **定義の保存性**: `DEFINE-FUNCTION-BY-DESCRIPTION` は存在・一意性の定理を
-  再チェックしますが、「それなら定義は保存拡張になる」というメタ定理そのものは
-  信頼しています。
-
-**保証していないこと**
-- 同じ Lisp イメージの中での保護はありません。`ledger-append` は公開されていて、
-  関数も再定義できます。信頼の根拠は「ファイルから読み直せば、すべて検証し直される」
-  ことにあります。
-- カーネルのコードそのものを独立に検証する手段（別実装の検証器や仕様書）は、
-  まだありません。
+The laws in `08`–`10` are registered in universally closed form using the variables
+x1, x2, x3, which are reserved for binding (e.g. `th-add-comm` is
+∀x1 ∀x2 (x1 + x2 = x2 + x1)). To use one, cite it and then substitute any term with
+III.1. Since x1–x3 do not appear in the substituted terms, no variable capture occurs.
 
 
-## ファイル構成
+## What is trusted (the trust model)
+
+To believe the result of formal verification, you need to know "what is verified, and
+what is trusted unconditionally".
+
+**What is verified**
+- Every theorem is verified when registered, and each time it is cited, the whole proof
+  after substitution is verified again. When citing, the kernel also confirms that the
+  hypotheses and conclusion of the substituted proof exactly match the citing line and its
+  premises. As a result, even if the matching procedure that searches for substitutions is
+  wrong, an incorrect citation cannot pass (this is confirmed by tests that deliberately
+  break the matcher).
+- A proof can cite only axioms, rules and theorems registered before it. Only symbols and
+  formation rules (what counts as a formula) are visible even when added later. This lets
+  logical lemmas be used for symbols defined afterwards (such as ∅). Formation rules prove
+  nothing, so this does not affect soundness.
+- `.ledger` / `.system` files are read purely as data (code execution via `#.(...)` is not
+  possible). Even if a `.ledger` file is corrupted or tampered with, the only possible
+  outcome is "loading fails".
+- Proofs produced by tools such as `PROVE-TAUTOLOGY` are always verified before
+  registration.
+
+**What is trusted unconditionally**
+- **The kernel code**: matching, the judgements of free variables and substitutability
+  (meta-predicates), the re-verification logic, and the conversion of written formulas
+  into de Bruijn form (`src/debruijn.lisp`). The list of binders (`.forall` `.exists`
+  `.iota` `.exists1`) is also fixed in the kernel. Substitution is performed in a way that
+  cannot capture bound variables, but `@subst-ok?` is kept, so that any error in the
+  conversion or in unfolding binders is detected and rejected there.
+- **The contents of `.system` files**: axioms, inference rules and formation rules are
+  trusted as-is once loaded (`:PRIMITIVE`). II.4 is derivable from II.1–II.3 but is
+  included as an axiom. The consistency of an axiom system cannot be confirmed from within
+  the system (Gödel's second incompleteness theorem).
+- **The deduction theorem**: `th-ded` theorems are registered by trusting the deduction
+  theorem as a meta-theorem (the restrictions on Gen are checked). The argument extending
+  it to proofs that cite other theorems is written in `src/deduction.lisp` (it is not
+  mechanically verified). The Web UI's "foundations depended on" shows whether this trust
+  was used.
+- **Conservativity of definitions**: `DEFINE-FUNCTION-BY-DESCRIPTION` re-checks the
+  existence and uniqueness theorems, but trusts the meta-theorem itself that "in that case
+  the definition is a conservative extension".
+
+**What is not guaranteed**
+- There is no protection within the same Lisp image. `ledger-append` is public, and
+  functions can be redefined. The basis for trust is that "when reloaded from files,
+  everything is verified again".
+- There is not yet any means of independently verifying the kernel code itself (an
+  independent checker implementation or a specification).
+
+
+## File layout
 
 ```
-ledger-kernel.asd        ASDF システム定義（ledger-kernel / ledger-kernel/tests /
-                         ledger-kernel/web / ledger-kernel/web/tests）
-src/                     カーネル本体
-  package.lisp           パッケージ定義と設計方針
-  pattern.lisp           パターン照合と、定理の代入（述語スキーマを含む）
-  treap.lisp             台帳の索引に使う永続 treap
-  ledger.lisp            台帳、記号の宣言、束縛子の一覧
-  debruijn.lisp          束縛変数の de Bruijn 表現（変換、束縛子の展開と閉包、新しい変数）
-  side-conditions.lisp   側条件
-  meta.lisp              メタ述語・メタ構成子（自由変数、代入 など）
-  judgement.lisp         形成規則の判定（JUDGEMENT?）
-  k-proof.lisp           証明の検証（CHECK-K-PROOF）と登録（CHECK-AND-EXTEND）
-  persistence.lisp       台帳の保存と読み込み
-  deduction.lisp         演繹定理による登録（th-ded）
+ledger-kernel.asd        ASDF system definitions (ledger-kernel / ledger-kernel/tests /
+                         ledger-kernel/web / ledger-kernel/web/tests)
+src/                     The kernel
+  package.lisp           Package definition and design policy
+  pattern.lisp           Pattern matching and theorem substitution (including predicate schemas)
+  treap.lisp             Persistent treap used to index the ledger
+  ledger.lisp            The ledger, symbol declarations, list of binders
+  debruijn.lisp          de Bruijn representation of bound variables (conversion,
+                         opening and closing binders, fresh variables)
+  side-conditions.lisp   Side conditions
+  meta.lisp              Meta-predicates and meta-constructors (free variables, substitution, etc.)
+  judgement.lisp         Judging formation rules (JUDGEMENT?)
+  k-proof.lisp           Proof checking (CHECK-K-PROOF) and registration (CHECK-AND-EXTEND)
+  persistence.lisp       Saving and loading ledgers
+  deduction.lisp         Registration via the deduction theorem (th-ded)
   tautology.lisp         PROVE-TAUTOLOGY
-  system-spec.lisp       .system ファイルの読み込み
+  system-spec.lisp       Loading .system files
   function-definition.lisp  DEFINE-FUNCTION-BY-DESCRIPTION
-tests/                   カーネルのテスト（ledger-kernel/tests）
-hilbert-library/         論理とペアノ算術の体系・ライブラリ
-zf-library/              ZF 集合論の体系・ライブラリ
-web/                     Web UI（ledger-kernel/web。カーネルの外側）
-  render.lisp            式を教科書風の記法で表示
-  worlds.lisp            表示する世界（ZF、ペアノ算術）
-  deps.lisp              引用関係（依存している公理、使っている定理）
-  api.lisp, server.lisp  JSON API と Hunchentoot のルーティング
-  safe-read.lisp         送られた証明を読む（新しい記号を作らない）
-  static-export.lisp     静的サイトとして書き出す
-  static/                画面（HTML / JS / CSS）
-  tests.lisp             表示と API のテスト
+tests/                   Kernel tests (ledger-kernel/tests)
+hilbert-library/         Systems and libraries for logic and Peano arithmetic
+zf-library/              Systems and libraries for ZF set theory
+web/                     Web UI (ledger-kernel/web; outside the kernel)
+  render.lisp            Displaying formulas in textbook-style notation
+  worlds.lisp            Worlds to display (ZF, Peano arithmetic)
+  deps.lisp              Citation relations (axioms depended on, theorems using an entry)
+  api.lisp, server.lisp  JSON API and Hunchentoot routing
+  safe-read.lisp         Reading submitted proofs (without creating new symbols)
+  static-export.lisp     Exporting as a static site
+  static/                Screens (HTML / JS / CSS)
+  tests.lisp             Tests for display and the API
 tools/
-  serve.lisp                        Web UI を起動する
-  export-static.lisp                Web UI を静的サイトとして書き出す
-  generate-connectives-ledger.lisp  06-connectives.ledger を生成し直す
-  generate-arithmetic-ledger.lisp   08-arithmetic / 09-order / 10-division を生成し直す
-docs/guide.md            機能ごとの詳しい説明
-backup/                  カーネルから外した機能（元のコードと復元の手順。読み込まれない）
-deploy/                  サーバー版を公開するための systemd / nginx の設定例
+  serve.lisp                        Starts the Web UI
+  export-static.lisp                Exports the Web UI as a static site
+  generate-connectives-ledger.lisp  Regenerates 06-connectives.ledger
+  generate-arithmetic-ledger.lisp   Regenerates 08-arithmetic / 09-order / 10-division
+docs/guide.md            Detailed description of each feature
+backup/                  Features removed from the kernel (original code and restore
+                         instructions; not loaded)
+deploy/                  Example systemd / nginx configurations for publishing the server version
 ```
 
 
-## テスト
+## Tests
 
 ```bash
 sbcl --non-interactive \
      --eval '(require :asdf)' \
      --eval '(asdf:load-asd (merge-pathnames "ledger-kernel.asd"))' \
-     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（301 件）
+     --eval '(asdf:test-system :ledger-kernel)'        # kernel (301 tests)
 ```
 
-Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（50 件。HTTP は使いません）。
-各チェックが `[pass]` / `[FAIL]` を出力し、最後に集計を表示します。`[FAIL]` が
-1つでもあると `asdf:test-system` はエラーになります。
+The Web UI tests are run with `(asdf:test-system :ledger-kernel/web)` (50 tests; no HTTP
+is used). Each check prints `[pass]` / `[FAIL]`, and a summary is shown at the end. If
+there is even one `[FAIL]`, `asdf:test-system` signals an error.
 
-テストには、誤った証明が拒否されることを確かめる「攻撃」のテストが多く含まれて
-います（変数の捕獲、側条件の違反、演繹定理の誤用、ファイルへのコードの埋め込み、
-照合の故障 など）。コードを変更したときは、**`[FAIL]` 0** と **コンパイル警告 0** を
-確認してください。個別のテスト群は、`(asdf:load-system :ledger-kernel/tests)` の
-あと `(run-zf-self-tests)` のように呼べます（一覧は `tests/run.lisp`）。
+The tests include many "attack" tests that confirm incorrect proofs are rejected
+(variable capture, side-condition violations, misuse of the deduction theorem, code
+embedded in files, a broken matcher, etc.). When you change the code, confirm
+**zero `[FAIL]`** and **zero compiler warnings**. Individual test groups can be run as,
+for example, `(run-zf-self-tests)` after `(asdf:load-system :ledger-kernel/tests)`
+(see `tests/run.lisp` for the list).
 
 
-## 既知の限界と今後
+## Known limitations and future work
 
-- **ライブラリが小さい**: ZF は空集合まで。対・和集合・順序対・自然数などはこれから
-  です。集合論を書きやすくするクラス記法（`{x ∣ φ}`）もまだありません。
-- **証明を書く手間**: 生の Hilbert 証明は長くなります。結合子の展開形との行き来は
-  明示的に書く必要があり、変数が衝突したときは `:inst` で手で付け替えます。
-  `EXISTS-ELIM` の証人変数も手で選びます。高水準の証明の書き方や、中置記法での
-  入力は、これからの課題です。
-- **自動化の範囲**: `PROVE-TAUTOLOGY` は命題論理の構造しか使わず、原子の数に対して
-  指数的です。
-- **確定記述**: 一意でない場合の `.iota` の値の規約（junk value）はありません。
-- **原子記号は束縛変数に依存できない**: 定理の中の原子記号 A は、周りで束縛された
-  変数を含まない式しか表せません（束縛変数に名前がないので、捕獲が起こりえない）。
-  束縛変数に依存する式は、述語スキーマ `(p x)` で書きます。現在のライブラリは
-  すべてこの形で書かれていて、変更なしで通ります。
-- **速度**: 束縛子を開くたびに式をたどるため、ペアノ算術のライブラリの読み込みは
-  名前付きの版の約 1.5 倍の時間がかかります。
-- **信頼の範囲**: 上の「信頼モデル」のとおり。独立な検証器（あるいは Metamath
-  形式への書き出し）は今後の課題です。
-- **Web UI**: 検証はできますが、証明を定理として登録する機能はまだありません。
+A major revision of the language design and implementation is planned. Its contents,
+with the reasons, include for example:
+
+- **Human verification of the implementation**:
+  This was developed in an AI-driven way, so a person needs to check everything carefully,
+  one piece at a time — at both the language level and the meta-language level.
+- **Making it possible to define the behavior of meta-theorems within `.system`**:
+  because the handling and meaning of symbols differ from system to system — for example,
+  the definition of side conditions for Subst, or how the deduction theorem is treated.
+- **Making it possible to define contradiction per system, and to detect contradictions**
+- **The library is small**: ZF only goes as far as the empty set. Pairs, unions, ordered
+  pairs, natural numbers and so on are still to come. There is also no class notation
+  (`{x ∣ φ}`) to make set theory easier to write.
+- **The effort of writing proofs**: raw Hilbert proofs get long. Moving between connectives
+  and their unfolded forms must be written explicitly, and variable clashes must be renamed
+  by hand with `:inst`. The witness variable for `EXISTS-ELIM` is also chosen by hand.
+  A higher-level proof language and infix input are future work.
+- **Scope of automation**: `PROVE-TAUTOLOGY` uses only propositional structure, and is
+  exponential in the number of atoms.
+- **Definite descriptions**: there is no convention (junk value) for the value of `.iota`
+  when the description is not unique.
+- **Atomic symbols cannot depend on bound variables**: an atomic symbol A in a theorem can
+  only stand for formulas that do not contain variables bound around it (since bound
+  variables have no names, capture cannot occur). Formulas that depend on bound variables
+  are written with predicate schemas `(p x)`. The current library is written entirely in
+  this form and passes unchanged.
+- **Speed**: because the formula is traversed each time a binder is opened, loading the
+  Peano arithmetic library takes about 1.5 times as long as the named-variable version.
+- **Scope of trust**: as described in "What is trusted" above. An independent checker
+  (or export to the Metamath format) is future work.
+- **Web UI**: proofs can be checked, but there is not yet a feature for registering a proof
+  as a theorem.
+
+
+## License
+
+MIT License. See [LICENSE.txt](LICENSE.txt).

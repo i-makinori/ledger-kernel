@@ -49,14 +49,6 @@ of (empty). Returns the extended ledger."
             :refused)
     ledger))
 
-(defun test-tautology-over-set-atoms (ledger)
-  "PROVE-TAUTOLOGY with compound atoms such as (.in v0 v1)."
-  (let* ((target '(.to (.in v0 v1) (.or (.in v0 v1) (.forall v2 (.in v2 v0)))))
-         (ledger (prove-tautology ledger target 'th-test-in-or)))
-    (expect "PROVE-TAUTOLOGY over set-theoretic atoms: x in y -> (x in y or forall z. z in x)"
-            (check-k-proof `((0 ,target :th (th-test-in-or))) ledger) t)
-    ledger))
-
 (defun test-definition-persistence (ledger)
   "A ledger holding a DEFINE-FUNCTION-BY-DESCRIPTION definition survives
 WRITE-LEDGER-TO-FILE / READ-LEDGER-FROM-FILE, and a tampered definition
@@ -91,10 +83,8 @@ command is refused on load."
     ledger))
 
 (defun run-empty-set-self-tests ()
-  "zf-library/01-empty-set.ledger, PROVE-TAUTOLOGY over set atoms, and
-persistence of function definitions."
+  "zf-library/01-empty-set.ledger and persistence of function definitions."
   (let* ((ledger (zf-logic-ledger))
-         (ledger (test-tautology-over-set-atoms ledger))
          (ledger (test-empty-set-library ledger))
          (ledger (test-definition-persistence ledger)))
     (declare (ignorable ledger))

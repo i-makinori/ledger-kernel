@@ -9,7 +9,7 @@ README を読んで全体像を掴んでから、必要な節だけを読む使�
 
 ## 目次
 
-1. `PROVE-TAUTOLOGY` で恒真式を自動証明する
+1. 命題論理の補題: II.1〜II.3 だけから
 2. 検証コストが気になったら: `ENABLE-DERIVED-ENTRY-MEMOIZATION`
 3. 体系そのものをファイルで定義する: `.system` ファイル
 4. 確定記述: `III.3` と `IOTA`
@@ -23,47 +23,30 @@ README を読んで全体像を掴んでから、必要な節だけを読む使�
 12. 設計上の細かな要点
 13. 束縛変数の de Bruijn 表現（マシン B）
 
-## 1. `PROVE-TAUTOLOGY` で恒真式を自動証明する
+## 1. 命題論理の補題: II.1〜II.3 だけから
 
-`.to`（→）と `.neg`（¬）だけで書いた式なら、恒真式かどうかを真理表でチェックし、
-本当に恒真式ならその場で Hilbert 証明を自動生成して台帳に登録してくれます。
+命題論理の公理は Łukasiewicz の3公理 II.1〜II.3 だけです。古典論理の基本補題は
+`01-propositional-core.ledger` と `05-classical-logic.ledger` に、この3公理と MP
+から導いた証明として置いてあります。
+
+- `th-ex-falso`（¬A ⊢ A → B）、`th-dneg-elim`（¬¬A ⊢ A）、`th-dneg-intro`（A → ¬¬A）
+- `th-modus-tollens`（(A → B) → (¬B → ¬A)）
+- `th-case-split`（(A → C) → ((¬A → C) → C)。以前は公理 II.4 でした）
+- `th-raa`（背理法）、`th-neg-impl`（A, ¬C ⊢ ¬(A → C)）
 
 ```lisp
-;; パースの法則 ((A->B)->A)->A を自動証明
-(defparameter *peirce* '(.to (.to (.to A B) A) A))
-(setf *L* (prove-tautology *L* *peirce* 'th-peirce))
-
-(check-k-proof '((0 (.to (.to (.to A B) A) A) :th (th-peirce))) *L*)
+(check-k-proof '((0 (.to (.to (.eq v0 v1) A) (.to (.to (.neg (.eq v0 v1)) A) A))
+                    :th-ded (th-case-split)))
+               *L*)
 ;=> T
 ```
 
-`00-connectives.system` を読み込んでいれば、∧ `.and`・∨ `.or`・↔ `.iff` を含む
-式もそのまま扱えます（展開形を通して FOLD／UNFOLD 公理で証明を組み立てます）。
-また、`.to`/`.neg`/`.and`/`.or`/`.iff` 以外の部分論理式はすべて原子として扱うので、
-`(.in v0 v1)` や `(.forall v0 A)` を含む式でも、命題論理の構造だけで成り立つもの
-なら証明できます。
-
-```lisp
-(setf *L* (prove-tautology *L* '(.iff (.neg (.and A B)) (.or (.neg A) (.neg B))) 'th-de-morgan))
-```
-
-証明の途中で使う補助エントリは `NAME.T1`, `NAME.F1`, ..., `NAME.CONTRA` という
-名前で台帳に登録されます（ファイルに書き出して読み戻せるよう、決定的な名前に
-しています）。
-
-恒真式でないものを渡すと、証明を作らずにその場でエラーになります（安全側）。
-
-```lisp
-(prove-tautology *L* '(.to A B) 'th-bad)
-;=> ERROR: PROVE-TAUTOLOGY: (.TO A B) is FALSE under ((A . T) (B)) -- not a tautology, refusing.
-```
-
-途中経過を見たいときは、最後の引数に `LOG-CONFIG` を渡すと行ごとの accept/reject
-が表示されます。
-
-```lisp
-(prove-tautology *L* *peirce* 'th-peirce2 (make-log-config :errors t :applications t))
-```
+Kalmar の完全性定理の構成で恒真式を自動証明する `PROVE-TAUTOLOGY` は、
+`backup/_backup_tautology.lisp` に移しました。完全性定理はメタ定理で、それに
+頼って証明を生成することは、形式検証として保証すべき範囲を超えるためです。
+`06-connectives.ledger` は以前この道具で生成したもので、生成元のスクリプトも
+`backup/` にありますが、ファイル自体は普通の証明の列なので、読み込むたびに
+全証明が再検証されます。
 
 ## 2. 検証コストが気になったら: `ENABLE-DERIVED-ENTRY-MEMOIZATION`
 
@@ -130,7 +113,7 @@ README を読んで全体像を掴んでから、必要な節だけを読む使�
 ```
 
 `hilbert-library/00-classical-fol-equality.system` + `00-peano-arithmetic.system`
-は、このカーネルが標準で使っている体系（II.1-4/III.1-2/IV.1-4 + ペアノ算術）
+は、このカーネルが標準で使っている体系（II.1-3/III.1-3/IV.1-4 + ペアノ算術）
 を定義する `.system` ファイルです。
 
 ```lisp
@@ -337,7 +320,7 @@ descriptionは保存的拡張である」というメタ定理そのものを本
 ((0 (.and A B) :hyp nil)
  (1 (.to (.and A B) (.neg (.to A (.neg B)))) :axiom (and-unfold))
  (2 (.neg (.to A (.neg B))) :ir (MP 1 0))
- (3 (.to (.neg (.to A (.neg B))) A) :th (...))   ; PROVE-TAUTOLOGY で作った定理
+ (3 (.to (.neg (.to A (.neg B))) A) :th (...))   ;  命題論理の定理
  (4 A :ir (MP 3 2)))
 ```
 
@@ -351,8 +334,10 @@ descriptionは保存的拡張である」というメタ定理そのものを本
 （`th-and-intro`, `th-and-elim-l/r`, `th-or-intro-l/r`, `th-or-elim`,
 `th-iff-intro`, `th-iff-mp/mpr`, `th-iff-refl/sym/trans`, `th-not-and`,
 `th-not-or`, `th-excluded-middle`, `th-contrapositive` など）。このファイルは
-`tools/generate-connectives-ledger.lisp` が `PROVE-TAUTOLOGY` で生成したもので、
-読み込むときには他の `.ledger` と同じく全証明が再検証されます。
+以前 `PROVE-TAUTOLOGY` で生成したもので（生成スクリプトは
+`backup/_backup_generate-connectives-ledger.lisp`）、場合分けは公理 II.4 ではなく
+定理 `th-case-split` を引用する形に書き換えてあります。読み込むときには他の
+`.ledger` と同じく全証明が再検証されます。
 
 ∃! や量化子についての補題（∃!x P(x) → ∃x P(x) など）は、述語スキーマ変数を
 使って `hilbert-library/07-quantifier-schemas.ledger` にまとめてあります
@@ -613,15 +598,12 @@ REPL からなら:
   - 帰納的述語の定義機構: `backup/_backup_inductive.lisp`, `backup/_backup_meta-unused.lisp`
   - 証明を変換する演繹定理: `backup/_backup_deduction-transform.lisp`
   - 略記定義などの旧エントリ種別: `backup/_backup_ith-def-abbrev.lisp`
-- **II.4 の位置づけ**: `II.1〜II.3`（Łukasiewicz の3公理）だけで古典論理として
-  完全ですが、そこから ¬¬除去等を導く最短証明は数十ステップ級になるため、
-  実用性を優先して `II.4`（ケース分割）を独立公理として追加しています。これは
-  IV.3/IV.4 や P8-P10（導出不可能性を証明した上で追加）とは違い、「導出可能だが
-  実際には導出していない」ことをコード中のコメントで明記しています。
-- **`PROVE-TAUTOLOGY` の仕組み**: Kalmar の補題（各部分論理式について、その
-  真理値に応じた符号付き形が、原子論理式の符号付き仮定から証明できる）を構造
-  帰納法で構成し、`II.4` によるケース分割で全ての仮定を1つずつ消去して閉じた
-  定理にする、という教科書的な完全性証明をそのままコードにしたものです。
+- **II.4 を公理から外した理由**: 以前は、Kalmar の構成（`PROVE-TAUTOLOGY`）が
+  使うケース分割を独立公理 II.4 として置いていました。完全性定理に頼る道具を
+  カーネルから外したので、II.4 も公理から外し、`05-classical-logic.ledger` で
+  II.1〜II.3 から定理 `th-case-split` として導出しています。信頼する公理が
+  1本減った代わりに、場合分けを引用するたびにその導出が再検証されるので、
+  メモ化なし（既定）では読み込みが遅くなります（2節）。
 
 
 ## 13. 束縛変数の de Bruijn 表現（マシン B）

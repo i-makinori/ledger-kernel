@@ -10,7 +10,6 @@ check and a final summary. Returns T if every check passed, NIL otherwise
   (let ((*expect-results* (cons 0 0)))
     (run-self-tests)
     (run-classical-logic-self-tests)
-    (run-tactics-self-tests)
     (run-derived-entry-memoization-self-tests)
     (run-iota-self-tests)
     (run-exists-elim-self-tests)

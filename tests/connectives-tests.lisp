@@ -84,14 +84,30 @@ variable is bound for free-variable checks and for substitution."
   ledger)
 
 (defun test-connectives-derivation (ledger)
-  "And-elimination, A & B |- A, through AND-UNFOLD and a propositional
-tautology proved by PROVE-TAUTOLOGY on top of the classical library."
+  "And-elimination, A & B |- A, through AND-UNFOLD and the propositional
+lemma not(A -> not-B) -> A, proved by hand from the classical library
+(ex falso, modus tollens, double negation)."
   (let* ((ledger (reduce (lambda (l f) (read-ledger-from-file (library-path f) :ledger l))
                          '("01-propositional-core.ledger" "02-predicate-core.ledger"
                            "03-equality-core.ledger" "05-classical-logic.ledger")
                          :initial-value ledger))
          (core '(.to (.neg (.to A (.neg B))) A))
-         (ledger (prove-tautology ledger core 'th-and-elim-left-core)))
+         (ledger (check-and-extend
+                  ledger 'th 'th-and-elim-left-core
+                  `((0 (.to (.neg A) (.to A (.neg B))) :th-ded (th-ex-falso))
+                    (1 (.to (.to (.neg A) (.to A (.neg B)))
+                            (.to (.neg (.to A (.neg B))) (.neg (.neg A))))
+                       :th-ded (th-modus-tollens))
+                    (2 (.to (.neg (.to A (.neg B))) (.neg (.neg A))) :ir (MP 1 0))
+                    (3 (.to (.to (.neg (.neg A)) A)
+                            (.to (.to (.neg (.to A (.neg B))) (.neg (.neg A)))
+                                 (.to (.neg (.to A (.neg B))) A)))
+                       :th-ded (th-hypothetical-syllogism))
+                    (4 (.to (.neg (.neg A)) A) :th-ded (th-dneg-elim))
+                    (5 (.to (.to (.neg (.to A (.neg B))) (.neg (.neg A)))
+                            (.to (.neg (.to A (.neg B))) A))
+                       :ir (MP 3 4))
+                    (6 ,core :ir (MP 5 2))))))
     (expect "and-elimination: (.and A B) |- A"
             (check-k-proof `((0 (.and A B) :hyp nil)
                              (1 (.to (.and A B) (.neg (.to A (.neg B)))) :axiom (and-unfold))
@@ -102,51 +118,11 @@ tautology proved by PROVE-TAUTOLOGY on top of the classical library."
     ledger))
 
 (defun connectives-library-ledger ()
-  "CONNECTIVES-LEDGER + the 01/02/03/05 modules PROVE-TAUTOLOGY needs."
+  "CONNECTIVES-LEDGER + the 01/02/03/05 modules 06-connectives.ledger needs."
   (reduce (lambda (l f) (read-ledger-from-file (library-path f) :ledger l))
           '("01-propositional-core.ledger" "02-predicate-core.ledger"
             "03-equality-core.ledger" "05-classical-logic.ledger")
           :initial-value (connectives-ledger)))
-
-(defun test-prove-tautology-with-connectives (ledger)
-  "PROVE-TAUTOLOGY sees through .AND/.OR/.IFF, refuses non-tautologies,
-and names its intermediate entries so the ledger survives a file round
-trip."
-  (let* ((trans '(.to (.iff a b) (.to (.iff b c) (.iff a c))))
-         (demorgan '(.iff (.neg (.and a b)) (.or (.neg a) (.neg b))))
-         (ledger (prove-tautology ledger trans 'th-test-iff-trans))
-         (ledger (prove-tautology ledger demorgan 'th-test-demorgan)))
-    (expect "PROVE-TAUTOLOGY: iff is transitive"
-            (check-k-proof `((0 ,trans :th (th-test-iff-trans))) ledger) t)
-    (expect "PROVE-TAUTOLOGY: De Morgan, not(A and B) iff (not A or not B)"
-            (check-k-proof `((0 ,demorgan :th (th-test-demorgan))) ledger) t)
-    (expect "PROVE-TAUTOLOGY result is schematic: iff-transitivity at compound formulas"
-            (check-k-proof '((0 (.to (.iff (.eq v0 v1) (.eq v1 v0))
-                                     (.to (.iff (.eq v1 v0) (.and a b))
-                                          (.iff (.eq v0 v1) (.and a b))))
-                                :th (th-test-iff-trans)))
-                           ledger) t)
-    (expect "PROVE-TAUTOLOGY refuses (A or B) -> A"
-            (handler-case (progn (prove-tautology ledger '(.to (.or a b) a) 'th-test-bad) :admitted)
-              (error () :refused))
-            :refused)
-    (expect "PROVE-TAUTOLOGY refuses (A iff B) -> (A and B)"
-            (handler-case (progn (prove-tautology ledger '(.to (.iff a b) (.and a b)) 'th-test-bad2) :admitted)
-              (error () :refused))
-            :refused)
-    (expect "intermediate entries get interned names (TH-TEST-IFF-TRANS.T1, .CONTRA)"
-            (and (derived-rule-name-taken-p (find-symbol "TH-TEST-IFF-TRANS.T1" :ledger-kernel) ledger)
-                 (derived-rule-name-taken-p (find-symbol "TH-TEST-IFF-TRANS.CONTRA" :ledger-kernel) ledger))
-            t)
-    (let ((path "/tmp/ledger-kernel-self-test-tautology.tmp"))
-      (unwind-protect
-           (expect "a ledger built by PROVE-TAUTOLOGY round-trips through a file"
-                   (let ((reloaded (progn (write-ledger-to-file ledger path)
-                                          (read-ledger-from-file path :ledger (connectives-ledger)))))
-                     (check-k-proof `((0 ,demorgan :th (th-test-demorgan))) reloaded))
-                   t)
-        (ignore-errors (delete-file path))))
-    ledger))
 
 (defun test-connectives-library (ledger)
   "hilbert-library/06-connectives.ledger loads and its lemmas are usable."
@@ -166,13 +142,11 @@ trip."
     ledger))
 
 (defun run-connectives-self-tests ()
-  "hilbert-library/00-connectives.system, the .EXISTS1 binder,
-PROVE-TAUTOLOGY over defined connectives, and 06-connectives.ledger."
+  "hilbert-library/00-connectives.system, the .EXISTS1 binder, and
+06-connectives.ledger."
   (let* ((ledger (connectives-ledger))
          (ledger (test-connectives-formation-and-axioms ledger))
          (ledger (test-exists1-is-a-binder ledger)))
     (test-connectives-derivation ledger))
-  (let* ((ledger (connectives-library-ledger))
-         (ledger (test-prove-tautology-with-connectives ledger)))
-    (test-connectives-library ledger))
+  (test-connectives-library (connectives-library-ledger))
   (format t "~%Connectives self-tests complete.~%"))

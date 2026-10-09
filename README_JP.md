@@ -36,7 +36,7 @@ Web UI も付いています。
 ## できること
 
 **論理と体系**
-- 命題論理（Łukasiewicz の3公理 + 場合分け II.4）、一階述語論理（∀・∃、Gen、
+- 命題論理（Łukasiewicz の3公理 II.1〜II.3。場合分けは定理 `th-case-split` として導出）、一階述語論理（∀・∃、Gen、
   存在汎化 III.3、存在除去 `EXISTS-ELIM`）、等号（IV.1〜IV.4）
 - 定義された結合子 ∧ ∨ ↔ ∃!（`00-connectives.system`）
 - ペアノ算術（P1〜P10）と、その上の順序 ≤ ・ <（`00-peano-order.system`）
@@ -50,9 +50,12 @@ Web UI も付いています。
 - 述語スキーマ変数「A(x)」: `(p v0)` を「x を含む任意の論理式」として定理に書き、
   引用時に具体的な式を代入する（自動、または `:inst` で明示）
 
-**自動化**
-- `PROVE-TAUTOLOGY`: 命題論理の恒真式を、Kalmar の完全性定理の構成に従って自動で
-  証明する（∧ ∨ ↔ も扱い、任意の論理式を原子として使える）
+**自動化について**
+- Kalmar の完全性定理の構成による恒真式の自動証明（`PROVE-TAUTOLOGY`）は、
+  `backup/` に移しました。完全性定理はメタ定理であり、それに頼る証明生成は
+  形式検証で保証すべき範囲を超えるためです。命題論理の補題は
+  `05-classical-logic.ledger` と `06-connectives.ledger` に、検証済みの証明として
+  置いてあります。
 
 どの道具が作った証明も、台帳に入る前に必ずカーネルが検証します。道具そのものは
 信頼しなくて構いません。
@@ -67,7 +70,7 @@ Web UI も付いています。
   リンク、依存している公理と「この定理を使っている定理」の表示、ブラウザ上での
   証明の検証
 
-テスト: カーネル 310 件、Web 50 件がすべて通り、コンパイル警告 0 の状態です。
+テスト: カーネル 299 件、Web 50 件がすべて通り、コンパイル警告 0 の状態です。
 
 カーネル（`src/`）はコメント込みで約 2000 行です。論理そのものはコードに書かず、
 すべて `.system` ファイルに置いています。使われていない機能は `backup/` に、元の
@@ -85,7 +88,7 @@ Web UI も付いています。
 (require :asdf)
 (asdf:load-asd (merge-pathnames "ledger-kernel.asd"))
 (asdf:load-system :ledger-kernel)
-(asdf:test-system :ledger-kernel)      ; 最後に "310/310 self-tests passed." と出る
+(asdf:test-system :ledger-kernel)      ; 最後に "299/299 self-tests passed." と出る
 (in-package :ledger-kernel)
 ```
 
@@ -143,11 +146,6 @@ ZF 集合論の場合:
 通らないときは `NIL` と、2つ目の値として最初に拒否された行の番号が返ります。
 
 証明を定理として登録するには `check-and-extend` などを使います（下の「台帳を育てる」参照）。
-命題論理の恒真式なら、自動で証明できます。
-
-```lisp
-(setf *L* (prove-tautology *L* '(.to (.or a b) (.or b a)) 'th-my-or-comm))
-```
 
 ### Web UI
 
@@ -238,7 +236,6 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
 |---|---|
 | `check-and-extend` | 閉じた証明を、定理（`th`）として登録する |
 | `check-and-extend-by-deduction-direct` | 仮定 H を含む証明 Γ, H ⊢ Φ を、演繹定理により Γ ⊢ H → Φ として登録する（`th-ded`） |
-| `prove-tautology` | 命題論理の恒真式を自動で証明して登録する |
 | `define-function-by-description` | 存在・一意性の定理から、関数記号とその定義公理を追加する |
 | `declare-atomic-wff-symbol`, `declare-variable-symbol`, `declare-predicate-schema-symbol` | 新しい記号を宣言する |
 
@@ -251,7 +248,7 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
 
 | ファイル | 内容 |
 |---|---|
-| `hilbert-library/00-classical-fol-equality.system` | 一階述語論理と等号の体系（形成規則、MP・Gen・IOTA・EXISTS-ELIM、II.1〜4、III.1〜3、IV.1〜4） |
+| `hilbert-library/00-classical-fol-equality.system` | 一階述語論理と等号の体系（形成規則、MP・Gen・IOTA・EXISTS-ELIM、II.1〜3、III.1〜3、IV.1〜4） |
 | `hilbert-library/00-connectives.system` | ∧ ∨ ↔ ∃! の形成規則と定義公理 |
 | `hilbert-library/00-peano-arithmetic.system` | ペアノ算術の語彙と公理 P1〜P10 |
 | `hilbert-library/00-peano-order.system` | 順序 ≤ ・ < の定義（s ≤ t :⇔ ∃z s + z = t、s < t :⇔ S s ≤ t） |
@@ -259,8 +256,8 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
 | `hilbert-library/02-predicate-core.ledger` | ∀ の順序交換 |
 | `hilbert-library/03-equality-core.ledger` | 等号の反射律・推移律 |
 | `hilbert-library/04-peano-arithmetic.ledger` | 0 + x = x（帰納法による証明） |
-| `hilbert-library/05-classical-logic.ledger` | ex falso、二重否定の導入・除去、背理法 など |
-| `hilbert-library/06-connectives.ledger` | ∧ ∨ ↔ の基本補題（導入・除去・対称・推移・ド・モルガン・排中律 など。`tools/generate-connectives-ledger.lisp` で生成） |
+| `hilbert-library/05-classical-logic.ledger` | ex falso、二重否定の導入・除去、モーダストレンス、場合分け（`th-case-split`）、背理法 など。II.1〜II.3 だけから導出 |
+| `hilbert-library/06-connectives.ledger` | ∧ ∨ ↔ の基本補題（導入・除去・対称・推移・ド・モルガン・排中律 など。元は `PROVE-TAUTOLOGY` で生成（現在は `backup/`）） |
 | `hilbert-library/07-quantifier-schemas.ledger` | P(x) についての量化子の補題（∀除去、∃導入、単調性、∃! → ∃、∃! の一意性） |
 | `hilbert-library/08-arithmetic.ledger` | 加法・乗法の交換律・結合律・分配律・簡約律、0 と 1 の性質（`tools/generate-arithmetic-ledger.lisp` で生成） |
 | `hilbert-library/09-order.ledger` | ≤ の反射律・推移律・反対称律・全順序性、x ≤ Sx、0 か後者か、x + y = 0 → y = 0（同上） |
@@ -293,7 +290,7 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
 - `.ledger` / `.system` ファイルはデータとしてだけ読み込みます（`#.(...)` による
   コード実行はできません）。`.ledger` ファイルが壊れていても書き換えられていても、
   起こりうるのは「読み込みに失敗する」ことだけです。
-- `PROVE-TAUTOLOGY` などの道具が作った証明も、登録前に必ず検証されます。
+- 道具が作った証明も、登録前に必ず検証されます。
 
 **無条件に信頼しているもの**
 - **カーネルのコード**: 照合、自由変数や代入可能性の判定（メタ述語）、再検証の
@@ -302,8 +299,8 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
   います。代入は束縛変数を捕獲しようがない形で行いますが、`@subst-ok?` は
   残してあり、変換や束縛子の展開に誤りがあれば、そこで検出して拒否します。
 - **`.system` ファイルの内容**: 公理・推論規則・形成規則は、読み込めばそのまま
-  信頼されます（`:PRIMITIVE`）。II.4 は II.1〜II.3 から導出可能ですが、公理として
-  置いています。公理系の無矛盾性は、体系の内側からは確かめられません
+  信頼されます（`:PRIMITIVE`）。命題論理の公理は II.1〜II.3 だけで、場合分けなどは
+  そこから導出しています。公理系の無矛盾性は、体系の内側からは確かめられません
   （ゲーデルの第二不完全性定理）。
 - **演繹定理**: `th-ded` の定理は、演繹定理をメタ定理として信頼して登録されて
   います（Gen の制約は検査しています）。証明の中で他の定理を引用している場合への
@@ -338,7 +335,6 @@ src/                     カーネル本体
   k-proof.lisp           証明の検証（CHECK-K-PROOF）と登録（CHECK-AND-EXTEND）
   persistence.lisp       台帳の保存と読み込み
   deduction.lisp         演繹定理による登録（th-ded）
-  tautology.lisp         PROVE-TAUTOLOGY
   system-spec.lisp       .system ファイルの読み込み
   function-definition.lisp  DEFINE-FUNCTION-BY-DESCRIPTION
 tests/                   カーネルのテスト（ledger-kernel/tests）
@@ -356,7 +352,6 @@ web/                     Web UI（ledger-kernel/web。カーネルの外側）
 tools/
   serve.lisp                        Web UI を起動する
   export-static.lisp                Web UI を静的サイトとして書き出す
-  generate-connectives-ledger.lisp  06-connectives.ledger を生成し直す
   generate-arithmetic-ledger.lisp   08-arithmetic / 09-order / 10-division を生成し直す
 docs/guide.md            機能ごとの詳しい説明
 backup/                  カーネルから外した機能（元のコードと復元の手順。読み込まれない）
@@ -370,7 +365,7 @@ deploy/                  サーバー版を公開するための systemd / nginx
 sbcl --non-interactive \
      --eval '(require :asdf)' \
      --eval '(asdf:load-asd (merge-pathnames "ledger-kernel.asd"))' \
-     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（310 件）
+     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（299 件）
 ```
 
 Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（50 件。HTTP は使いません）。
@@ -400,8 +395,8 @@ Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（50 件�
   明示的に書く必要があり、変数が衝突したときは `:inst` で手で付け替えます。
   `EXISTS-ELIM` の証人変数も手で選びます。高水準の証明の書き方や、中置記法での
   入力は、これからの課題です。
-- **自動化の範囲**: `PROVE-TAUTOLOGY` は命題論理の構造しか使わず、原子の数に対して
-  指数的です。
+- **自動化**: 恒真式の自動証明は `backup/` にあり、カーネルでは使っていません。
+  命題論理の補題も手で（または道具で生成して）書いた証明として台帳に置きます。
 - **確定記述**: 一意でない場合の `.iota` の値の規約（junk value）はありません。
 - **原子記号は束縛変数に依存できない**: 定理の中の原子記号 A は、周りで束縛された
   変数を含まない式しか表せません（束縛変数に名前がないので、捕獲が起こりえない）。

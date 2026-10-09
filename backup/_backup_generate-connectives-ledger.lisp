@@ -1,3 +1,13 @@
+;;;; _backup_generate-connectives-ledger.lisp -- BACKUP (was tools/)
+;;;;
+;;;; Moved here on 2026-10-09 with _backup_tautology.lisp, which it needs.
+;;;; It generated hilbert-library/06-connectives.ledger. Since then that
+;;;; file has been edited by hand: its ':axiom (ii.4)' lines now cite
+;;;; ':th-ded (th-case-split)'. Regenerating it would need step 2 of
+;;;; _backup_tautology.lisp's HOW TO RESTORE first.
+;;;;
+;;;; ---------------------------------------------------------------------
+
 ;;;; generate-connectives-ledger.lisp
 ;;;;
 ;;;; Regenerates hilbert-library/06-connectives.ledger: the basic

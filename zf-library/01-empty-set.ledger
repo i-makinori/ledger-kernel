@@ -56,11 +56,12 @@
   (1 (.to (.forall v0 (.exists v1 (.forall v2 (.iff (.in v2 v1) (.and (.in v2 v0) (.neg (.eq v2 v2))))))) (.exists v1 (.forall v2 (.iff (.in v2 v1) (.and (.in v2 v0) (.neg (.eq v2 v2))))))) :axiom (III.1 v0))
   (2 (.exists v1 (.forall v2 (.iff (.in v2 v1) (.and (.in v2 v0) (.neg (.eq v2 v2)))))) :ir (mp 1 0))
   (3 (.to (.forall v2 (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2))))) (.forall v2 (.neg (.in v2 v3)))) :th-ded (th-zf-empty-exists-s1))
-  (4 (.to (.forall v2 (.neg (.in v2 v3))) (.exists v1 (.forall v2 (.neg (.in v2 v1))))) :axiom (III.3 v1 (.forall v2 (.neg (.in v2 v1))) v3))
+  (4 (.to (.forall v2 (.neg (.in v2 v3))) (.exists v1 (.forall v2 (.neg (.in v2 v1))))) :th (th-exists-intro :inst ((p (v1) (.forall v2 (.neg (.in v2 v1)))) (v1 v3))))
   (5 (.to (.to (.forall v2 (.neg (.in v2 v3))) (.exists v1 (.forall v2 (.neg (.in v2 v1))))) (.to (.to (.forall v2 (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2))))) (.forall v2 (.neg (.in v2 v3)))) (.to (.forall v2 (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2))))) (.exists v1 (.forall v2 (.neg (.in v2 v1))))))) :th-ded (th-hypothetical-syllogism))
   (6 (.to (.to (.forall v2 (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2))))) (.forall v2 (.neg (.in v2 v3)))) (.to (.forall v2 (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2))))) (.exists v1 (.forall v2 (.neg (.in v2 v1)))))) :ir (mp 5 4))
   (7 (.to (.forall v2 (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2))))) (.exists v1 (.forall v2 (.neg (.in v2 v1))))) :ir (mp 6 3))
-  (8 (.exists v1 (.forall v2 (.neg (.in v2 v1)))) :ir (exists-elim 2 7 v3))))
+  (9 (.forall v3 (.to (.forall v2 (.iff (.in v2 v3) (.and (.in v2 v0) (.neg (.eq v2 v2))))) (.exists v1 (.forall v2 (.neg (.in v2 v1)))))) :ir (gen 7 v3))
+  (8 (.exists v1 (.forall v2 (.neg (.in v2 v1)))) :th (th-exists-elim 2 9 :inst ((v1 v3))))))
 
 ;;; --- Uniqueness ------------------------------------------------------------
 ;;; Two sets with no members have the same members (both sides of every

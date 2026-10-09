@@ -29,7 +29,8 @@ free in A, free in the conclusion C)."
                             (1 (.eq v1 v1) :axiom (IV.1))
                             (2 (.to (.eq v1 v1) (.to (.eq v2 v1) (.eq v1 v1))) :axiom (II.1))
                             (3 (.to (.eq v2 v1) (.eq v1 v1)) :ir (MP 2 1))
-                            (4 (.eq v1 v1) :ir (EXISTS-ELIM 0 3 v2)))
+                            (5 (.forall v2 (.to (.eq v2 v1) (.eq v1 v1))) :ir (gen 3 v2))
+                            (4 (.eq v1 v1) :th (th-exists-elim 0 5 :inst ((v1 v2)))))
                           ledger)
           t)
   (expect "Attack: witness v2 free in an open hypothesis (Gamma) -- must reject"
@@ -38,7 +39,8 @@ free in A, free in the conclusion C)."
                             (2 (.eq v1 v1) :axiom (IV.1))
                             (3 (.to (.eq v1 v1) (.to (.eq v2 v1) (.eq v1 v1))) :axiom (II.1))
                             (4 (.to (.eq v2 v1) (.eq v1 v1)) :ir (MP 3 2))
-                            (5 (.eq v1 v1) :ir (EXISTS-ELIM 1 4 v2)))
+                            (6 (.forall v2 (.to (.eq v2 v1) (.eq v1 v1))) :ir (gen 4 v2))
+                            (5 (.eq v1 v1) :th (th-exists-elim 1 6 :inst ((v1 v2)))))
                           ledger)
           nil)
   (expect "Attack: witness v2 already free in A itself -- must reject"
@@ -46,7 +48,8 @@ free in A, free in the conclusion C)."
                             (1 (.eq v1 v1) :axiom (IV.1))
                             (2 (.to (.eq v1 v1) (.to (.eq v2 v2) (.eq v1 v1))) :axiom (II.1))
                             (3 (.to (.eq v2 v2) (.eq v1 v1)) :ir (MP 2 1))
-                            (4 (.eq v1 v1) :ir (EXISTS-ELIM 0 3 v2)))
+                            (5 (.forall v2 (.to (.eq v2 v2) (.eq v1 v1))) :ir (gen 3 v2))
+                            (4 (.eq v1 v1) :th (th-exists-elim 0 5 :inst ((v1 v2)))))
                           ledger)
           nil)
   (expect "Attack: the cited antecedent does NOT actually equal A[w/x] -- must reject"
@@ -54,7 +57,8 @@ free in A, free in the conclusion C)."
                             (1 (.eq v1 v1) :axiom (IV.1))
                             (2 (.to (.eq v1 v1) (.to (.eq v2 v3) (.eq v1 v1))) :axiom (II.1))
                             (3 (.to (.eq v2 v3) (.eq v1 v1)) :ir (MP 2 1))
-                            (4 (.eq v1 v1) :ir (EXISTS-ELIM 0 3 v2)))
+                            (5 (.forall v2 (.to (.eq v2 v3) (.eq v1 v1))) :ir (gen 3 v2))
+                            (4 (.eq v1 v1) :th (th-exists-elim 0 5 :inst ((v1 v2)))))
                           ledger)
           nil)
   (let ((selfimp-proof '((0 (.to (.to (.eq v2 v1) (.to (.to (.eq v2 v1) (.eq v2 v1)) (.eq v2 v1)))
@@ -69,14 +73,17 @@ free in A, free in the conclusion C)."
             (check-k-proof selfimp-proof ledger) t)
     (expect "Attack: witness v2 leaks into the CONCLUSION C itself -- must reject"
             (check-k-proof (append '((0 (.exists v0 (.eq v0 v1)) :hyp nil)) selfimp-proof
-                                    '((5 (.eq v2 v1) :ir (EXISTS-ELIM 0 4 v2))))
+                                    '((6 (.forall v2 (.to (.eq v2 v1) (.eq v2 v1))) :ir (gen 4 v2))
+                                      (5 (.eq v2 v1) :th (th-exists-elim 0 6 :inst ((v1 v2))))))
                             ledger)
             nil))
   ledger)
 
 (defun run-exists-elim-self-tests ()
-  "Section 21: EXISTS-ELIM -- the positive case plus four attacks."
-  (let* ((ledger (fol-kernel))
+  "Section 21: existential elimination, now the derived theorem
+TH-EXISTS-ELIM of 05-classical-logic.ledger (cited after a Gen on the
+witness) -- the positive case plus four attacks, each still refused."
+  (let* ((ledger (classical-logic-ledger (fol-kernel)))
          (ledger (test-exists-elim ledger)))
     (declare (ignorable ledger))
     (format t "~%EXISTS-ELIM self-tests complete.~%")))

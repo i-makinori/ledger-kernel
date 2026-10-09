@@ -149,3 +149,48 @@ and every line of the proof is covered by one of its cases."
               (admitted-p (lambda ()
                             (bootstrap-kernel-from-spec '((:meta-theorem cut-elimination)) :ledger l)))
               nil))))
+
+(defun test-deduction-expansion ()
+  "With proof templates for its cases, a TH-DED is also built as a real
+proof of Gamma |- H -> PHI and checked; without one (IOTA), or with a
+wrong one, its case is trusted and the entry says so."
+  (let* ((l (classical-logic-ledger (fol-kernel)))
+         (l (check-and-extend-by-deduction-direct
+             l 'th-exp-test '(.forall v0 (.eq v0 v1))
+             '((0 (.eq v2 v2) :hyp nil)
+               (1 (.forall v0 (.eq v0 v1)) :hyp nil)
+               (2 (.to (.forall v0 (.eq v0 v1)) (.eq v3 v1)) :axiom (III.1 v3))
+               (3 (.eq v3 v1) :ir (MP 2 1))
+               (4 (.forall v3 (.eq v3 v1)) :ir (Gen 3 v3))
+               (5 (.to (.eq v3 v1) (.neg (.neg (.eq v3 v1)))) :th (th-dneg-intro))
+               (6 (.neg (.neg (.eq v3 v1))) :ir (MP 5 3)))))
+         (e (first (last (entries-of-kind 'th-ded l))))
+         (expanded (expand-deduction-entry e l)))
+    (expect "a TH-DED through MP, Gen and a cited theorem is admitted as expanded"
+            (deduction-entry-expanded-p e) t)
+    (expect "its expansion is an ordinary proof of Gamma |- H -> PHI ..."
+            (and expanded
+                 (%check-k-proof expanded (entries-upto (entry-k e) l))   ; kernel form
+                 (equal (proof-conclusion expanded)
+                        (named->db '(.to (.forall v0 (.eq v0 v1)) (.neg (.neg (.eq v3 v1)))) l)))
+            t)
+    (expect "... whose only hypothesis is Gamma, H discharged"
+            (equal (proof-hypotheses expanded) (list (named->db '(.eq v2 v2) l)))
+            t)
+    (expect "... and which cites no TH-DED that depends on H (the Deduction Theorem is not used)"
+            (notany (lambda (line) (and (eq (third line) :hyp)
+                                        (equal (second line) (named->db '(.forall v0 (.eq v0 v1)) l))))
+                    expanded)
+            t))
+  ;; A wrong template: MP's written with II.1 in place of II.2.
+  (let* ((spec (mapcar (lambda (cmd)
+                         (if (eq (car cmd) :meta-theorem)
+                             (subst '(II.1) '(II.2) cmd :test #'equal)
+                             cmd))
+                       (read-system-spec-from-file (library-path "00-classical-fol-equality.system"))))
+         (l (bootstrap-kernel-from-spec spec))
+         (l (check-and-extend-by-deduction-direct
+             l 'th-exp-bad 'a '((0 (.to a b) :hyp nil) (1 a :hyp nil) (2 b :ir (MP 0 1)))))
+         (e (first (last (entries-of-kind 'th-ded l)))))
+    (expect "Attack: a wrong proof template does not pass for an expansion"
+            (deduction-entry-expanded-p e) nil)))

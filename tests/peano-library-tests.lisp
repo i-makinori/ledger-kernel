@@ -78,7 +78,8 @@
                                      (entries-of-kind 'abbreviation ledger))))
             (and (= (length defs) 3)
                  (every (lambda (e)
-                          (let ((body (second (entry-payload e))))
+                          ;; As written: the iota term over a formula with no binder of its own.
+                          (let ((body (second (or (getf (cdr (entry-origin e)) :written) (entry-payload e)))))
                             (and (eq (first body) '.iota) (= 0 (count-binders (third body))))))
                         defs)))
           t)
@@ -91,5 +92,8 @@
 (defun run-peano-library-self-tests ()
   "The generated arithmetic and order libraries load (every proof
 re-verified) and their laws can be cited."
-  (test-peano-laws (peano-library-ledger))
+  (let ((ledger (peano-library-ledger)))
+    (test-peano-laws ledger)
+    (expect "every TH-DED of the arithmetic libraries is expanded into a real, checked proof"
+            (every #'deduction-entry-expanded-p (entries-of-kind 'th-ded ledger)) t))
   (format t "~%Peano library self-tests complete.~%"))

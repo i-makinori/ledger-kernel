@@ -100,7 +100,10 @@ plus whatever its existence and uniqueness theorems rest on."
                       (setf ks (union ks cks) meta (or meta cmeta)))))
                 (cons ks meta)))
              ((derived-kind-p kind)
-              (let ((ks (and (definition-entry-p e) (list k))) (meta (eq kind 'th-ded)))
+              ;; META: a TH-DED whose discharge was not expanded into a
+              ;; real proof, so its Deduction Theorem cases were trusted.
+              (let ((ks (and (definition-entry-p e) (list k)))
+                    (meta (and (eq kind 'th-ded) (not (deduction-entry-expanded-p e)))))
                 (dolist (c (gethash k (deps-cites d)))
                   (multiple-value-bind (cks cmeta) (entry-foundations d c)
                     (setf ks (union ks cks) meta (or meta cmeta))))

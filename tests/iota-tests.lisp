@@ -48,17 +48,17 @@ the CONSEQUENT while @subst sits in the ANTECEDENT (MATCH-TEMPLATE
 processes antecedent before consequent, so ?x/?A can't be left to bind
 structurally the way III.1's own (.forall ?x ?A) antecedent does)."
   (expect "III.3: v1=v1 -> exists v0(v0=v1)"
-          (check-k-proof '((0 (.to (.eq v1 v1) (.exists v0 (.eq v0 v1))) :axiom (III.3 v0 (.eq v0 v1) v1))) ledger)
+          (check-k-proof '((0 (.to (.eq v1 v1) (.exists v0 (.eq v0 v1))) :th (th-exists-intro :inst ((p (v0) (.eq v0 v1)) (v1 v1))))) ledger)
           t)
   (let ((ledger (check-and-extend ledger 'th 'th-exists-v0-eq-v1
                                    '((0 (.eq v1 v1) :axiom (IV.1))
-                                     (1 (.to (.eq v1 v1) (.exists v0 (.eq v0 v1))) :axiom (III.3 v0 (.eq v0 v1) v1))
+                                     (1 (.to (.eq v1 v1) (.exists v0 (.eq v0 v1))) :th (th-exists-intro :inst ((p (v0) (.eq v0 v1)) (v1 v1))))
                                      (2 (.exists v0 (.eq v0 v1)) :ir (MP 1 0)))
                                    (silent-log))))
     (expect "TH-EXISTS-V0-EQ-V1 is a real, re-citable ledger theorem"
             (check-k-proof '((0 (.exists v0 (.eq v0 v1)) :th (th-exists-v0-eq-v1))) ledger) t)
     (expect "Attack: III.3 with a MISMATCHED extra-arg t (v2 instead of v1) -- must reject"
-            (check-k-proof '((0 (.to (.eq v1 v1) (.exists v0 (.eq v0 v1))) :axiom (III.3 v0 (.eq v0 v1) v2))) ledger)
+            (check-k-proof '((0 (.to (.eq v1 v1) (.exists v0 (.eq v0 v1))) :th (th-exists-intro :inst ((p (v0) (.eq v0 v1)) (v1 v2))))) ledger)
             nil)
     ledger))
 
@@ -96,6 +96,16 @@ alongside TH-EXISTS-V0-EQ-V1 as IOTA's two premises to conclude
                               (1 (.forall v2 (.forall v3 (.to (.eq v2 v1) (.to (.eq v3 v1) (.eq v2 v3))))) :th (uniq-full))
                               (2 (.eq (.iota v0 (.eq v0 v1)) v1) :ir (IOTA 0 1)))
                             ledger)
+            t)
+    (expect "a discharge through IOTA, whose case has no proof template, is admitted but not expanded"
+            (let ((l (check-and-extend-by-deduction-direct
+                      ledger 'th-iota-ded-flag '(.exists v0 (.eq v0 v1))
+                      '((0 (.exists v0 (.eq v0 v1)) :hyp nil)
+                        (1 (.forall v2 (.forall v3 (.to (.eq v2 v1) (.to (.eq v3 v1) (.eq v2 v3))))) :th (uniq-full))
+                        (2 (.eq (.iota v0 (.eq v0 v1)) v1) :ir (IOTA 0 1))))))
+              (let ((e (first (last (entries-of-kind 'th-ded l)))))
+                (and (not (deduction-entry-expanded-p e))
+                     (equal (getf (cdddr (entry-origin e)) :not-expanded-because) '(:no-template iota)))))
             t)
     (expect "Deduction Theorem through IOTA: |- exists v0 (v0=v1) -> (iota v0 (v0=v1)) = v1"
             (handler-case
@@ -145,7 +155,7 @@ free variable under a nested same-named binder inside A -- @subst-ok? must block
 (defun run-iota-self-tests ()
   "Section 19: IOTA formation, III.3, the worked uniqueness-chain example,
 and attack tests."
-  (let* ((ledger (fol-kernel))
+  (let* ((ledger (classical-logic-ledger (fol-kernel)))
          (ledger (test-iota-formation ledger))
          (ledger (test-axiom-iii3 ledger))
          (ledger (test-iota-irule ledger)))

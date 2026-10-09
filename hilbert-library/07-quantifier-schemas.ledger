@@ -18,22 +18,18 @@
 ;;;
 ;;; Contents
 ;;;   th-forall-elim       ∀x P(x) → P(t)
-;;;   th-exists-intro      P(t) → ∃x P(x)
+;;;   th-exists-intro      P(t) → ∃x P(x)   (in 05-classical-logic.ledger)
 ;;;   th-forall-mono       ∀x (P(x) → Q(x)) → (∀x P(x) → ∀x Q(x))
 ;;;   th-exists-mono       ∀x (P(x) → Q(x)) → (∃x P(x) → ∃x Q(x))
 ;;;   th-exists1-exists    ∃!x P(x) → ∃x P(x)
 ;;;   th-exists1-unique    ∃!x P(x) → (P(y) → (P(y′) → y = y′))
 
-(:declare-predicate-schema-symbol p 1)
-(:declare-predicate-schema-symbol q 1)
+(:declare-predicate-schema-symbol q 1)   ; p is declared in 05-classical-logic.ledger
 
 ;;; --- Instantiation and generalisation -----------------------------------
 
 (:th th-forall-elim
  ((0 (.to (.forall v0 (p v0)) (p v1)) :axiom (III.1 v1))))
-
-(:th th-exists-intro
- ((0 (.to (p v1) (.exists v0 (p v0))) :axiom (III.3 v0 (p v0) v1))))
 
 ;;; --- Monotonicity ----------------------------------------------------------
 
@@ -56,11 +52,12 @@
   (1 (.exists v0 (p v0)) :hyp nil)
   (2 (.to (.forall v0 (.to (p v0) (q v0))) (.to (p v4) (q v4))) :axiom (III.1 v4))
   (3 (.to (p v4) (q v4)) :ir (mp 2 0))
-  (4 (.to (q v4) (.exists v0 (q v0))) :axiom (III.3 v0 (q v0) v4))
+  (4 (.to (q v4) (.exists v0 (q v0))) :th (th-exists-intro :inst ((p (v0) (q v0)) (v1 v4))))
   (5 (.to (.to (q v4) (.exists v0 (q v0))) (.to (.to (p v4) (q v4)) (.to (p v4) (.exists v0 (q v0))))) :th-ded (th-hypothetical-syllogism))
   (6 (.to (.to (p v4) (q v4)) (.to (p v4) (.exists v0 (q v0)))) :ir (mp 5 4))
   (7 (.to (p v4) (.exists v0 (q v0))) :ir (mp 6 3))
-  (8 (.exists v0 (q v0)) :ir (exists-elim 1 7 v4))))
+  (9 (.forall v4 (.to (p v4) (.exists v0 (q v0)))) :ir (gen 7 v4))
+  (8 (.exists v0 (q v0)) :th (th-exists-elim 1 9 :inst ((v1 v4))))))
 
 (:th-ded th-exists-mono (.forall v0 (.to (p v0) (q v0)))
  ((0 (.forall v0 (.to (p v0) (q v0))) :hyp nil)
@@ -75,11 +72,12 @@
   (1 (.to (.exists1 v0 (p v0)) (.exists v0 (.and (p v0) (.forall v5 (.to (p v5) (.eq v5 v0)))))) :th-ded (th-identity))
   (2 (.exists v0 (.and (p v0) (.forall v5 (.to (p v5) (.eq v5 v0))))) :ir (mp 1 0))
   (3 (.to (.and (p v4) (.forall v5 (.to (p v5) (.eq v5 v4)))) (p v4)) :th (th-and-elim-l))
-  (4 (.to (p v4) (.exists v0 (p v0))) :axiom (III.3 v0 (p v0) v4))
+  (4 (.to (p v4) (.exists v0 (p v0))) :th (th-exists-intro :inst ((p (v0) (p v0)) (v1 v4))))
   (5 (.to (.to (p v4) (.exists v0 (p v0))) (.to (.to (.and (p v4) (.forall v5 (.to (p v5) (.eq v5 v4)))) (p v4)) (.to (.and (p v4) (.forall v5 (.to (p v5) (.eq v5 v4)))) (.exists v0 (p v0))))) :th-ded (th-hypothetical-syllogism))
   (6 (.to (.to (.and (p v4) (.forall v5 (.to (p v5) (.eq v5 v4)))) (p v4)) (.to (.and (p v4) (.forall v5 (.to (p v5) (.eq v5 v4)))) (.exists v0 (p v0)))) :ir (mp 5 4))
   (7 (.to (.and (p v4) (.forall v5 (.to (p v5) (.eq v5 v4)))) (.exists v0 (p v0))) :ir (mp 6 3))
-  (8 (.exists v0 (p v0)) :ir (exists-elim 2 7 v4))))
+  (9 (.forall v4 (.to (.and (p v4) (.forall v5 (.to (p v5) (.eq v5 v4)))) (.exists v0 (p v0)))) :ir (gen 7 v4))
+  (8 (.exists v0 (p v0)) :th (th-exists-elim 2 9 :inst ((v1 v4))))))
 
 ;;; Uniqueness: from the witness's property, both y and y' equal it.
 
@@ -115,4 +113,5 @@
   (1 (.to (.exists1 v0 (p v0)) (.exists v0 (.and (p v0) (.forall v5 (.to (p v5) (.eq v5 v0)))))) :th-ded (th-identity))
   (2 (.exists v0 (.and (p v0) (.forall v5 (.to (p v5) (.eq v5 v0))))) :ir (mp 1 0))
   (3 (.to (.and (p v4) (.forall v5 (.to (p v5) (.eq v5 v4)))) (.to (p v1) (.to (p v2) (.eq v1 v2)))) :th-ded (th-exists1-unique-s3))
-  (4 (.to (p v1) (.to (p v2) (.eq v1 v2))) :ir (exists-elim 2 3 v4))))
+  (5 (.forall v4 (.to (.and (p v4) (.forall v5 (.to (p v5) (.eq v5 v4)))) (.to (p v1) (.to (p v2) (.eq v1 v2))))) :ir (gen 3 v4))
+  (4 (.to (p v1) (.to (p v2) (.eq v1 v2))) :th (th-exists-elim 2 5 :inst ((v1 v4))))))

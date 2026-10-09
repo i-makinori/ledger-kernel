@@ -14,7 +14,7 @@ DOUBLE and confirms the defining axiom makes it behave exactly as
 specified, plus attack tests for both prerequisite-mismatch failure
 modes."
   (let* ((exists-proof '((0 (.eq (+ v0 v0) (+ v0 v0)) :axiom (IV.1))
-                          (1 (.to (.eq (+ v0 v0) (+ v0 v0)) (.exists v1 (.eq v1 (+ v0 v0)))) :axiom (III.3 v1 (.eq v1 (+ v0 v0)) (+ v0 v0)))
+                          (1 (.to (.eq (+ v0 v0) (+ v0 v0)) (.exists v1 (.eq v1 (+ v0 v0)))) :th (th-exists-intro :inst ((p (v1) (.eq v1 (+ v0 v0))) (v1 (+ v0 v0)))))
                           (2 (.exists v1 (.eq v1 (+ v0 v0))) :ir (MP 1 0))
                           (3 (.forall v0 (.exists v1 (.eq v1 (+ v0 v0)))) :ir (Gen 2 v0))))
          (ledger (check-and-extend ledger 'th 'th-double-exists exists-proof)))
@@ -89,7 +89,7 @@ identity; with v1 a free parameter, or with the name S, it would give
 (S zero) = zero."
   (let* ((l (check-and-extend ledger 'th 'fd-ex
               '((0 (.eq v1 v1) :axiom (IV.1))
-                (1 (.to (.eq v1 v1) (.exists v0 (.eq v0 v1))) :axiom (III.3 v0 (.eq v0 v1) v1))
+                (1 (.to (.eq v1 v1) (.exists v0 (.eq v0 v1))) :th (th-exists-intro :inst ((p (v0) (.eq v0 v1)) (v1 v1))))
                 (2 (.exists v0 (.eq v0 v1)) :ir (MP 1 0)))))
          (l (check-and-extend-by-deduction-direct l 'fd-u1 '(.eq v2 v1)
               '((0 (.eq v0 v1) :hyp nil)
@@ -159,8 +159,8 @@ identity; with v1 a free parameter, or with the name S, it would give
   "Section 22: DEFINE-FUNCTION-BY-DESCRIPTION -- the DOUBLE worked
 example (existence, uniqueness, definition, and using the defined
 function directly) plus two prerequisite-mismatch attack tests."
-  (let* ((ledger (fol-kernel :arithmetic t))
+  (let* ((ledger (classical-logic-ledger (fol-kernel :arithmetic t)))
          (ledger (test-define-function-by-description ledger)))
     (declare (ignorable ledger))
-    (test-define-function-shape-attacks (fol-kernel :arithmetic t))
+    (test-define-function-shape-attacks (classical-logic-ledger (fol-kernel :arithmetic t)))
     (format t "~%Function-definition self-tests complete.~%")))

@@ -52,20 +52,39 @@ per its :DISCHARGE declaration, or NIL if it has none."
 (defun deduction-case-holds-p (case-name hyp premises extras conclusion ledger open-hyps)
   "T iff some DEDUCTION-CASE entry named CASE-NAME matches (@VDASH HYP P)
 for each P in PREMISES, EXTRAS against its extra patterns and
-(@VDASH HYP CONCLUSION), with its conditions holding."
+(@VDASH HYP CONCLUSION), with its conditions holding. On success the
+further values are the bindings and the case's proof template (or NIL)."
   (let ((premise-sequents (mapcar (lambda (p) (list '@vdash hyp p)) premises))
         (conclusion-sequent (list '@vdash hyp conclusion)))
-    (some (lambda (entry)
-            (destructuring-bind (name conditions form) (entry-payload entry)
-              (and (eq name case-name)
-                   (destructuring-bind (premise-pats extra-pats arrow concl-pat) form
-                     (declare (ignore arrow))
-                     (and (= (length premise-pats) (length premise-sequents))
-                          (= (length extra-pats) (length extras))
-                          (let* ((b0 (seed-fresh nil premise-sequents extras conclusion-sequent))
-                                 (b1 (match-templates-seq premise-pats premise-sequents b0))
-                                 (b2 (match-templates-seq extra-pats extras b1))
-                                 (b3 (match-template concl-pat conclusion-sequent b2)))
-                            (and (not (match-fail-p b3))
-                                 (nth-value 1 (check-conditions conditions b3 ledger nil open-hyps)))))))))
-          (entries-of-kind 'deduction-case ledger))))
+    (dolist (entry (entries-of-kind 'deduction-case ledger) nil)
+      (destructuring-bind (name conditions form &optional template) (entry-payload entry)
+        (when (eq name case-name)
+          (destructuring-bind (premise-pats extra-pats arrow concl-pat) form
+            (declare (ignore arrow))
+            (when (and (= (length premise-pats) (length premise-sequents))
+                       (= (length extra-pats) (length extras)))
+              (let* ((b0 (seed-fresh nil premise-sequents extras conclusion-sequent))
+                     (b1 (match-templates-seq premise-pats premise-sequents b0))
+                     (b2 (match-templates-seq extra-pats extras b1))
+                     (b3 (match-template concl-pat conclusion-sequent b2)))
+                (when (and (not (match-fail-p b3))
+                           (nth-value 1 (check-conditions conditions b3 ledger nil open-hyps)))
+                  (return (values t b3 template)))))))))))
+
+;;; --- Proof templates: turning a discharge into a real proof ---------------
+;;;
+;;; A case may carry its own meta-proof, (:proof LINES): a short proof in
+;;; the system, written with the case's pattern variables, that derives the
+;;; conclusion's discharge (H -> C) from the premises' (H -> P). Its lines
+;;; are (LABEL FORMULA ROLE BY) as in any proof, where BY may refer to
+;;;   :PREMISE-0, :PREMISE-1, ...  the line proving H -> (the i-th premise)
+;;;   :LINE                         the original line itself (for :INDEPENDENT)
+;;; and to the template's own labels. With a template for every case a
+;;; proof uses, a TH-DED is expanded into an ordinary proof of
+;;; Gamma |- H -> PHI and checked as one (deduction.lisp): the Deduction
+;;; Theorem is then not trusted for it at all.
+
+(defun instantiate-template-term (x binds)
+  "Template formula or argument X under BINDS: meta-constructors computed,
+pattern variables replaced, pattern binders closed."
+  (instantiate-with-binds (expand-meta-constructors x binds) binds))

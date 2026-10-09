@@ -34,9 +34,27 @@ LEDGER's TH / TH-DED entries."
 
 (defun test-classical-logic (ledger)
   (let ((ledger (classical-logic-ledger ledger)))
-    (expect "01 and 05 cite no axiom other than II.1, II.2, II.3"
-            (subsetp (axioms-cited-in-ledger ledger) '(ii.1 ii.2 ii.3))
+    (expect "01 and 05 cite no axiom other than II.1-3, and III.1-2 for the existential quantifier"
+            (subsetp (axioms-cited-in-ledger ledger) '(ii.1 ii.2 ii.3 iii.1 iii.2))
             t)
+    (expect "III.3 and EXISTS-ELIM are no longer primitive"
+            (and (notany (lambda (e) (eq (first (entry-payload e)) 'iii.3)) (entries-of-kind 'axiom ledger))
+                 (notany (lambda (e) (eq (first (entry-payload e)) 'exists-elim)) (entries-of-kind 'irule ledger)))
+            t)
+    (expect "exists x A is the formula not forall x not A"
+            (equal (named->db '(.exists v0 (.eq v0 v1)) ledger)
+                   (named->db '(.neg (.forall v2 (.neg (.eq v2 v1)))) ledger))
+            t)
+    (expect "TH-EXISTS-INTRO: (v1 = v1) -> exists v0 (v0 = v1), with P and t given by :inst"
+            (check-k-proof '((0 (.to (.eq v1 v1) (.exists v0 (.eq v0 v1)))
+                                :th (th-exists-intro :inst ((p (v0) (.eq v0 v1)) (v1 v1)))))
+                           ledger)
+            t)
+    (expect "Attack: TH-EXISTS-INTRO with the wrong term -- must reject"
+            (check-k-proof '((0 (.to (.eq v1 v1) (.exists v0 (.eq v0 v1)))
+                                :th (th-exists-intro :inst ((p (v0) (.eq v0 v1)) (v1 v2)))))
+                           ledger)
+            nil)
     (expect "II.4 is not an axiom of the base system any more"
             (check-k-proof '((0 (.to (.to C D) (.to (.to (.neg C) D) D)) :axiom (II.4))) ledger)
             nil)

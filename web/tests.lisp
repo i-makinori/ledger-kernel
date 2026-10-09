@@ -32,7 +32,7 @@
          (proof (gethash "proof" detail)))
     (expect "api-entries lists every entry of the world"
             (= (length entries) (ledger-count (world-ledger (find-world "zf")))) t)
-    (expect "api-entry: th-zf-empty-exists has its 9-line proof" (= (length proof) 9) t)
+    (expect "api-entry: th-zf-empty-exists has its 10-line proof (with the Gen before TH-EXISTS-ELIM)" (= (length proof) 10) t)
     (expect "api-entry: line 2 is MP citing lines 1 and 0"
             (equalp (gethash "refs" (aref proof 2)) #("1" "0")) t)
     (expect "api-entry: an axiom citation links to the axiom's entry"
@@ -120,8 +120,8 @@
                 t)
         (expect "deps: MP is among the inference rules used"
                 (and (member "mp" (names (gethash "rules" exists)) :test #'string=) t) t)
-        (expect "deps: a TH-DED step on the way is reported"
-                (eq (gethash "deductionMeta" exists) 'yason:true) t))
+        (expect "deps: no step on the way trusts the Deduction Theorem (every TH-DED was expanded)"
+                (eq (gethash "deductionMeta" exists) 'yason:false) t))
       (let ((used (names (gethash "usedBy" (api-entry "zf" (k-of "th-and-elim-r"))))))
         (expect "deps: th-and-elim-r is used by th-zf-empty-exists (through its step -s1)"
                 (and (member "th-zf-empty-exists" used :test #'string=) t) t)

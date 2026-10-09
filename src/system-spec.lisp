@@ -115,19 +115,29 @@ LEDGER-COMMANDS reads it, to recognize function definitions."
                                    (append origin-note
                                            (and source-names (list :source-names source-names))
                                            (and written (list :written written))))))
-           (admit-rule (ledger kind name conditions form)
+           (admit-rule (ledger kind name conditions form &optional (template nil template-p))
              "Admit a rule with abbreviations expanded (abbreviation.lisp) and
 its bound pattern variables made canonical. The ORIGIN keeps the rule as
-written, under :WRITTEN, for display."
-             (destructuring-bind (ec ef)
-                 (expand-abbreviations (list conditions form) ledger :pattern t)
+written, under :WRITTEN, for display. TEMPLATE, a Deduction Theorem
+case's proof template, is expanded and renamed together with the rule
+and stored as the payload's fourth element."
+             (destructuring-bind (ec ef et)
+                 (expand-abbreviations (list conditions form template) ledger :pattern t)
                (multiple-value-bind (c f map) (canonicalize-rule-binders name ec ef)
-                 (admit ledger kind (list name c f) map
+                 (admit ledger kind (if template-p
+                                        (list name c f (sublis map et))
+                                        (list name c f))
+                        map
                         (and (not (equal (list ec ef) (list conditions form)))
                              (list conditions form))))))
            (admit-abbreviation (ledger head-pattern body)
-             (check-abbreviation-declaration head-pattern body ledger)
-             (admit ledger 'abbreviation (list head-pattern body)))
+             "Admit an abbreviation with its body already expanded into
+primitive symbols, so that every binder in it is a kernel binder (a body
+may use .EXISTS, itself an abbreviation). The ORIGIN keeps it as written."
+             (let ((expanded (expand-abbreviations body ledger :pattern t)))
+               (check-abbreviation-declaration head-pattern expanded ledger)
+               (admit ledger 'abbreviation (list head-pattern expanded) nil
+                      (and (not (equal expanded body)) (list head-pattern body)))))
            (admit-each (ledger kind syms)
              (if (null syms)
                  ledger
@@ -174,8 +184,9 @@ written, under :WRITTEN, for display."
   "Admit the clauses of (:meta-theorem NAME CLAUSE...) with the ADMIT and
 ADMIT-RULE closures of BOOTSTRAP-KERNEL-FROM-SPEC. Only DEDUCTION is
 known; its clauses are (:discharge (@vdash ?H ?A) FORMULA) and
-(:case NAME CONDITIONS (PREMISES EXTRAS :=> (@vdash ?H ?C))), every
-premise a (@vdash ...) pattern too. Several directives may add cases;
+(:case NAME CONDITIONS (PREMISES EXTRAS :=> (@vdash ?H ?C)) [(:proof LINES)]),
+every premise a (@vdash ...) pattern too; LINES is the case's proof
+template (meta-theorem.lisp). Several directives may add cases;
 the discharge form is declared once."
   (destructuring-bind (name . clauses) args
     (unless (eq name 'deduction)
@@ -194,12 +205,20 @@ the discharge form is declared once."
                  (funcall admit ledger 'deduction-discharge
                           (list vdash (expand-abbreviations formula ledger :pattern t)))))
               (:case
-               (destructuring-bind (case-name conditions form) (cdr clause)
+               (destructuring-bind (case-name conditions form &optional proof-clause) (cdr clause)
                  (unless (and (= (length form) 4) (eq (third form) :=>)
                               (listp (first form)) (every #'vdash-pattern-p (first form))
                               (listp (second form))
                               (vdash-pattern-p (fourth form)))
                    (error "BOOTSTRAP-KERNEL-FROM-SPEC: deduction case ~S must have the form ~
                            ((@vdash ...)... EXTRAS :=> (@vdash ...)), got ~S." case-name form))
-                 (funcall admit-rule ledger 'deduction-case case-name conditions form)))
+                 (when proof-clause
+                   (unless (and (consp proof-clause) (eq (car proof-clause) :proof)
+                                (consp (second proof-clause)) (null (cddr proof-clause)))
+                     (error "BOOTSTRAP-KERNEL-FROM-SPEC: deduction case ~S: expected ~
+                             (:proof (LINE...)), got ~S." case-name proof-clause)))
+                 (if proof-clause
+                     (funcall admit-rule ledger 'deduction-case case-name conditions form
+                              (second proof-clause))
+                     (funcall admit-rule ledger 'deduction-case case-name conditions form))))
               (t (error "BOOTSTRAP-KERNEL-FROM-SPEC: unknown meta-theorem clause ~S." clause)))))))

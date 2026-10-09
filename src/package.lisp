@@ -13,7 +13,7 @@
 ;;;;
 ;;;; Layers:
 ;;;;   kernel -- pattern, treap, ledger, debruijn, side-conditions, meta, judgement,
-;;;;             k-proof: the trusted checker.
+;;;;             k-proof, meta-theorem: the trusted checker.
 ;;;;   tools  -- persistence, deduction, system-spec,
 ;;;;             function-definition: build or load ledgers and proofs;
 ;;;;             every :DERIVED result still passes the kernel.

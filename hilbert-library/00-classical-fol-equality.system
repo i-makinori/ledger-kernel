@@ -58,6 +58,43 @@
          (?w) :=>
          ?C))
 
+;;; --- the Deduction Theorem, as a meta-theorem of this system -------------
+;;;
+;;; (@vdash ?H ?A): line ?A of a proof, depending on the hypothesis ?H
+;;; that is being discharged, becomes Gamma |- ?H -> ?A. One case per way
+;;; a line can arise; a TH-DED entry is admitted only if every line of its
+;;; proof is covered (meta-theorem.lisp, deduction.lisp). Each case is the
+;;; textbook induction step for that rule, trusted like an axiom:
+;;;   :assumption  H -> H                           from II.1, II.2
+;;;   :independent A |- H -> A                      from II.1
+;;;   MP           H -> (A -> B), H -> A |- H -> B  from II.2
+;;;   Gen          H -> A |- H -> forall x A, x not free in H   from III.2
+;;;   IOTA         H -> each premise |- H -> conclusion
+;;;   EXISTS-ELIM  H -> exists x A, H -> (A[w/x] -> C) |- H -> C,
+;;;                w not free in H (it already is not free in A, C, Gamma)
+;;; Gen and EXISTS-ELIM need their variable not free in H; without those
+;;; conditions P(x) |- forall x P(x) would give |- P(x) -> forall x P(x).
+
+(:meta-theorem deduction
+  (:discharge (@vdash ?H ?A) (.to ?H ?A))
+  (:case :assumption ((wff? ?H)) (nil nil :=> (@vdash ?H ?H)))
+  (:case :independent ((wff? ?H) (wff? ?A)) (nil nil :=> (@vdash ?H ?A)))
+  (:case MP ((wff? ?H) (wff? ?A) (wff? ?B))
+         (((@vdash ?H (.to ?A ?B)) (@vdash ?H ?A)) nil :=> (@vdash ?H ?B)))
+  (:case Gen ((wff? ?H) (var? ?x) (wff? ?A) (@not-free-in? ?x ?H))
+         (((@vdash ?H ?A)) (?x) :=> (@vdash ?H (.forall ?x ?A))))
+  (:case IOTA ((wff? ?H) (var? ?x) (wff? ?A))
+         (((@vdash ?H (.exists ?x ?A))
+           (@vdash ?H (.forall ?y (.forall ?z (.to (@subst ?x ?y ?A)
+                                                   (.to (@subst ?x ?z ?A) (.eq ?y ?z)))))))
+          nil :=>
+          (@vdash ?H (@subst ?x (.iota ?x ?A) ?A))))
+  (:case EXISTS-ELIM ((wff? ?H) (var? ?x) (var? ?w) (wff? ?A) (wff? ?Ac) (wff? ?C)
+                      (@not-free-in? ?w ?H))
+         (((@vdash ?H (.exists ?x ?A)) (@vdash ?H (.to ?Ac ?C)))
+          (?w) :=>
+          (@vdash ?H ?C))))
+
 ;;; --- II.1-3: classical propositional logic -----------------------------
 ;;;   II.1  A -> (B -> A)                                     [K]
 ;;;   II.2  (A -> (B -> C)) -> ((A -> B) -> (A -> C))          [S]

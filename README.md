@@ -80,7 +80,7 @@ ledger. The tools themselves need not be trusted.
   and proof trees, links to symbols and cited entries, display of the axioms an entry
   depends on and of "the theorems that use this theorem", and in-browser proof checking
 
-Tests: all 312 kernel tests and 50 Web tests pass, with zero compiler warnings.
+Tests: all 325 kernel tests and 50 Web tests pass, with zero compiler warnings.
 
 The kernel (`src/`) is about 2000 lines including comments. The logic itself is not
 written in the code; it all lives in `.system` files. Unused features have been moved to
@@ -99,7 +99,7 @@ ASDF. Start SBCL at the root of the repository:
 (require :asdf)
 (asdf:load-asd (merge-pathnames "ledger-kernel.asd"))
 (asdf:load-system :ledger-kernel)
-(asdf:test-system :ledger-kernel)      ; ends with "312/312 self-tests passed."
+(asdf:test-system :ledger-kernel)      ; ends with "325/325 self-tests passed."
 (in-package :ledger-kernel)
 ```
 
@@ -327,11 +327,15 @@ what is trusted unconditionally".
   trusted as-is once loaded (`:PRIMITIVE`). The propositional axioms are II.1–II.3 only;
   proof by cases and the rest are derived from them. The consistency of an axiom system cannot be confirmed from within
   the system (Gödel's second incompleteness theorem).
-- **The deduction theorem**: `th-ded` theorems are registered by trusting the deduction
-  theorem as a meta-theorem (the restrictions on Gen are checked). The argument extending
-  it to proofs that cite other theorems is written in `src/deduction.lisp` (it is not
-  mechanically verified). The Web UI's "foundations depended on" shows whether this trust
-  was used.
+- **The deduction theorem**: it is a meta-theorem of a system, not an assumption of the
+  kernel. `th-ded` entries can be registered only if the `.system` file declares it with
+  `(:meta-theorem deduction ...)`: matching rules, one per inference rule and with type
+  and side conditions, over `(@vdash ?H ?A)` ("line ?A, depending on ?H, becomes
+  Γ ⊢ ?H → ?A"). Gen's, for example, requires ?x not free in ?H. The kernel checks that
+  every line of a `th-ded` proof that depends on ?H is covered by one of them, recursing
+  into cited theorems. What is trusted is each declared rule (one textbook induction step)
+  and the final step from a fully covered proof to Γ ⊢ H → Φ. The Web UI's "foundations
+  depended on" shows whether this trust was used.
 - **Conservativity of definitions**: `DEFINE-FUNCTION-BY-DESCRIPTION` re-checks the
   existence and uniqueness theorems, but trusts the meta-theorem itself that "in that case
   the definition is a conservative extension".
@@ -361,6 +365,7 @@ src/                     The kernel
   judgement.lisp         Judging formation rules (JUDGEMENT?)
   k-proof.lisp           Proof checking (CHECK-K-PROOF) and registration (CHECK-AND-EXTEND)
   persistence.lisp       Saving and loading ledgers
+  meta-theorem.lisp      Meta-theorems declared by a .system file (the deduction theorem's @vdash rules)
   deduction.lisp         Registration via the deduction theorem (th-ded)
   system-spec.lisp       Loading .system files
   function-definition.lisp  DEFINE-FUNCTION-BY-DESCRIPTION
@@ -393,7 +398,7 @@ deploy/                  Example systemd / nginx configurations for publishing t
 sbcl --non-interactive \
      --eval '(require :asdf)' \
      --eval '(asdf:load-asd (merge-pathnames "ledger-kernel.asd"))' \
-     --eval '(asdf:test-system :ledger-kernel)'        # kernel (312 tests)
+     --eval '(asdf:test-system :ledger-kernel)'        # kernel (325 tests)
 ```
 
 The Web UI tests are run with `(asdf:test-system :ledger-kernel/web)` (50 tests; no HTTP
@@ -417,8 +422,9 @@ with the reasons, include for example:
   This was developed in an AI-driven way, so a person needs to check everything carefully,
   one piece at a time — at both the language level and the meta-language level.
 - **Making it possible to define the behavior of meta-theorems within `.system`**:
-  because the handling and meaning of symbols differ from system to system — for example,
-  the definition of side conditions for Subst, or how the deduction theorem is treated.
+  because the handling and meaning of symbols differ from system to system. The deduction
+  theorem can now be declared with `(:meta-theorem deduction ...)`; the grammar of side
+  conditions such as those for Subst is still to come.
 - **Making it possible to define contradiction per system, and to detect contradictions**
 - **The library is small**: ZF only goes as far as the empty set. Pairs, unions, ordered
   pairs, natural numbers and so on are still to come. There is also no class notation

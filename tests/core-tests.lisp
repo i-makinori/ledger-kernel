@@ -255,6 +255,7 @@ checks; extended, for one that also grows Sigma or the ledger itself)."
          (ledger (test-negation-and-new-axioms ledger))
          (ledger (test-name-uniqueness ledger))
          (ledger (test-deduction-theorem-direct ledger))
+         (ledger (progn (test-deduction-meta-theorem) ledger))
          ;; TEST-PERSISTENCE-ROUND-TRIP must run on a ledger built
          ;; entirely through the ordinary growth API (CHECK-AND-EXTEND/
          ;; CHECK-AND-EXTEND-ABBREV/DECLARE-*) -- exactly what it is

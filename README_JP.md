@@ -70,7 +70,7 @@ Web UI も付いています。
   リンク、依存している公理と「この定理を使っている定理」の表示、ブラウザ上での
   証明の検証
 
-テスト: カーネル 312 件、Web 50 件がすべて通り、コンパイル警告 0 の状態です。
+テスト: カーネル 325 件、Web 50 件がすべて通り、コンパイル警告 0 の状態です。
 
 カーネル（`src/`）はコメント込みで約 2000 行です。論理そのものはコードに書かず、
 すべて `.system` ファイルに置いています。使われていない機能は `backup/` に、元の
@@ -88,7 +88,7 @@ Web UI も付いています。
 (require :asdf)
 (asdf:load-asd (merge-pathnames "ledger-kernel.asd"))
 (asdf:load-system :ledger-kernel)
-(asdf:test-system :ledger-kernel)      ; 最後に "312/312 self-tests passed." と出る
+(asdf:test-system :ledger-kernel)      ; 最後に "325/325 self-tests passed." と出る
 (in-package :ledger-kernel)
 ```
 
@@ -302,10 +302,15 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
   信頼されます（`:PRIMITIVE`）。命題論理の公理は II.1〜II.3 だけで、場合分けなどは
   そこから導出しています。公理系の無矛盾性は、体系の内側からは確かめられません
   （ゲーデルの第二不完全性定理）。
-- **演繹定理**: `th-ded` の定理は、演繹定理をメタ定理として信頼して登録されて
-  います（Gen の制約は検査しています）。証明の中で他の定理を引用している場合への
-  拡張の論証は `src/deduction.lisp` に書いてあります（機械的な検証はしていません）。Web UI の「依存している基礎」に、この
-  信頼を使ったかどうかが表示されます。
+- **演繹定理**: 演繹定理はカーネルの前提ではなく、体系のメタ定理です。`.system`
+  ファイルが `(:meta-theorem deduction ...)` で宣言した場合にだけ `th-ded` を
+  登録できます。宣言には、`(@vdash ?H ?A)`（「?H に依存する行 ?A は Γ ⊢ ?H → ?A に
+  なる」）に対する、推論規則ごとのマッチング規則（型条件・付帯条件つき）を書きます。
+  例えば Gen なら「?x が ?H に自由に現れない」です。カーネルは、`th-ded` の証明の
+  ?H に依存する行が、すべてどれかの規則に当てはまることを1行ずつ検査します。引用した
+  定理の中まで再帰的に調べます。信頼しているのは、宣言された各規則（教科書の帰納法の
+  1ステップ）と、全行が覆われた証明から Γ ⊢ H → Φ を結論する最後の一歩です。Web UI の
+  「依存している基礎」に、この信頼を使ったかどうかが表示されます。
 - **定義の保存性**: `DEFINE-FUNCTION-BY-DESCRIPTION` は存在・一意性の定理を
   再チェックしますが、「それなら定義は保存拡張になる」というメタ定理そのものは
   信頼しています。
@@ -334,6 +339,7 @@ src/                     カーネル本体
   judgement.lisp         形成規則の判定（JUDGEMENT?）
   k-proof.lisp           証明の検証（CHECK-K-PROOF）と登録（CHECK-AND-EXTEND）
   persistence.lisp       台帳の保存と読み込み
+  meta-theorem.lisp      .system が宣言するメタ定理（演繹定理の @vdash 規則）
   deduction.lisp         演繹定理による登録（th-ded）
   system-spec.lisp       .system ファイルの読み込み
   function-definition.lisp  DEFINE-FUNCTION-BY-DESCRIPTION
@@ -365,7 +371,7 @@ deploy/                  サーバー版を公開するための systemd / nginx
 sbcl --non-interactive \
      --eval '(require :asdf)' \
      --eval '(asdf:load-asd (merge-pathnames "ledger-kernel.asd"))' \
-     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（312 件）
+     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（325 件）
 ```
 
 Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（50 件。HTTP は使いません）。
@@ -387,7 +393,8 @@ Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（50 件�
   AI駆動で開発をしてしまいましたが、人が、1つ1つ丁寧に確認をしていく必要があります。
   言語レベルでも、メタ言語レベルでも。
 - **メタ定理の振る舞いを .system 内で定義できる様にすること**
-  体系毎に記号の扱い方や意味などは、異なるので。例えば、Substの付帯条件の定義や、演繹定理の扱い方など。
+  体系毎に記号の扱い方や意味などは、異なるので。演繹定理は `(:meta-theorem deduction ...)`
+  として宣言できるようになりました。Subst の付帯条件の文法などは、これからです。
 - **体系毎に矛盾を定義でき、矛盾を検出できる様にすること**
 - **ライブラリが小さい**: ZF は空集合まで。対・和集合・順序対・自然数などはこれから
   です。集合論を書きやすくするクラス記法（`{x ∣ φ}`）もまだありません。

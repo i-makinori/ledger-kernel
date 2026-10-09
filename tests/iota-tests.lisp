@@ -97,6 +97,17 @@ alongside TH-EXISTS-V0-EQ-V1 as IOTA's two premises to conclude
                               (2 (.eq (.iota v0 (.eq v0 v1)) v1) :ir (IOTA 0 1)))
                             ledger)
             t)
+    (expect "Deduction Theorem through IOTA: |- exists v0 (v0=v1) -> (iota v0 (v0=v1)) = v1"
+            (handler-case
+                (check-k-proof
+                 '((0 (.to (.exists v0 (.eq v0 v1)) (.eq (.iota v0 (.eq v0 v1)) v1)) :th-ded (th-iota-ded)))
+                 (check-and-extend-by-deduction-direct
+                  ledger 'th-iota-ded '(.exists v0 (.eq v0 v1))
+                  '((0 (.exists v0 (.eq v0 v1)) :hyp nil)
+                    (1 (.forall v2 (.forall v3 (.to (.eq v2 v1) (.to (.eq v3 v1) (.eq v2 v3))))) :th (uniq-full))
+                    (2 (.eq (.iota v0 (.eq v0 v1)) v1) :ir (IOTA 0 1)))))
+              (error () nil))
+            t)
     (expect "Attack: IOTA citing the SAME line twice (existence as both premises) -- must reject"
             (check-k-proof '((0 (.exists v0 (.eq v0 v1)) :th (th-exists-v0-eq-v1))
                               (1 (.eq (.iota v0 (.eq v0 v1)) v1) :ir (IOTA 0 0)))

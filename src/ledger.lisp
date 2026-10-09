@@ -84,7 +84,8 @@ BY-DERIVED-NAME. Signals an error on a bounded view."
   "Kinds that only say what is well-formed (Sigma's symbols and the
 TERM?/WFF?/VAR? formation rules), as opposed to kinds that justify proof
 steps (AXIOM, IRULE, TH, ...)."
-  (member kind '(atomic-wff-symbol variable-symbol predicate-schema-symbol wff? term? var?)
+  (member kind '(atomic-wff-symbol variable-symbol predicate-schema-symbol wff? term? var?
+                 abbreviation)
           :test #'eq))
 
 (defun entries-of-kind (kind ledger)
@@ -162,12 +163,12 @@ ledger and can never be declared as anything else."
 
 (defun binder-heads ()
   "Heads that bind the variable in position 1 over the body in position 2:
-(.forall x A), (.exists x A), (.exists1 x A), and the term (.iota x A),
+(.forall x A), (.exists x A), and the term (.iota x A),
 \"the x such that A\". The binder machinery (FREE-VARS-WFF, SUBSTITUTE-WFF,
 ...) does not care whether the expression is a wff or a term. Adding a
-binder requires editing this list. .EXISTS1 is only marked as a binder
-here; its formation rule and axioms come from a .system file."
-  '(.forall .exists .iota .exists1))
+binder requires editing this list. Binders such as .EXISTS1 are
+abbreviations (abbreviation.lisp), expanded before the kernel sees them."
+  '(.forall .exists .iota))
 
 (defun at-symbol-p (sym)
   "True iff SYM is an @-prefixed meta-tag."
@@ -198,7 +199,13 @@ nor a fresh variable %n."
        (not (fresh-var-name-p sym))
        (not (atomic-wff-symbol-p sym ledger))
        (not (variable-p sym ledger))
-       (not (predicate-schema-arity sym ledger))))
+       (not (predicate-schema-arity sym ledger))
+       (not (abbreviation-head-p sym ledger))))
+
+(defun symbol-used-in-ledger-p (sym ledger)
+  "T iff SYM occurs anywhere in the payload of an entry of LEDGER."
+  (some (lambda (e) (occurs-symbol-p sym (entry-payload e)))
+        (treap-values-below (ledger-all ledger) (ledger-bound ledger))))
 
 (defun declare-atomic-wff-symbol (ledger sym)
   "Return LEDGER with fresh SYM declared as an atomic-wff symbol

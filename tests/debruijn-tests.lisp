@@ -160,23 +160,28 @@ order of first appearance; other pattern variables keep their names."
   (flet ((rule (kind name)
            (find name (entries-of-kind kind ledger) :key (lambda (e) (first (entry-payload e))))))
     (let ((ledger (bootstrap-kernel-from-spec-file (library-path "00-connectives.system") :ledger ledger)))
-      (flet ((rule (kind name)
+      (flet ((rule-in (ledger kind name)
                (find name (entries-of-kind kind ledger) :key (lambda (e) (first (entry-payload e))))))
-        (let ((e (rule 'axiom 'exists1-unfold)))
-          (expect "EXISTS1-UNFOLD: ?x, ?u become ?BV1, ?BV2 in the form"
+        (let* ((ledger (bootstrap-kernel-from-spec
+                        '((:axiom E1-TEST ((wff? ?A)) (nil (.to (.exists1 ?x ?A) (.exists1 ?x ?A)))))
+                        :ledger ledger))
+               (e (rule-in ledger 'axiom 'e1-test)))
+          (expect "a rule written with .exists1 is stored expanded, with no abbreviation left"
+                  (let ((form (third (entry-payload e))))
+                    (and (not (occurs-symbol-p '.exists1 form)) (not (occurs-symbol-p '.and form))))
+                  t)
+          (expect "... its bound ?x becomes ?BV1 and each expansion's fresh ?u its own ?BVn"
                   (equal (third (entry-payload e))
-                         '(nil (.to (.exists1 ?bv1 ?a)
-                                (.exists ?bv1 (.and ?a (.forall ?bv2 (.to (@subst ?bv1 ?bv2 ?a)
-                                                                         (.eq ?bv2 ?bv1))))))))
+                         '(nil (.to (.exists ?bv1
+                                     (.neg (.to ?a (.neg (.forall ?bv2 (.to (@subst ?bv1 ?bv2 ?a)
+                                                                           (.eq ?bv2 ?bv1)))))))
+                                    (.exists ?bv1
+                                     (.neg (.to ?a (.neg (.forall ?bv3 (.to (@subst ?bv1 ?bv3 ?a)
+                                                                           (.eq ?bv3 ?bv1))))))))))
                   t)
-          (expect "... and in the side conditions, renamed together"
-                  (equal (second (entry-payload e))
-                         '((var? ?bv1) (var? ?bv2) (wff? ?a)
-                           (@not-free-in? ?bv2 ?bv1) (@not-free-in? ?bv2 ?a)
-                           (@subst-ok? ?bv1 ?bv2 ?a)))
-                  t)
-          (expect "... and the names as written are kept in the origin"
-                  (equal (getf (cdr (entry-origin e)) :source-names) '((?x . ?bv1) (?u . ?bv2)))
+          (expect "... and the rule as written is kept in the origin"
+                  (equal (getf (cdr (entry-origin e)) :written)
+                         '(((wff? ?A)) (nil (.to (.exists1 ?x ?A) (.exists1 ?x ?A)))))
                   t))))
     (expect "Gen: ?x is also the extra argument (free), so it keeps its name -- no ?BVn outside a binder"
             (equal (third (entry-payload (rule 'irule 'gen))) '((?a) (?x) :=> (.forall ?x ?a)))

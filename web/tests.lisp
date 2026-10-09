@@ -75,8 +75,10 @@
               (eq (entry-kind (target "v₀")) 'variable-symbol) t)
       (expect "links: ∉ goes to the formation rule of ∈"
               (eq (entry-kind (target "∉")) 'wff?) t)
-      (expect "links: ∅ goes to its defining axiom EMPTY-DEF"
-              (string= (symbol-name (car (entry-payload (target "∅")))) "EMPTY-DEF") t))
+      (expect "links: ∅ goes to its abbreviation, the iota term it stands for"
+              (let ((e (target "∅")))
+                (and (eq (entry-kind e) 'abbreviation) (eq (entry-name e) 'empty)))
+              t))
     (let* ((r (api-check "zf" "((0 (.forall v0 (.to (p v0) (q v0))) :hyp nil)
                                  (1 (.to (.exists v0 (p v0)) (.exists v0 (q v0))) :th-ded (th-exists-mono-s1 0)))"))
            (line (aref (gethash "lines" r) 1)))

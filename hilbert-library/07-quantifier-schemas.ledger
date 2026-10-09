@@ -72,7 +72,7 @@
 
 (:th-ded th-exists1-exists (.exists1 v0 (p v0))
  ((0 (.exists1 v0 (p v0)) :hyp nil)
-  (1 (.to (.exists1 v0 (p v0)) (.exists v0 (.and (p v0) (.forall v5 (.to (p v5) (.eq v5 v0)))))) :axiom (exists1-unfold))
+  (1 (.to (.exists1 v0 (p v0)) (.exists v0 (.and (p v0) (.forall v5 (.to (p v5) (.eq v5 v0)))))) :th-ded (th-identity))
   (2 (.exists v0 (.and (p v0) (.forall v5 (.to (p v5) (.eq v5 v0))))) :ir (mp 1 0))
   (3 (.to (.and (p v4) (.forall v5 (.to (p v5) (.eq v5 v4)))) (p v4)) :th (th-and-elim-l))
   (4 (.to (p v4) (.exists v0 (p v0))) :axiom (III.3 v0 (p v0) v4))
@@ -112,7 +112,7 @@
 
 (:th-ded th-exists1-unique (.exists1 v0 (p v0))
  ((0 (.exists1 v0 (p v0)) :hyp nil)
-  (1 (.to (.exists1 v0 (p v0)) (.exists v0 (.and (p v0) (.forall v5 (.to (p v5) (.eq v5 v0)))))) :axiom (exists1-unfold))
+  (1 (.to (.exists1 v0 (p v0)) (.exists v0 (.and (p v0) (.forall v5 (.to (p v5) (.eq v5 v0)))))) :th-ded (th-identity))
   (2 (.exists v0 (.and (p v0) (.forall v5 (.to (p v5) (.eq v5 v0))))) :ir (mp 1 0))
   (3 (.to (.and (p v4) (.forall v5 (.to (p v5) (.eq v5 v4)))) (.to (p v1) (.to (p v2) (.eq v1 v2)))) :th-ded (th-exists1-unique-s3))
   (4 (.to (p v1) (.to (p v2) (.eq v1 v2))) :ir (exists-elim 2 3 v4))))

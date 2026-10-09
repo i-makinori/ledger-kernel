@@ -65,8 +65,8 @@
   "Map each symbol of the language to the entry that introduced it:
 variables and atomic-wff / predicate schema symbols to their declaration,
 connectives, quantifiers, predicates and function symbols to their first
-formation rule -- or, for a function defined by description, to its
-defining axiom NAME-DEF, which says what it means."
+formation rule -- or, for an abbreviation (a defined connective, or a
+function defined by description), to the abbreviation entry."
   (let ((index (make-hash-table :test #'eq))
         (entries (treap-values-below (ledger-all ledger) (ledger-bound ledger))))
     (flet ((note (sym k) (when (and sym (symbolp sym) (not (pat-var-p sym)))
@@ -76,13 +76,9 @@ defining axiom NAME-DEF, which says what it means."
           (case (entry-kind e)
             ((atomic-wff-symbol variable-symbol) (note p (entry-k e)))
             (predicate-schema-symbol (note (first p) (entry-k e)))
-            (axiom
-             ;; NAME-DEF axioms of DEFINE-FUNCTION-BY-DESCRIPTION
-             (let* ((name (symbol-name (first p)))
-                    (len (length name)))
-               (when (and (> len 4) (string= (subseq name (- len 4)) "-DEF"))
-                 (let ((fn (find-symbol (subseq name 0 (- len 4)) :ledger-kernel)))
-                   (when fn (setf (gethash fn index) (entry-k e)))))))
+            ;; .and, .le, a function defined by description: the
+            ;; abbreviation that says what it stands for.
+            (abbreviation (note (car (first p)) (entry-k e)))
             ((wff? term? var?)
              (let ((result (third p)))   ; e.g. (wff? (.to ?A ?B)) or (term? zero)
                (when (consp result)
@@ -115,6 +111,7 @@ defining axiom NAME-DEF, which says what it means."
   (let ((p (entry-payload e)))
     (case (entry-kind e)
       ((atomic-wff-symbol variable-symbol) p)
+      (abbreviation (car (first p)))       ; the head, e.g. EMPTY or .AND
       (t (if (consp p) (car p) p)))))
 
 ;;; Every entry is shown with its bound variables named ?BV1, ?BV2, ...
@@ -153,15 +150,52 @@ a definition's defining axiom) is named ?BVn too, numbered after the
 rule's own ?BVn names."
   (db->bv-named (pattern->db x) (rule-bound-name-start payload)))
 
-(defun entry-proof (e)
-  "The stored proof of a derived entry, for display, or NIL."
-  (case (entry-kind e)
-    (th (display-proof (second (entry-payload e))))
-    (th-ded (display-proof (third (entry-payload e))))))
+;;; Entries are shown as written, not as the kernel stores them: the
+;;; payload has every abbreviation (.and, .le, a defined function) expanded
+;;; into primitive symbols (abbreviation.lisp). The written text, kept in
+;;; the ORIGIN, is converted without expansion so that bound variables are
+;;; still named ?BVn. With no LEDGER at hand, the payload is shown.
 
-(defun entry-discharged (e)
+(defun as-written (x ledger)
+  "Written expression X in kernel form without expanding abbreviations."
+  (named->db x ledger :expand nil))
+
+(defun written-proof (e ledger)
+  "The proof of TH / TH-DED entry E as written (kernel form, abbreviations
+kept), or its payload when there is no LEDGER or no written text."
+  (let ((origin (entry-origin e)))
+    (case (entry-kind e)
+      (th (if (and ledger (eq (car origin) :derived))
+              (as-written (second origin) ledger)
+              (second (entry-payload e))))
+      (th-ded (if (and ledger (eq (car origin) :derived-by-deduction))
+                  (as-written (third origin) ledger)
+                  (third (entry-payload e)))))))
+
+(defun written-discharged (e ledger)
+  "The hypothesis TH-DED entry E discharges, as written."
+  (let ((origin (entry-origin e)))
+    (if (and ledger (eq (car origin) :derived-by-deduction))
+        (as-written (second origin) ledger)
+        (second (entry-payload e)))))
+
+(defun written-rule (e)
+  "(CONDITIONS FORM) of rule-like entry E as written, with its bound
+pattern variables named as registered (?BVn), or as stored."
+  (let* ((origin (cdr (entry-origin e)))
+         (written (getf origin :written)))
+    (if written
+        (sublis (getf origin :source-names) written)
+        (cdr (entry-payload e)))))
+
+(defun entry-proof (e &optional ledger)
+  "The proof of a derived entry, for display, or NIL."
+  (case (entry-kind e)
+    ((th th-ded) (display-proof (written-proof e ledger)))))
+
+(defun entry-discharged (e &optional ledger)
   "The hypothesis a TH-DED entry discharges, for display."
-  (db->bv-named (second (entry-payload e))))
+  (db->bv-named (written-discharged e ledger)))
 
 (defun entry-statement (e &optional ledger)
   "(VALUES PREMISES CONCLUSION) -- what the entry asserts. PREMISES are
@@ -169,35 +203,42 @@ the formulas it needs cited (hypotheses of a derived entry, premises of
 an inference rule); CONCLUSION is what it yields. Axiom and rule schemas
 contain ?-pattern variables. Bound variables are named ?BVn (see
 DISPLAY-PROOF)."
-  (let ((p (entry-payload e)))
+  (let* ((p (entry-payload e))
+         ;; A rule as written: (NAME CONDITIONS FORM).
+         (w (if (member (entry-kind e) '(axiom irule deduction-case wff? term? var?))
+                (cons (first p) (written-rule e))
+                p)))
     (case (entry-kind e)
       (th
-       (values (mapcar #'db->bv-named (proof-hypotheses (second p)))
-               (db->bv-named (proof-conclusion (second p)))))
+       (let ((raw (written-proof e ledger)))
+         (values (mapcar #'db->bv-named (proof-hypotheses raw))
+                 (db->bv-named (proof-conclusion raw)))))
       (th-ded
-       (destructuring-bind (name hyp raw) p
-         (declare (ignore name))
+       (let ((hyp (written-discharged e ledger))
+             (raw (written-proof e ledger)))
          (values (mapcar #'db->bv-named (remove hyp (proof-hypotheses raw) :test #'equal))
                  ;; H -> PHI as the system's :DISCHARGE declaration writes it.
                  (db->bv-named (or (and ledger (discharge-formula hyp (proof-conclusion raw) ledger))
                                    (list '.to hyp (proof-conclusion raw)))))))
-      (axiom (values nil (display-pattern (second (third p)) p)))
+      ;; An abbreviation reads as HEAD := BODY.
+      (abbreviation (values (list (first p)) (second p)))
+      (axiom (values nil (display-pattern (second (third w)) p)))
       ;; A Deduction Theorem case reads like an irule over (@vdash H A);
       ;; the discharge declaration as (@vdash ?H ?A) => its formula.
       (deduction-discharge (values (list (first p)) (second p)))
-      ((irule deduction-case) (let ((form (third p)))
+      ((irule deduction-case) (let ((form (third w)))
                (values (mapcar (lambda (f) (display-pattern f p)) (first form))
                        (display-pattern (car (last form)) p))))
-      ((wff? term? var?) (values nil (display-pattern (third p) p)))
+      ((wff? term? var?) (values nil (display-pattern (third w) p)))
       (predicate-schema-symbol
        (values nil (cons (first p) (loop for i from 1 to (second p)
                                          collect (intern (format nil "?X~D" i) :ledger-kernel)))))
       (t (values nil p)))))
 
 (defun entry-conditions (e)
-  "Side conditions of an axiom / rule / formation schema."
+  "Side conditions of an axiom / rule / formation schema, as written."
   (and (member (entry-kind e) '(axiom irule deduction-case wff? term? var?))
-       (second (entry-payload e))))
+       (first (written-rule e))))
 
 (defun auxiliary-name-p (name)
   "Entries generated as intermediate steps (PROVE-TAUTOLOGY's NAME.T1,

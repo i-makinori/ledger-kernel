@@ -14,8 +14,8 @@ README を読んで全体像を掴んでから、必要な節だけを読む使�
 3. 体系そのものをファイルで定義する: `.system` ファイル
 4. 確定記述: `III.3` と `IOTA`
 5. 存在除去規則: `EXISTS-ELIM`
-6. 保存的拡張としての関数定義: `DEFINE-FUNCTION-BY-DESCRIPTION`
-7. 定義された結合子: `00-connectives.system`
+6. 略記としての関数定義: `DEFINE-FUNCTION-BY-DESCRIPTION`
+7. 略記としての結合子: `00-connectives.system`
 8. ZF 集合論: `zf-library/00-zf.system`
 9. 空集合: `zf-library/01-empty-set.ledger`
 10. 述語スキーマ変数「A(x)」: `07-quantifier-schemas.ledger`
@@ -87,7 +87,9 @@ Kalmar の完全性定理の構成で恒真式を自動証明する `PROVE-TAUTO
 `.system` ファイルの中身はただのデータです。公理は
 `(名前 側条件 (追加引数パターン 結論パターン))`、推論規則は
 `(名前 側条件 (前提パターン 追加引数パターン :=> 結論パターン))`、
-形成規則も同じ形で書きます。読み込みには
+形成規則も同じ形で書きます。新しい記号を、それ以前の記号で書いた式の略記として
+定義するには `(:abbreviation (頭部 ?パラメータ...) 本体)` を使います（7節）。略記は
+公理を増やしません。読み込みには
 `(bootstrap-kernel-from-spec-file PATH &key ledger)` を使い、`:ledger` を渡すと
 その台帳の上に積み増します。
 
@@ -283,13 +285,12 @@ III.3（存在汎化）は `A[t/x] → ∃x.A` という**導入**方向の規�
 と全く同じ立て付けです）。
 
 
-## 6. 保存的拡張としての関数定義: `DEFINE-FUNCTION-BY-DESCRIPTION`
+## 6. 略記としての関数定義: `DEFINE-FUNCTION-BY-DESCRIPTION`
 
 `IOTA`（4節）は「存在して一意」という性質から `.iota x A` という**項**を作れる
-ようにする規則でしたが、使うたびに existence/uniqueness 定理を毎回引用し直す
-必要があり、`(.iota v0 (.eq v0 (+ v1 v1)))` のような式は読みにくく、名前も
-付きません。`DEFINE-FUNCTION-BY-DESCRIPTION` は、この「存在して一意」という
-性質から、代わりに**新しい関数記号そのもの**を1回だけ鋳造する定義機構です。
+ようにする規則でしたが、`(.iota v0 (.eq v0 (+ v1 v1)))` のような式は読みにくく、
+名前も付きません。`DEFINE-FUNCTION-BY-DESCRIPTION` は、この ι 項に名前を付ける
+**略記**（3節の `(:abbreviation ...)`）を定義します。
 
 ```lisp
 ;; 前提: 「すべてのxについて、y=x+xとなるyが存在する」(existence) と
@@ -301,78 +302,80 @@ III.3（存在汎化）は `A[t/x] → ∃x.A` という**導入**方向の規�
     '(.eq v1 (+ v0 v0))                      ; 定義性質 A(x,y) := y=x+x
     'th-double-existence 'th-double-uniqueness))
 
-;; 以後 (double v0) は普通の項として使え、定義公理 DOUBLE-DEF を
-;; 引用するだけで DOUBLE(x)=x+x が使える（IOTAを経由する必要がない）
-(check-k-proof '((0 (.eq (double v0) (+ v0 v0)) :axiom (double-def))) *L*)
+;; (double v0) は (.iota v1 (.eq v1 (+ v0 v0))) の略記。定義式は定理 DOUBLE-DEF
+(check-k-proof '((0 (.eq (double v0) (+ v0 v0)) :th (double-def))) *L*)
+;=> T
+;; 別の引数では :inst で引数変数を付け替える
+(check-k-proof '((0 (.eq (double (s v3)) (+ (s v3) (s v3))) :th (double-def :inst ((v0 (s v3)))))) *L*)
 ;=> T
 ```
 
-内部では、渡された EXISTENCE/UNIQUENESS の定理名が実際に「期待した形の
-existence/uniqueness 命題」を証明しているかどうかを、`check-k-proof` による
-1行の `:th` 引用として再構成・再検証した上で、新しい項形成規則（n引数の関数
-記号）と、無条件に `A(x1..xn, NAME(x1..xn))` を主張する定義公理を
-`bootstrap-kernel-from-spec` 経由で鋳造します。
+追加されるのは次の2つで、どちらも信頼を必要としません。
 
-**正直な限界**: これは「existence+uniquenessが与えられればdefinition-by-
-descriptionは保存的拡張である」というメタ定理そのものを本カーネル内で形式的に
-証明しているわけではありません。あくまで、その前提（existence/uniqueness）が
-本当に主張通りの形で証明済みであることを機械的に**チェック**した上で、
-（メタ理論としては正しいと知られている）鋳造を実行しているだけです。この
-チェックとメタ定理自体の証明との間のギャップは、`.system` ファイルを読み込む
-ときの信頼と同じ種類のものです。
+- **略記** `(double ?X1)` := `(.iota ?Y (.eq ?Y (+ ?X1 ?X1)))`。カーネルは
+  `(double v0)` を ι 項に展開してから検査するので、新しい公理は増えません。
+- **定理** `DOUBLE-DEF`：A(x, NAME(x))。existence と uniqueness の定理から ∀ を外し、
+  IOTA 規則で導く証明を自動で作り、普通の定理として検証して登録します。
+
+定義の前に、名前が台帳で未使用であること、A の自由変数が引数と出力変数だけで
+あることなども確かめます。
 
 **`.ledger` ファイルへの保存**: 定義は、次のコマンドとして `.ledger` ファイルに
-書けます（`write-ledger-to-file` もこの形で書き出します）。読み込むときは
-`DEFINE-FUNCTION-BY-DESCRIPTION` そのものを呼び直すので、existence／uniqueness
-の再チェックも毎回行われます。
+書けます（`write-ledger-to-file` もこの形で書き出し、`NAME-DEF` は書き出しません）。
+読み込むときは `DEFINE-FUNCTION-BY-DESCRIPTION` そのものを呼び直すので、
+existence／uniqueness の再チェックと `NAME-DEF` の証明も毎回行われます。
 
 ```lisp
 (:define-function-by-description NAME ARG-VARS Y-VAR Y2-VAR A-FORMULA
                                  EXISTENCE-NAME UNIQUENESS-NAME)
 ```
 
-## 7. 定義された結合子: `hilbert-library/00-connectives.system`
+## 7. 略記としての結合子: `hilbert-library/00-connectives.system`
 
 カーネルの基本結合子は `.to`（→）と `.neg`（¬）だけです。∧・∨・↔・∃! は、
-形成規則と、展開形と行き来する2つの定義公理（UNFOLD／FOLD）の組として
-`.system` ファイルで定義しています。
-
-| 記号 | 意味 | 展開形 | 定義公理 |
-|---|---|---|---|
-| `(.and A B)` | A ∧ B | `(.neg (.to A (.neg B)))` | `AND-UNFOLD` / `AND-FOLD` |
-| `(.or A B)` | A ∨ B | `(.to (.neg A) B)` | `OR-UNFOLD` / `OR-FOLD` |
-| `(.iff A B)` | A ↔ B | `(.and (.to A B) (.to B A))` | `IFF-UNFOLD` / `IFF-FOLD` |
-| `(.exists1 x A)` | ∃!x A | `(.exists x (.and A (.forall u (.to A[u/x] (.eq u x)))))` | `EXISTS1-UNFOLD` / `EXISTS1-FOLD` |
-
-`EXISTS1-*` の u は、x と異なり、A に自由出現せず、A の x に代入可能な任意の
-変数です（引用する式の中で自分で選びます）。
-
-カーネルの照合は字面どおりなので、`(.and A B)` と展開形は別の式として扱われます。
-証明の中では、UNFOLD／FOLD の公理と MP で明示的に行き来します。
+`.system` ファイルで**略記**として定義しています。形成規則も公理もありません。
 
 ```lisp
-;; ∧除去: (.and A B) ⊢ A
-((0 (.and A B) :hyp nil)
- (1 (.to (.and A B) (.neg (.to A (.neg B)))) :axiom (and-unfold))
- (2 (.neg (.to A (.neg B))) :ir (MP 1 0))
- (3 (.to (.neg (.to A (.neg B))) A) :th (...))   ;  命題論理の定理
- (4 A :ir (MP 3 2)))
+(:abbreviation (.and ?A ?B) (.neg (.to ?A (.neg ?B))))
+(:abbreviation (.or ?A ?B) (.to (.neg ?A) ?B))
+(:abbreviation (.iff ?A ?B) (.and (.to ?A ?B) (.to ?B ?A)))
+(:abbreviation (.exists1 ?x ?A)
+               (.exists ?x (.and ?A (.forall ?u (.to (@subst ?x ?u ?A) (.eq ?u ?x))))))
 ```
 
-**カーネルへの変更（1行）**: `.exists1` は変数を束縛するので、自由変数の判定や
-代入でその変数を束縛変数として扱う必要があります。束縛子の一覧
-（`src/ledger.lisp` の `BINDER-HEADS`）はカーネルのコードに固定されていて、
-`.system` ファイルからは足せないため、ここに `.exists1` を1語追加しています。
-形成規則と意味（定義公理）は、すべて `.system` ファイル側にあります。
+カーネルは、書かれた式（証明・論理式・規則のパターン）を、入ってきたところで
+原始的な記号だけの式に展開します（`src/abbreviation.lisp`）。だから `(.and A B)` と
+`(.neg (.to A (.neg B)))` は同じ式で、どちらで書いても同じ定理・同じ規則に一致します。
+
+```lisp
+;; ∧除去: (.and A B) ⊢ A。A ∧ B はそのまま ¬(A → ¬B) なので、MP が直接使える
+((0 (.and A B) :hyp nil)
+ (1 (.to (.neg (.to A (.neg B))) A) :th (...))   ;  命題論理の定理
+ (2 A :ir (MP 1 0)))
+```
+
+展開の規則:
+
+- 引数が頭部のパラメータ（`?A` など）に入ります。`.exists1` の `?x` のように束縛子の
+  位置にあるパラメータには、そこに書かれた変数が入ります。
+- 本体のそれ以外の束縛変数（`?u`、≤ の `?z`、定義式の中の束縛変数）は、展開のたびに
+  新しい変数に付け替えられるので、引数の中の何も捕獲しません。
+- 本体の `(@subst x t A)` は、その場で計算されます。
+- 本体は、それより前に宣言された略記だけを使えます（再帰はできません）。
+- 展開で新しく作られる変数はすべて束縛変数なので、de Bruijn 形式では名前が消えます。
+
+`.exists1` は略記なので、カーネルの束縛子の一覧（`BINDER-HEADS`）には入っていません。
+台帳には展開した形が入りますが、Web UI などの表示は、書かれたとおりの形を使います。
 
 ∧ ∨ ↔ の基本補題は `hilbert-library/06-connectives.ledger` にまとめてあります
 （`th-and-intro`, `th-and-elim-l/r`, `th-or-intro-l/r`, `th-or-elim`,
 `th-iff-intro`, `th-iff-mp/mpr`, `th-iff-refl/sym/trans`, `th-not-and`,
 `th-not-or`, `th-excluded-middle`, `th-contrapositive` など）。このファイルは
 以前 `PROVE-TAUTOLOGY` で生成したもので（生成スクリプトは
-`backup/_backup_generate-connectives-ledger.lisp`）、場合分けは公理 II.4 ではなく
-定理 `th-case-split` を引用する形に書き換えてあります。読み込むときには他の
-`.ledger` と同じく全証明が再検証されます。
+`backup/_backup_generate-connectives-ledger.lisp`）、場合分けは定理 `th-case-split`
+の引用に、FOLD／UNFOLD 公理の引用は恒等律 `th-identity` の引用に書き換えてあります
+（展開すれば両辺が同じ式になるため）。読み込むときには他の `.ledger` と同じく
+全証明が再検証されます。
 
 ∃! や量化子についての補題（∃!x P(x) → ∃x P(x) など）は、述語スキーマ変数を
 使って `hilbert-library/07-quantifier-schemas.ledger` にまとめてあります
@@ -461,7 +464,7 @@ ZF の上に作った最初の定理ライブラリです。読み込み順は�
 |---|---|
 | `th-zf-empty-exists` | ∃y ∀z ¬(z ∈ y)　（分出公理を φ := ¬(z = z) で使う） |
 | `th-zf-empty-unique` | ∀y ∀y′ ( ∀z ¬(z ∈ y) → (∀z ¬(z ∈ y′) → y = y′) )　（外延性公理） |
-| `empty` / `EMPTY-DEF` | 定数 ∅ を `(empty)` と書く。定義公理 ∀z ¬(z ∈ ∅) |
+| `empty` / `EMPTY-DEF` | 定数 ∅ を `(empty)` と書く（ι 項の略記）。定理 ∀z ¬(z ∈ ∅) |
 | `th-zf-not-in-empty` | ¬(x ∈ ∅) |
 
 `(empty)` は `DEFINE-FUNCTION-BY-DESCRIPTION` で定義した0引数の関数記号です。
@@ -583,12 +586,12 @@ REPL からなら:
   式の中の記号（変数、∈ や → などの演算子、∅ などの定義された記号）はリンクに
   なっていて、クリックすると引用先・導入元のエントリが**新しいタブ**で開きます。
   開いた先でも同じように辿れるので、定義や補題を再帰的に遡れます。記号のリンク先は、
-  変数・命題記号・述語スキーマならその宣言、演算子・述語・関数記号なら形成規則、
-  `DEFINE-FUNCTION-BY-DESCRIPTION` で定義した記号（∅ など）なら定義公理です。
+  変数・命題記号・述語スキーマならその宣言、原始的な演算子・述語・関数記号なら形成規則、
+  略記（∧ や ≤、`DEFINE-FUNCTION-BY-DESCRIPTION` で定義した ∅ など）ならその略記です。
   URL は `#zf/345` のように世界とエントリ番号を含むので、そのまま共有できます。
 - **依存関係**: 各エントリのページに、次の2つを表示します。
   - **依存している基礎**: その定理が最終的に依存している公理（読み込んだファイルごと）、
-    定義（`DEFINE-FUNCTION-BY-DESCRIPTION` の定義公理）、推論規則。途中で演繹定理を
+    定義（`DEFINE-FUNCTION-BY-DESCRIPTION` の定理 `名前-DEF`）、推論規則。途中で演繹定理を
     メタ定理として信頼した定理（`th-ded`）を使っていれば、その旨も示します。定義は、
     その存在定理・一意性定理が依存しているものにも依存するものとして数えます
     （例: `¬(x ∈ ∅)` は ∅ の定義を通じて分出公理と外延性公理に依存）。
@@ -711,8 +714,8 @@ REPL からなら:
   ORIGIN の `:SOURCE-NAMES` に残ります。
 - **定理**: カーネルは束縛変数を名前なし（de Bruijn）で記録しているので、表示の
   ときに、式ごとに束縛子が現れた順に番号を振ります。
-- **定義**（`DEFINE-FUNCTION-BY-DESCRIPTION` の定義公理）: パターンの中の具体的な
-  変数の束縛子も、表示のときに同じ名前にします。
+- **略記**: 書かれたとおりに表示します。台帳には展開した形が入りますが、
+  表示には ORIGIN に残した書かれた形を使います（規則・定理も同様）。
 
 ```
 書いたとおり  (∃!?X ?A) → ∃?X (?A ∧ ∀?U (?A[?U/?X] → ?U = ?X))

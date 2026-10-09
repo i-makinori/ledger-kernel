@@ -110,11 +110,11 @@ distinct-variable or freshness side condition are rejected."
                                           (.exists v1 (.forall v2 (.to (.in v2 v0)
                                                                         (.exists v3 (.and (.in v3 v1) (.eq v2 v2))))))))
                          'zf-replacement) nil)
-  (expect "Attack: ZF-SEPARATION written with the expanded conjunction instead of .and -- must reject"
+  (expect "ZF-SEPARATION written with the expanded conjunction is the same axiom (.and is an abbreviation)"
           (zf-axiom-ok-p ledger
                          '(.forall v0 (.exists v1 (.forall v2 (.iff (.in v2 v1)
                                                                     (.neg (.to (.in v2 v0) (.neg (.eq v2 v2))))))))
-                         'zf-separation) nil)
+                         'zf-separation) t)
   (expect "Attack: 'there is an empty set' is not itself an axiom -- must reject"
           (zf-axiom-ok-p ledger (zf-ex 'v0 (zf-all 'v1 (zf-not (zf-in 'v1 'v0)))) 'zf-infinity) nil)
   ledger)

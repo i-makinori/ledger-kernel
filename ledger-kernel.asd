@@ -12,6 +12,7 @@
                (:file "treap")
                (:file "ledger")
                (:file "debruijn")
+               (:file "abbreviation")
                (:file "side-conditions")
                (:file "meta")
                (:file "judgement")

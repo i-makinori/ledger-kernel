@@ -7,7 +7,7 @@ Common Lisp で書かれた、 Hilbert 流の証明検証系（proof checker）�
 そのエントリの内容を、既存の公理・推論規則・定理・推論法則から導けるか否かを、
 1行1行 確認してゆきます。
 
-設計の芯は3つです。
+設計の芯は次のとおりです。
 
 - **追記専用の台帳**: 記号・形成規則・公理・推論規則・定理・定義は、すべて台帳の
   エントリです。エントリには登録順の番号 k が付きます。
@@ -18,6 +18,13 @@ Common Lisp で書かれた、 Hilbert 流の証明検証系（proof checker）�
 - **体系はデータ**: 論理そのもの（公理・推論規則・形成規則）を `.system`
   ファイルとして書き、差し替えられます。命題論理・一階述語論理・等号・ペアノ算術・
   ZF 集合論は、どれもこの仕組みで定義しています。
+- **原始的なもの以外は略記**: 信頼するのは `.system` の原始的な記号・公理・推論規則
+  だけです。カーネルは、それらが与える κ について x B_κ y（ゲーデル 1931）を有限の
+  機械的な手続きで判定します。記号の種類（変数・項・論理式・述語スキーマ）は
+  カーネルで固定し、`.system` からは増やしません。新しい記号（∧ や ≤、定義した関数）は
+  原始的な記号へ展開される略記で、定理は推論図の略記です。展開すれば原始的な
+  証明図に戻ります。（例外は演繹定理による `th-ded` で、今は宣言された規則を信頼して
+  います。）
 
 - **束縛変数には名前がない**（マシン B）: カーネルの内部では、束縛変数を
   de Bruijn インデックスで表します。`∀v0 ∀v1 (v0 = v1)` は
@@ -38,15 +45,17 @@ Web UI も付いています。
 **論理と体系**
 - 命題論理（Łukasiewicz の3公理 II.1〜II.3。場合分けは定理 `th-case-split` として導出）、一階述語論理（∀・∃、Gen、
   存在汎化 III.3、存在除去 `EXISTS-ELIM`）、等号（IV.1〜IV.4）
-- 定義された結合子 ∧ ∨ ↔ ∃!（`00-connectives.system`）
+- 略記として定義された結合子 ∧ ∨ ↔ ∃!（`00-connectives.system`）
 - ペアノ算術（P1〜P10）と、その上の順序 ≤ ・ <（`00-peano-order.system`）
 - ZF 集合論（外延性・対・和集合・冪集合・無限・正則性・分出図式・置換図式。
   選択公理なし）
 - 確定記述 `(.iota x A)`（「A を満たすただ1つの x」）
 
 **定義の仕組み**
+- `(:abbreviation 頭部 本体)`: 新しい記号を、それ以前の記号で書いた式の略記として
+  定義する。カーネルは入力を展開してから検査するので、公理は増えない
 - `DEFINE-FUNCTION-BY-DESCRIPTION`: 存在と一意性を証明済みの性質から、新しい
-  関数記号を定義する（例: 空集合 ∅）
+  関数記号を ι 項の略記として定義し、その定義式を IOTA で定理として導く（例: 空集合 ∅）
 - 述語スキーマ変数「A(x)」: `(p v0)` を「x を含む任意の論理式」として定理に書き、
   引用時に具体的な式を代入する（自動、または `:inst` で明示）
 
@@ -70,7 +79,7 @@ Web UI も付いています。
   リンク、依存している公理と「この定理を使っている定理」の表示、ブラウザ上での
   証明の検証
 
-テスト: カーネル 325 件、Web 50 件がすべて通り、コンパイル警告 0 の状態です。
+テスト: カーネル 333 件、Web 50 件がすべて通り、コンパイル警告 0 の状態です。
 
 カーネル（`src/`）はコメント込みで約 2000 行です。論理そのものはコードに書かず、
 すべて `.system` ファイルに置いています。使われていない機能は `backup/` に、元の
@@ -88,7 +97,7 @@ Web UI も付いています。
 (require :asdf)
 (asdf:load-asd (merge-pathnames "ledger-kernel.asd"))
 (asdf:load-system :ledger-kernel)
-(asdf:test-system :ledger-kernel)      ; 最後に "325/325 self-tests passed." と出る
+(asdf:test-system :ledger-kernel)      ; 最後に "333/333 self-tests passed." と出る
 (in-package :ledger-kernel)
 ```
 
@@ -225,9 +234,9 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
 `(.forall v3 (.eq v3 v3))` はカーネルの中では同じ式なので、どちらで書いても同じ
 定理・同じ規則に一致します（詳しくは [docs/guide.md](docs/guide.md) の13節）。
 
-`.and` `.or` `.iff` `.exists1` は `00-connectives.system` で定義された結合子です。
-展開形（例: A ∧ B は ¬(A → ¬B)）とは別の式として扱われ、証明の中では定義公理
-`AND-UNFOLD` / `AND-FOLD` などで行き来します。
+`.and` `.or` `.iff` `.exists1` は `00-connectives.system` で定義された略記です。
+カーネルは書かれた式を展開してから検査するので、A ∧ B と ¬(A → ¬B) は同じ式です。
+どちらで書いても同じ定理・同じ規則に一致し、行き来のための公理はありません。
 
 
 ## 台帳を育てる
@@ -236,7 +245,7 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
 |---|---|
 | `check-and-extend` | 閉じた証明を、定理（`th`）として登録する |
 | `check-and-extend-by-deduction-direct` | 仮定 H を含む証明 Γ, H ⊢ Φ を、演繹定理により Γ ⊢ H → Φ として登録する（`th-ded`） |
-| `define-function-by-description` | 存在・一意性の定理から、関数記号とその定義公理を追加する |
+| `define-function-by-description` | 存在・一意性の定理から、関数記号（ι 項の略記）と、その定義式の定理 `名前-DEF` を追加する |
 | `declare-atomic-wff-symbol`, `declare-variable-symbol`, `declare-predicate-schema-symbol` | 新しい記号を宣言する |
 
 台帳は `write-ledger-to-file` でコマンド列として保存でき、`read-ledger-from-file`
@@ -249,9 +258,9 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
 | ファイル | 内容 |
 |---|---|
 | `hilbert-library/00-classical-fol-equality.system` | 一階述語論理と等号の体系（形成規則、MP・Gen・IOTA・EXISTS-ELIM、II.1〜3、III.1〜3、IV.1〜4） |
-| `hilbert-library/00-connectives.system` | ∧ ∨ ↔ ∃! の形成規則と定義公理 |
+| `hilbert-library/00-connectives.system` | ∧ ∨ ↔ ∃! の略記（公理なし） |
 | `hilbert-library/00-peano-arithmetic.system` | ペアノ算術の語彙と公理 P1〜P10 |
-| `hilbert-library/00-peano-order.system` | 順序 ≤ ・ < の定義（s ≤ t :⇔ ∃z s + z = t、s < t :⇔ S s ≤ t） |
+| `hilbert-library/00-peano-order.system` | 順序 ≤ ・ < の略記（s ≤ t :⇔ ∃z s + z = t、s < t :⇔ S s ≤ t。公理なし） |
 | `hilbert-library/01-propositional-core.ledger` | 恒等律、仮言三段論法、前件の入れ替え |
 | `hilbert-library/02-predicate-core.ledger` | ∀ の順序交換 |
 | `hilbert-library/03-equality-core.ledger` | 等号の反射律・推移律 |
@@ -295,11 +304,11 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
 **無条件に信頼しているもの**
 - **カーネルのコード**: 照合、自由変数や代入可能性の判定（メタ述語）、再検証の
   ロジック、そして書かれた式を de Bruijn 形式に直す変換（`src/debruijn.lisp`）。
-  束縛子の一覧（`.forall` `.exists` `.iota` `.exists1`）もカーネルに固定されて
-  います。代入は束縛変数を捕獲しようがない形で行いますが、`@subst-ok?` は
+  束縛子の一覧（`.forall` `.exists` `.iota`）と、略記の展開（`src/abbreviation.lisp`）も
+  カーネルの一部です。代入は束縛変数を捕獲しようがない形で行いますが、`@subst-ok?` は
   残してあり、変換や束縛子の展開に誤りがあれば、そこで検出して拒否します。
 - **`.system` ファイルの内容**: 公理・推論規則・形成規則は、読み込めばそのまま
-  信頼されます（`:PRIMITIVE`）。命題論理の公理は II.1〜II.3 だけで、場合分けなどは
+  信頼されます（`:PRIMITIVE`）。略記は何も主張しないので、信頼の対象ではありません。命題論理の公理は II.1〜II.3 だけで、場合分けなどは
   そこから導出しています。公理系の無矛盾性は、体系の内側からは確かめられません
   （ゲーデルの第二不完全性定理）。
 - **演繹定理**: 演繹定理はカーネルの前提ではなく、体系のメタ定理です。`.system`
@@ -311,9 +320,8 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
   定理の中まで再帰的に調べます。信頼しているのは、宣言された各規則（教科書の帰納法の
   1ステップ）と、全行が覆われた証明から Γ ⊢ H → Φ を結論する最後の一歩です。Web UI の
   「依存している基礎」に、この信頼を使ったかどうかが表示されます。
-- **定義の保存性**: `DEFINE-FUNCTION-BY-DESCRIPTION` は存在・一意性の定理を
-  再チェックしますが、「それなら定義は保存拡張になる」というメタ定理そのものは
-  信頼しています。
+- **定義**: 信頼していません。`DEFINE-FUNCTION-BY-DESCRIPTION` が加えるのは略記
+  （関数記号 = ι 項）だけで、定義式 `名前-DEF` は IOTA 規則による普通の定理です。
 
 **保証していないこと**
 - 同じ Lisp イメージの中での保護はありません。`ledger-append` は公開されていて、
@@ -334,6 +342,7 @@ src/                     カーネル本体
   treap.lisp             台帳の索引に使う永続 treap
   ledger.lisp            台帳、記号の宣言、束縛子の一覧
   debruijn.lisp          束縛変数の de Bruijn 表現（変換、束縛子の展開と閉包、新しい変数）
+  abbreviation.lisp      .system が宣言する略記と、その展開
   side-conditions.lisp   側条件
   meta.lisp              メタ述語・メタ構成子（自由変数、代入 など）
   judgement.lisp         形成規則の判定（JUDGEMENT?）
@@ -342,7 +351,7 @@ src/                     カーネル本体
   meta-theorem.lisp      .system が宣言するメタ定理（演繹定理の @vdash 規則）
   deduction.lisp         演繹定理による登録（th-ded）
   system-spec.lisp       .system ファイルの読み込み
-  function-definition.lisp  DEFINE-FUNCTION-BY-DESCRIPTION
+  function-definition.lisp  DEFINE-FUNCTION-BY-DESCRIPTION（ι 項の略記と 名前-DEF）
 tests/                   カーネルのテスト（ledger-kernel/tests）
 hilbert-library/         論理とペアノ算術の体系・ライブラリ
 zf-library/              ZF 集合論の体系・ライブラリ
@@ -371,7 +380,7 @@ deploy/                  サーバー版を公開するための systemd / nginx
 sbcl --non-interactive \
      --eval '(require :asdf)' \
      --eval '(asdf:load-asd (merge-pathnames "ledger-kernel.asd"))' \
-     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（325 件）
+     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（333 件）
 ```
 
 Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（50 件。HTTP は使いません）。
@@ -398,8 +407,8 @@ Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（50 件�
 - **体系毎に矛盾を定義でき、矛盾を検出できる様にすること**
 - **ライブラリが小さい**: ZF は空集合まで。対・和集合・順序対・自然数などはこれから
   です。集合論を書きやすくするクラス記法（`{x ∣ φ}`）もまだありません。
-- **証明を書く手間**: 生の Hilbert 証明は長くなります。結合子の展開形との行き来は
-  明示的に書く必要があり、変数が衝突したときは `:inst` で手で付け替えます。
+- **証明を書く手間**: 生の Hilbert 証明は長くなります。変数が衝突したときは
+  `:inst` で手で付け替えます。
   `EXISTS-ELIM` の証人変数も手で選びます。高水準の証明の書き方や、中置記法での
   入力は、これからの課題です。
 - **自動化**: 恒真式の自動証明は `backup/` にあり、カーネルでは使っていません。

@@ -12,6 +12,7 @@
 ;;;   (:axiom NAME CONDITIONS (EXTRA-PARAM-PATTERNS CONCLUSION-PATTERN))
 ;;;   (:irule NAME CONDITIONS (PREMISE-PATTERNS EXTRA-PARAM-PATTERNS
 ;;;                            :=> CONCLUSION-PATTERN))
+;;;   (:abbreviation (HEAD ?PARAMETER...) BODY)  -- see abbreviation.lisp
 ;;;   (:meta-theorem deduction CLAUSE...)   -- see meta-theorem.lisp
 ;;; CONDITIONS and patterns may use only the kernel's fixed catalog of
 ;;; meta-predicates and meta-constructors; a new one needs new Lisp code.
@@ -107,16 +108,26 @@ LEDGER is NIL, onto an empty ledger seeded with ATOMIC-SYMBOLS and
 VARIABLES. Passing LEDGER chains .system files (e.g. base logic, then
 arithmetic). ORIGIN-NOTE is stored as (:PRIMITIVE . ORIGIN-NOTE); only
 LEDGER-COMMANDS reads it, to recognize function definitions."
-  (labels ((admit (ledger kind payload &optional source-names)
+  (labels ((admit (ledger kind payload &optional source-names written)
              "The only way to create a :PRIMITIVE entry; private to this function."
              (ledger-append ledger kind payload
                             (list* :primitive
                                    (append origin-note
-                                           (and source-names (list :source-names source-names))))))
+                                           (and source-names (list :source-names source-names))
+                                           (and written (list :written written))))))
            (admit-rule (ledger kind name conditions form)
-             "Admit a rule with its bound pattern variables made canonical."
-             (multiple-value-bind (c f map) (canonicalize-rule-binders name conditions form)
-               (admit ledger kind (list name c f) map)))
+             "Admit a rule with abbreviations expanded (abbreviation.lisp) and
+its bound pattern variables made canonical. The ORIGIN keeps the rule as
+written, under :WRITTEN, for display."
+             (destructuring-bind (ec ef)
+                 (expand-abbreviations (list conditions form) ledger :pattern t)
+               (multiple-value-bind (c f map) (canonicalize-rule-binders name ec ef)
+                 (admit ledger kind (list name c f) map
+                        (and (not (equal (list ec ef) (list conditions form)))
+                             (list conditions form))))))
+           (admit-abbreviation (ledger head-pattern body)
+             (check-abbreviation-declaration head-pattern body ledger)
+             (admit ledger 'abbreviation (list head-pattern body)))
            (admit-each (ledger kind syms)
              (if (null syms)
                  ledger
@@ -137,6 +148,8 @@ LEDGER-COMMANDS reads it, to recognize function definitions."
                           (admit-rule ledger 'axiom name conditions form)))
                 (:irule (destructuring-bind (name conditions form) (cdr cmd)
                           (admit-rule ledger 'irule name conditions form)))
+                (:abbreviation (destructuring-bind (head-pattern body) (cdr cmd)
+                                 (admit-abbreviation ledger head-pattern body)))
                 (:meta-theorem (admit-meta-theorem ledger (cdr cmd) #'admit #'admit-rule))
                 (t (error "BOOTSTRAP-KERNEL-FROM-SPEC: unknown system-spec command ~S" cmd))))))))
 
@@ -178,7 +191,8 @@ the discharge form is declared once."
                  (when (deduction-discharge-entry ledger)
                    (error "BOOTSTRAP-KERNEL-FROM-SPEC: the Deduction Theorem's :DISCHARGE ~
                            is already declared."))
-                 (funcall admit ledger 'deduction-discharge (list vdash formula))))
+                 (funcall admit ledger 'deduction-discharge
+                          (list vdash (expand-abbreviations formula ledger :pattern t)))))
               (:case
                (destructuring-bind (case-name conditions form) (cdr clause)
                  (unless (and (= (length form) 4) (eq (third form) :=>)

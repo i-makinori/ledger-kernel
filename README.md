@@ -7,7 +7,7 @@ The relation "is provable" (⊢) is recorded as an entry in an append-only ledge
 and each entry is checked line by line to see whether it can be derived from
 the existing axioms, inference rules, theorems and derived rules.
 
-The design rests on three core ideas:
+The design rests on these core ideas:
 
 - **An append-only ledger**: symbols, formation rules, axioms, inference rules,
   theorems and definitions are all entries in the ledger. Each entry is given a
@@ -21,6 +21,14 @@ The design rests on three core ideas:
   is written as a `.system` file and can be swapped out. Propositional logic,
   first-order predicate logic, equality, Peano arithmetic and ZF set theory are all
   defined through this mechanism.
+- **Only primitives are trusted; everything else is an abbreviation**: what is trusted
+  is the primitive symbols, axioms and inference rules of a `.system` file. For the κ
+  they give, the kernel decides x B_κ y (Gödel 1931) by a finite, mechanical procedure.
+  The kinds of symbol (variables, terms, formulas, predicate schemas) are fixed in the
+  kernel and not extended by `.system` files. A new symbol (∧, ≤, a defined function) is
+  an abbreviation that expands into primitive ones, and a theorem is an abbreviation of
+  a proof figure; expanded, both give back a primitive proof. (The exception is `th-ded`
+  by the deduction theorem, which for now trusts the declared rules.)
 
 - **Bound variables have no names** (machine B): inside the kernel, bound variables
   are represented by de Bruijn indices. `∀v0 ∀v1 (v0 = v1)` becomes
@@ -45,15 +53,18 @@ proof trees, and verifying proofs you write on the spot.
   the theorem `th-case-split`), first-order
   predicate logic (∀, ∃, Gen, existential generalization III.3, existential elimination
   `EXISTS-ELIM`), equality (IV.1–IV.4)
-- Defined connectives ∧ ∨ ↔ ∃! (`00-connectives.system`)
+- Connectives ∧ ∨ ↔ ∃! defined as abbreviations (`00-connectives.system`)
 - Peano arithmetic (P1–P10) and the orders ≤ and < on top of it (`00-peano-order.system`)
 - ZF set theory (extensionality, pairing, union, power set, infinity, regularity,
   separation schema, replacement schema; without the axiom of choice)
 - Definite descriptions `(.iota x A)` ("the unique x satisfying A")
 
 **Definition mechanisms**
-- `DEFINE-FUNCTION-BY-DESCRIPTION`: defines a new function symbol from a property whose
-  existence and uniqueness have been proved (e.g. the empty set ∅)
+- `(:abbreviation HEAD BODY)`: defines a new symbol as an abbreviation of an expression
+  in earlier symbols. The kernel expands input before checking it, so no axiom is added
+- `DEFINE-FUNCTION-BY-DESCRIPTION`: defines a new function symbol, from a property whose
+  existence and uniqueness have been proved, as an abbreviation of a ι term, and derives
+  its defining formula as a theorem by IOTA (e.g. the empty set ∅)
 - Predicate schema variables "A(x)": write `(p v0)` in a theorem to mean "any formula
   containing x", and substitute a concrete formula when citing it (automatically, or
   explicitly with `:inst`)
@@ -80,7 +91,7 @@ ledger. The tools themselves need not be trusted.
   and proof trees, links to symbols and cited entries, display of the axioms an entry
   depends on and of "the theorems that use this theorem", and in-browser proof checking
 
-Tests: all 325 kernel tests and 50 Web tests pass, with zero compiler warnings.
+Tests: all 333 kernel tests and 50 Web tests pass, with zero compiler warnings.
 
 The kernel (`src/`) is about 2000 lines including comments. The logic itself is not
 written in the code; it all lives in `.system` files. Unused features have been moved to
@@ -99,7 +110,7 @@ ASDF. Start SBCL at the root of the repository:
 (require :asdf)
 (asdf:load-asd (merge-pathnames "ledger-kernel.asd"))
 (asdf:load-system :ledger-kernel)
-(asdf:test-system :ledger-kernel)      ; ends with "325/325 self-tests passed."
+(asdf:test-system :ledger-kernel)      ; ends with "333/333 self-tests passed."
 (in-package :ledger-kernel)
 ```
 
@@ -244,10 +255,10 @@ You may choose any names for bound variables. `(.forall v0 (.eq v0 v0))` and
 `(.forall v3 (.eq v3 v3))` are the same formula inside the kernel, so either one matches
 the same theorems and rules (see section 13 of [docs/guide.md](docs/guide.md) for details).
 
-`.and`, `.or`, `.iff` and `.exists1` are connectives defined in `00-connectives.system`.
-They are treated as formulas distinct from their unfolded forms (e.g. A ∧ B is
-¬(A → ¬B)); within a proof, you move between the two using the defining axioms
-`AND-UNFOLD` / `AND-FOLD` and so on.
+`.and`, `.or`, `.iff` and `.exists1` are abbreviations defined in `00-connectives.system`.
+The kernel expands written formulas before checking them, so A ∧ B and ¬(A → ¬B) are the
+same formula: either matches the same theorems and rules, and no axiom is needed to move
+between them.
 
 
 ## Growing the ledger
@@ -256,7 +267,7 @@ They are treated as formulas distinct from their unfolded forms (e.g. A ∧ B is
 |---|---|
 | `check-and-extend` | A closed proof, as a theorem (`th`) |
 | `check-and-extend-by-deduction-direct` | A proof Γ, H ⊢ Φ containing hypothesis H, registered as Γ ⊢ H → Φ via the deduction theorem (`th-ded`) |
-| `define-function-by-description` | A function symbol and its defining axiom, from existence and uniqueness theorems |
+| `define-function-by-description` | A function symbol (an abbreviation of a ι term) and the theorem `NAME-DEF` stating its defining formula, from existence and uniqueness theorems |
 | `declare-atomic-wff-symbol`, `declare-variable-symbol`, `declare-predicate-schema-symbol` | Declarations of new symbols |
 
 A ledger can be saved as a sequence of commands with `write-ledger-to-file` and read back
@@ -270,9 +281,9 @@ and is re-verified.
 | File | Contents |
 |---|---|
 | `hilbert-library/00-classical-fol-equality.system` | The system of first-order predicate logic with equality (formation rules, MP, Gen, IOTA, EXISTS-ELIM, II.1–3, III.1–3, IV.1–4) |
-| `hilbert-library/00-connectives.system` | Formation rules and defining axioms for ∧ ∨ ↔ ∃! |
+| `hilbert-library/00-connectives.system` | Abbreviations ∧ ∨ ↔ ∃! (no axioms) |
 | `hilbert-library/00-peano-arithmetic.system` | The vocabulary and axioms P1–P10 of Peano arithmetic |
-| `hilbert-library/00-peano-order.system` | Definitions of the orders ≤ and < (s ≤ t :⇔ ∃z s + z = t, s < t :⇔ S s ≤ t) |
+| `hilbert-library/00-peano-order.system` | The orders ≤ and < as abbreviations (s ≤ t :⇔ ∃z s + z = t, s < t :⇔ S s ≤ t; no axioms) |
 | `hilbert-library/01-propositional-core.ledger` | Identity, hypothetical syllogism, exchange of antecedents |
 | `hilbert-library/02-predicate-core.ledger` | Exchanging the order of ∀ |
 | `hilbert-library/03-equality-core.ledger` | Reflexivity and transitivity of equality |
@@ -320,11 +331,13 @@ what is trusted unconditionally".
 - **The kernel code**: matching, the judgements of free variables and substitutability
   (meta-predicates), the re-verification logic, and the conversion of written formulas
   into de Bruijn form (`src/debruijn.lisp`). The list of binders (`.forall` `.exists`
-  `.iota` `.exists1`) is also fixed in the kernel. Substitution is performed in a way that
+  `.iota`) and the expansion of abbreviations (`src/abbreviation.lisp`) are also part of
+  the kernel. Substitution is performed in a way that
   cannot capture bound variables, but `@subst-ok?` is kept, so that any error in the
   conversion or in unfolding binders is detected and rejected there.
 - **The contents of `.system` files**: axioms, inference rules and formation rules are
-  trusted as-is once loaded (`:PRIMITIVE`). The propositional axioms are II.1–II.3 only;
+  trusted as-is once loaded (`:PRIMITIVE`); abbreviations assert nothing and are not
+  trusted. The propositional axioms are II.1–II.3 only;
   proof by cases and the rest are derived from them. The consistency of an axiom system cannot be confirmed from within
   the system (Gödel's second incompleteness theorem).
 - **The deduction theorem**: it is a meta-theorem of a system, not an assumption of the
@@ -336,9 +349,9 @@ what is trusted unconditionally".
   into cited theorems. What is trusted is each declared rule (one textbook induction step)
   and the final step from a fully covered proof to Γ ⊢ H → Φ. The Web UI's "foundations
   depended on" shows whether this trust was used.
-- **Conservativity of definitions**: `DEFINE-FUNCTION-BY-DESCRIPTION` re-checks the
-  existence and uniqueness theorems, but trusts the meta-theorem itself that "in that case
-  the definition is a conservative extension".
+- **Definitions**: not trusted. `DEFINE-FUNCTION-BY-DESCRIPTION` adds only an
+  abbreviation (the function symbol stands for a ι term); its defining formula `NAME-DEF`
+  is an ordinary theorem proved by the IOTA rule.
 
 **What is not guaranteed**
 - There is no protection within the same Lisp image. `ledger-append` is public, and
@@ -360,6 +373,7 @@ src/                     The kernel
   ledger.lisp            The ledger, symbol declarations, list of binders
   debruijn.lisp          de Bruijn representation of bound variables (conversion,
                          opening and closing binders, fresh variables)
+  abbreviation.lisp      Abbreviations declared by a .system file, and their expansion
   side-conditions.lisp   Side conditions
   meta.lisp              Meta-predicates and meta-constructors (free variables, substitution, etc.)
   judgement.lisp         Judging formation rules (JUDGEMENT?)
@@ -368,7 +382,7 @@ src/                     The kernel
   meta-theorem.lisp      Meta-theorems declared by a .system file (the deduction theorem's @vdash rules)
   deduction.lisp         Registration via the deduction theorem (th-ded)
   system-spec.lisp       Loading .system files
-  function-definition.lisp  DEFINE-FUNCTION-BY-DESCRIPTION
+  function-definition.lisp  DEFINE-FUNCTION-BY-DESCRIPTION (a ι-term abbreviation and NAME-DEF)
 tests/                   Kernel tests (ledger-kernel/tests)
 hilbert-library/         Systems and libraries for logic and Peano arithmetic
 zf-library/              Systems and libraries for ZF set theory
@@ -398,7 +412,7 @@ deploy/                  Example systemd / nginx configurations for publishing t
 sbcl --non-interactive \
      --eval '(require :asdf)' \
      --eval '(asdf:load-asd (merge-pathnames "ledger-kernel.asd"))' \
-     --eval '(asdf:test-system :ledger-kernel)'        # kernel (325 tests)
+     --eval '(asdf:test-system :ledger-kernel)'        # kernel (333 tests)
 ```
 
 The Web UI tests are run with `(asdf:test-system :ledger-kernel/web)` (50 tests; no HTTP
@@ -429,9 +443,8 @@ with the reasons, include for example:
 - **The library is small**: ZF only goes as far as the empty set. Pairs, unions, ordered
   pairs, natural numbers and so on are still to come. There is also no class notation
   (`{x ∣ φ}`) to make set theory easier to write.
-- **The effort of writing proofs**: raw Hilbert proofs get long. Moving between connectives
-  and their unfolded forms must be written explicitly, and variable clashes must be renamed
-  by hand with `:inst`. The witness variable for `EXISTS-ELIM` is also chosen by hand.
+- **The effort of writing proofs**: raw Hilbert proofs get long. Variable clashes must be
+  renamed by hand with `:inst`. The witness variable for `EXISTS-ELIM` is also chosen by hand.
   A higher-level proof language and infix input are future work.
 - **Automation**: automatic proof of tautologies is kept in `backup/` and not used by the
   kernel; propositional lemmas are written (or generated by a tool) as ordinary proofs.

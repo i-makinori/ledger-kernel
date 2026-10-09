@@ -113,13 +113,15 @@ everything above it is fresh for TREES."
 
 ;;; --- Surface <-> kernel ---------------------------------------------------
 
-(defun named->db (x ledger)
+(defun named->db (x ledger &key (expand t))
   "Convert every surface binder (Q v BODY) in X whose V is a variable of
 LEDGER into (Q BODY') with V's occurrences replaced by indices. Anything
 else is left alone, so the function is idempotent and can be applied to a
 whole proof line (numbers, roles and rule names pass through). A binder
 whose V is not a variable is not converted, and fails the formation
-rules later as it always did."
+rules later as it always did.
+EXPAND NIL skips abbreviation expansion; only for display, where an
+entry is shown as written."
   (labels ((conv (x env)
              (cond
                ((symbolp x)
@@ -131,7 +133,9 @@ rules later as it always did."
                 (list (first x) (conv (third x) (cons (second x) env))))
                ((consp x) (cons (conv (car x) env) (conv (cdr x) env)))
                (t x))))
-    (conv x nil)))
+    ;; Abbreviations are expanded first, so the kernel only ever sees a
+    ;; system's primitive symbols (abbreviation.lisp).
+    (conv (if expand (expand-abbreviations x ledger) x) nil)))
 
 (defun contains-raw-index-p (x)
   "T iff X contains a (:BV ...) form. Written input must name its bound

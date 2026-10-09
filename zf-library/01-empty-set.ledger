@@ -109,6 +109,6 @@
 ;;; --- Basic property --------------------------------------------------------
 
 (:th th-zf-not-in-empty
- ((0 (.forall v2 (.neg (.in v2 (empty)))) :axiom (empty-def))
+ ((0 (.forall v2 (.neg (.in v2 (empty)))) :th (empty-def))
   (1 (.to (.forall v2 (.neg (.in v2 (empty)))) (.neg (.in v0 (empty)))) :axiom (III.1 v0))
   (2 (.neg (.in v0 (empty))) :ir (mp 1 0))))

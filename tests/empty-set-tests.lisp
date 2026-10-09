@@ -31,14 +31,18 @@ of (empty). Returns the extended ledger."
                            ledger) t)
     (expect "(empty) is a term" (judgement? 'term? '(empty) ledger) t)
     (expect "(.in v0 (empty)) is a wff" (judgement? 'wff? '(.in v0 (empty)) ledger) t)
-    (expect "EMPTY-DEF: forall z not(z in (empty))"
-            (check-k-proof '((0 (.forall v2 (.neg (.in v2 (empty)))) :axiom (empty-def))) ledger) t)
+    (expect "EMPTY-DEF, proved by IOTA: forall z not(z in (empty))"
+            (check-k-proof '((0 (.forall v2 (.neg (.in v2 (empty)))) :th (empty-def))) ledger) t)
+    (expect "(empty) is the description term: the iota x such that nothing is in x"
+            (equal (named->db '(empty) ledger)
+                   (named->db '(.iota v1 (.forall v2 (.neg (.in v2 v1)))) ledger))
+            t)
     (expect "th-zf-not-in-empty: not(v0 in (empty))"
             (check-k-proof '((0 (.neg (.in v0 (empty))) :th (th-zf-not-in-empty))) ledger) t)
     (expect "Attack: 'v0 in (empty)' is not a theorem under th-zf-not-in-empty -- must reject"
             (check-k-proof '((0 (.in v0 (empty)) :th (th-zf-not-in-empty))) ledger) nil)
     (expect "Attack: EMPTY-DEF does not say (empty) has a member -- must reject"
-            (check-k-proof '((0 (.exists v2 (.in v2 (empty))) :axiom (empty-def))) ledger) nil)
+            (check-k-proof '((0 (.exists v2 (.in v2 (empty))) :th (empty-def))) ledger) nil)
     (expect "Attack: redefining EMPTY -- must error"
             (handler-case
                 (progn (define-function-by-description

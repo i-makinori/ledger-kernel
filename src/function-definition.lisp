@@ -7,39 +7,29 @@
 ;;;   EXISTENCE:   forall x1..xn. exists y. A(x1,...,xn,y)
 ;;;   UNIQUENESS:  forall x1..xn. forall y. forall y2.
 ;;;                  (A(...,y) -> (A(...,y2) -> y=y2))
-;;; this admits a new n-ary function symbol NAME with the defining axiom
-;;;   A(x1,...,xn, NAME(x1,...,xn)).
-;;; Given existence and uniqueness, such a definition is a conservative
-;;; extension -- a standard metatheorem that this kernel does not itself
-;;; prove. What IS checked: both cited theorems are re-checked by
-;;; CHECK-K-PROOF against the exact formulas built from A-FORMULA, and a
-;;; mismatch is an error. The symbol and axiom are then admitted as
-;;; :PRIMITIVE entries through BOOTSTRAP-KERNEL-FROM-SPEC.
+;;; this admits a new n-ary function symbol NAME as an ABBREVIATION
+;;; (abbreviation.lisp):
+;;;   NAME(x1,...,xn)  :=  (.iota y A(x1,...,xn,y))      "the y such that A"
+;;; and the theorem NAME-DEF, A(x1,...,xn, NAME(x1,...,xn)), proved by the
+;;; IOTA rule from the two theorems. Nothing is added as an axiom: NAME is
+;;; expanded before the kernel sees it, and NAME-DEF is an ordinary checked
+;;; theorem (cite it with :inst to use it at other arguments).
 
 (defun rename-many (pairs form)
   "Substitute each (OLD . NEW) of PAIRS into FORM, in order. Order does not
 matter because callers only use fresh NEW symbols that do not occur in FORM."
   (dolist (p pairs form) (setf form (subst (cdr p) (car p) form))))
 
-;;; The metatheorem needs more than the two theorems; these are checked
-;;; too (CHECK-DEFINITION-SHAPE), since each one's failure admits a
-;;; contradiction:
-;;;   - NAME is a symbol the ledger has never used. Reusing a function
-;;;     symbol (S, +, an earlier definition) adds a second defining axiom
-;;;     for it: with A(x,y) := y = x, S(x) = x, so (S zero) = zero.
-;;;   - The free variables of A are among X1..Xn, Y. A free parameter z
-;;;     makes existence and uniqueness hold for each z separately, but
-;;;     the axiom A(x, NAME(x)) then fixes one value for every z: with
-;;;     A(y) := y = z, NAME = z for all z, so (S zero) = zero.
+;;; Checked beforehand (CHECK-DEFINITION-SHAPE), so that the abbreviation
+;;; means what it says:
+;;;   - NAME is a symbol the ledger has never used, so it gets one meaning.
+;;;   - The free variables of A are among X1..Xn, Y: NAME(x) is a term in
+;;;     x alone. (A free parameter z would leave z free in NAME's
+;;;     expansion, behind the reader's back.)
 ;;;   - X1..Xn, Y, Y2 are distinct declared variables, Y2 does not occur
 ;;;     in A, and none of them is the variable of a binder inside A, so
 ;;;     the plain renamings below (Y to Y2, Xi to ?Xi) change exactly the
 ;;;     free occurrences and capture nothing.
-
-(defun symbol-used-in-ledger-p (sym ledger)
-  "T iff SYM occurs anywhere in the payload of an entry of LEDGER."
-  (some (lambda (e) (occurs-symbol-p sym (entry-payload e)))
-        (treap-values-below (ledger-all ledger) (ledger-bound ledger))))
 
 (defun binder-variables-named (form)
   "The variables of the surface binders (Q v BODY) anywhere in FORM."
@@ -80,47 +70,66 @@ the conditions above."
           (fail "A-FORMULA binds ~S, which is also an argument, Y-VAR or ~
                  Y2-VAR; rename the bound variable." clash))))))
 
+(defun forall-prefix (vars body)
+  "(.forall v1 (.forall v2 ... BODY))."
+  (if (null vars) body (list '.forall (car vars) (forall-prefix (cdr vars) body))))
+
+(defun strip-foralls-proof (start formula vars cited)
+  "Lines numbered from START that take FORMULA = forall VARS. B (proved at
+line CITED) to B by III.1 with each variable itself and MP. Returns
+(VALUES lines last-line-number B)."
+  (let ((lines nil) (n start) (at cited) (f formula))
+    (dolist (v vars (values (nreverse lines) at f))
+      (let ((body (third f)))
+        (push (list n (list '.to f body) :axiom (list 'III.1 v)) lines)
+        (push (list (1+ n) body :ir (list 'MP n at)) lines)
+        (setf at (1+ n) n (+ n 2) f body)))))
+
 (defun define-function-by-description (ledger name arg-vars y-var y2-var a-formula
                                         existence-name uniqueness-name)
   "Admit function symbol NAME defined by A-FORMULA, after checking
-EXISTENCE-NAME and UNIQUENESS-NAME. ARG-VARS are A-FORMULA's argument
+EXISTENCE-NAME and UNIQUENESS-NAME: the abbreviation NAME(x) := the y
+such that A, and the theorem NAME-DEF. ARG-VARS are A-FORMULA's argument
 variables, Y-VAR its output variable; Y2-VAR is a distinct variable used
 only to state uniqueness."
   (check-definition-shape ledger name arg-vars y-var y2-var a-formula)
-  (let* ((expected-existence
-           (let ((body (list '.exists y-var a-formula)))
-             (dolist (v (reverse arg-vars) body) (setf body (list '.forall v body)))))
+  (let* ((expected-existence (forall-prefix arg-vars (list '.exists y-var a-formula)))
          (a-at-y2 (rename-many (list (cons y-var y2-var)) a-formula))
-         (expected-uniqueness
-           (let ((body (list '.forall y-var
-                              (list '.forall y2-var
-                                    (list '.to a-formula (list '.to a-at-y2 (list '.eq y-var y2-var)))))))
-             (dolist (v (reverse arg-vars) body) (setf body (list '.forall v body))))))
+         (uniqueness-body (list '.forall y-var
+                                (list '.forall y2-var
+                                      (list '.to a-formula (list '.to a-at-y2 (list '.eq y-var y2-var))))))
+         (expected-uniqueness (forall-prefix arg-vars uniqueness-body)))
     (unless (eq t (check-k-proof (list (list 0 expected-existence :th (list existence-name))) ledger))
       (error "DEFINE-FUNCTION-BY-DESCRIPTION: ~S does not establish the ~
               required existence schema~%  ~S" existence-name expected-existence))
     (unless (eq t (check-k-proof (list (list 0 expected-uniqueness :th (list uniqueness-name))) ledger))
       (error "DEFINE-FUNCTION-BY-DESCRIPTION: ~S does not establish the ~
               required uniqueness schema~%  ~S" uniqueness-name expected-uniqueness))
-    (let* ((schema-xs (loop for i from 1 to (length arg-vars)
-                             collect (intern (format nil "?X~D" i) (symbol-package name))))
-           (schema-y (intern "?Y" (symbol-package name)))
+    (let* ((pkg (symbol-package name))
+           (schema-xs (loop for i from 1 to (length arg-vars)
+                             collect (intern (format nil "?X~D" i) pkg)))
+           (schema-y (intern "?Y" pkg))
            (schema-a (rename-many (append (mapcar #'cons arg-vars schema-xs) (list (cons y-var schema-y)))
                                    a-formula))
-           (schema-a-at-name (substitute-named schema-y (cons name schema-xs) schema-a))
-           (term-cmd (list :term-formation
-                            (intern (format nil "~A-TERM" (symbol-name name)) (symbol-package name))
-                            (mapcar (lambda (x) (list 'term? x)) schema-xs)
-                            (list 'term? (cons name schema-xs))))
-           (def-cmd (list :axiom
-                           (intern (format nil "~A-DEF" (symbol-name name)) (symbol-package name))
-                           (mapcar (lambda (x) (list 'term? x)) schema-xs)
-                           (list nil schema-a-at-name))))
-      (bootstrap-kernel-from-spec
-       (list term-cmd def-cmd)
-       :ledger ledger
-       ;; Lets LEDGER-COMMANDS save this as a command that replays, and
-       ;; re-checks, through this function.
-       :origin-note (list :by-description
-                          (list :define-function-by-description name arg-vars y-var y2-var
-                                a-formula existence-name uniqueness-name))))))
+           (ledger (bootstrap-kernel-from-spec
+                    (list (list :abbreviation (cons name schema-xs) (list '.iota schema-y schema-a)))
+                    :ledger ledger
+                    ;; Lets LEDGER-COMMANDS save this as a command that
+                    ;; replays, and re-checks, through this function.
+                    :origin-note (list :by-description
+                                       (list :define-function-by-description name arg-vars y-var y2-var
+                                             a-formula existence-name uniqueness-name))))
+           (def-name (intern (format nil "~A-DEF" (symbol-name name)) pkg))
+           (def-formula (substitute-named y-var (cons name arg-vars) a-formula)))
+      ;; NAME-DEF: strip the foralls off both theorems, then IOTA.
+      (multiple-value-bind (ex-lines ex-at) (strip-foralls-proof 2 expected-existence arg-vars 0)
+        (multiple-value-bind (un-lines un-at)
+            (strip-foralls-proof (+ 2 (length ex-lines)) expected-uniqueness arg-vars 1)
+          (admit-theorem ledger def-name
+                         (append (list (list 0 expected-existence :th (list existence-name))
+                                       (list 1 expected-uniqueness :th (list uniqueness-name)))
+                                 ex-lines un-lines
+                                 (list (list (+ 2 (length ex-lines) (length un-lines))
+                                             def-formula :ir (list 'IOTA ex-at un-at))))
+                         (silent-log)
+                         (list :by-description)))))))

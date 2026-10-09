@@ -120,8 +120,8 @@ set: automatic and explicit instantiation, later vocabulary, attacks."
               (judgement? 'term? '(empty) early) t)
       (expect "... but a later THEOREM is not citable from that earlier view"
               (check-k-proof '((0 (.neg (.in v0 (empty))) :th (th-zf-not-in-empty))) early) nil)
-      (expect "... nor a later AXIOM"
-              (check-k-proof '((0 (.forall v2 (.neg (.in v2 (empty)))) :axiom (empty-def))) early) nil))
+      (expect "... nor the definition's later EMPTY-DEF"
+              (check-k-proof '((0 (.forall v2 (.neg (.in v2 (empty)))) :th (empty-def))) early) nil))
     (let ((path "/tmp/ledger-kernel-self-test-predicate-schema.tmp"))
       (unwind-protect
            (expect "a ledger with predicate schema declarations round-trips through a file"

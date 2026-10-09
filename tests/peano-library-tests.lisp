@@ -70,19 +70,22 @@
   (expect "division: 7 = div-s(7, 2) * 3 + mod-s(7, 2) is an instance of MOD-S-DEF"
           (let ((seven '(s (s (s (s (s (s (s zero)))))))) (two '(s (s zero))))
             (check-k-proof `((0 (.eq ,seven (+ (* (div-s ,seven ,two) (s ,two)) (mod-s ,seven ,two)))
-                              :axiom (mod-s-def)))
+                              :th (mod-s-def :inst ((x1 ,seven) (x2 ,two)))))
                            ledger))
           t)
-  (expect "the three defined functions (div-s, mod-s, beta) have binder-free defining formulas"
+  (expect "the three defined functions (div-s, mod-s, beta) are iota abbreviations with binder-free formulas"
           (let ((defs (remove-if-not (lambda (e) (eq (second (entry-origin e)) :by-description))
-                                     (entries-of-kind 'axiom ledger))))
+                                     (entries-of-kind 'abbreviation ledger))))
             (and (= (length defs) 3)
-                 (every (lambda (e) (= 0 (count-binders (third (entry-payload e))))) defs)))
+                 (every (lambda (e)
+                          (let ((body (second (entry-payload e))))
+                            (and (eq (first body) '.iota) (= 0 (count-binders (third body))))))
+                        defs)))
           t)
-  (expect "LE-UNFOLD refuses a bound variable free in the terms"
-          (check-k-proof '((0 (.to (.le v0 v1) (.exists v0 (.eq (+ v0 v0) v1))) :axiom (le-unfold)))
-                         ledger)
-          nil)
+  (expect "s <= t is exists z (s + z = t), whatever z is called"
+          (same-formula-p ledger '(.le v0 v1) '(.exists v2 (.eq (+ v0 v2) v1))) t)
+  (expect "Attack: an expansion whose bound variable is free in the terms is a different formula"
+          (same-formula-p ledger '(.le v0 v1) '(.exists v0 (.eq (+ v0 v0) v1))) nil)
   ledger)
 
 (defun run-peano-library-self-tests ()

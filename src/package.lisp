@@ -12,7 +12,7 @@
 ;;;; verdict; apart from it the code uses no mutable global state.
 ;;;;
 ;;;; Layers:
-;;;;   kernel -- pattern, treap, ledger, debruijn, side-conditions, meta, judgement,
+;;;;   kernel -- pattern, treap, ledger, debruijn, abbreviation, side-conditions, meta, judgement,
 ;;;;             k-proof, meta-theorem: the trusted checker.
 ;;;;   tools  -- persistence, deduction, system-spec,
 ;;;;             function-definition: build or load ledgers and proofs;

@@ -51,8 +51,19 @@ modes."
                               'th-double-exists 'th-double-uniqueness)))
         (expect "(double v0) is a term after DEFINE-FUNCTION-BY-DESCRIPTION"
                 (judgement? 'term? '(double v0) defined-ledger) t)
-        (expect "the defining axiom makes DOUBLE(v0) = v0+v0 usable directly, no IOTA in sight"
-                (check-k-proof '((0 (.eq (double v0) (+ v0 v0)) :axiom (double-def))) defined-ledger)
+        (expect "DOUBLE-DEF, proved by IOTA, gives DOUBLE(v0) = v0+v0"
+                (check-k-proof '((0 (.eq (double v0) (+ v0 v0)) :th (double-def))) defined-ledger)
+                t)
+        (expect "... and at other arguments through :inst"
+                (check-k-proof '((0 (.eq (double (s v3)) (+ (s v3) (s v3)))
+                                    :th (double-def :inst ((v0 (s v3))))))
+                               defined-ledger)
+                t)
+        (expect "a definition adds no axiom: (double v0) is the iota term"
+                (and (= (length (entries-of-kind 'axiom defined-ledger))
+                        (length (entries-of-kind 'axiom ledger)))
+                     (equal (named->db '(double v0) defined-ledger)
+                            (named->db '(.iota v1 (.eq v1 (+ v0 v0))) defined-ledger)))
                 t)
         (expect "Attack: EXISTENCE-NAME argument swapped for UNIQUENESS-NAME -- must error, not silently define"
                 (handler-case (progn (define-function-by-description

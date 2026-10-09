@@ -1,27 +1,15 @@
 ;;; 00-peano-order.system
 ;;;
-;;; The order of the natural numbers as a definitional extension of Peano
-;;; arithmetic. Load ON TOP OF 00-peano-arithmetic.system.
+;;; The order of the natural numbers as abbreviations over Peano
+;;; arithmetic (src/abbreviation.lisp). Load ON TOP OF
+;;; 00-peano-arithmetic.system.
 ;;;
-;;;   (.le s t)   s <= t   :=  (.exists z (.eq (+ s z) t))   z not free in s, t
+;;;   (.le s t)   s <= t   :=  (.exists z (.eq (+ s z) t))
 ;;;   (.lt s t)   s < t    :=  (.le (S s) t)
 ;;;
-;;; As with 00-connectives.system, (.le s t) and its expansion are
-;;; different formulas; a proof moves between them with the UNFOLD / FOLD
-;;; axioms. The bound variable z may be any variable not free in s or t,
-;;; so every alphabetic variant of the definiens is covered.
-;;;
-;;; Every entry here is :PRIMITIVE (trusted). That a definition of this
-;;; shape is a conservative extension is a standard meta-theorem the
-;;; kernel does not check.
+;;; As with 00-connectives.system, nothing here is an axiom: (.le s t) is
+;;; expanded before the kernel sees it. The bound z is renamed to a fresh
+;;; variable at each expansion, so it is never free in s or t.
 
-(:wff-formation wff_le? ((term? ?s) (term? ?t)) (wff? (.le ?s ?t)))
-(:wff-formation wff_lt? ((term? ?s) (term? ?t)) (wff? (.lt ?s ?t)))
-
-(:axiom LE-UNFOLD ((term? ?s) (term? ?t) (var? ?z) (@not-free-in? ?z ?s) (@not-free-in? ?z ?t))
-        (nil (.to (.le ?s ?t) (.exists ?z (.eq (+ ?s ?z) ?t)))))
-(:axiom LE-FOLD ((term? ?s) (term? ?t) (var? ?z) (@not-free-in? ?z ?s) (@not-free-in? ?z ?t))
-        (nil (.to (.exists ?z (.eq (+ ?s ?z) ?t)) (.le ?s ?t))))
-
-(:axiom LT-UNFOLD ((term? ?s) (term? ?t)) (nil (.to (.lt ?s ?t) (.le (S ?s) ?t))))
-(:axiom LT-FOLD ((term? ?s) (term? ?t)) (nil (.to (.le (S ?s) ?t) (.lt ?s ?t))))
+(:abbreviation (.le ?s ?t) (.exists ?z (.eq (+ ?s ?z) ?t)))
+(:abbreviation (.lt ?s ?t) (.le (S ?s) ?t))

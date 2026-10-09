@@ -43,20 +43,26 @@
 
 (defun by-description-command (e)
   "The (:DEFINE-FUNCTION-BY-DESCRIPTION ...) command recorded in a
-definition's defining axiom, or NIL."
+definition's abbreviation entry, or NIL."
   (let ((origin (entry-origin e)))
     (and (eq (car origin) :primitive) (eq (second origin) :by-description) (third origin))))
+
+(defun definition-entry-p (e)
+  "T for the theorem NAME-DEF that DEFINE-FUNCTION-BY-DESCRIPTION proves
+for a definition (what a definition contributes to a proof)."
+  (let ((origin (entry-origin e)))
+    (and (eq (entry-kind e) 'th) (eq (car origin) :derived) (eq (third origin) :by-description))))
 
 (defun direct-citations (world e)
   (let ((ledger (world-ledger world)))
     (remove-duplicates
      (append
-      (loop for (nil nil role by) in (entry-proof e)
+      (loop for (nil nil role by) in (entry-proof e ledger)
             for cited = (find-cited-entry world role by)
             when cited collect (entry-k cited))
       ;; (:define-function-by-description name args y y2 a existence uniqueness)
       (let ((cmd (by-description-command e)))
-        (when (and cmd (eq (entry-kind e) 'axiom))
+        (when (and cmd (eq (entry-kind e) 'abbreviation))
           (loop for name in (last cmd 2)
                 for cited = (first (treap-values-below (alist-get (ledger-by-derived-name ledger) name) nil))
                 when cited collect (entry-k cited)))))
@@ -76,10 +82,10 @@ definition's defining axiom, or NIL."
 (defun deps-entry (d k) (gethash k (deps-entries d)))
 
 (defun entry-foundations (d k)
-  "(VALUES KS DEDUCTION-META-P): the axioms / inference rules / definitional
-axioms entry K rests on, and whether a TH-DED entry was used on the way.
-An axiom or rule rests on itself; a definitional axiom on itself plus
-whatever its existence and uniqueness theorems rest on."
+  "(VALUES KS DEDUCTION-META-P): the axioms / inference rules /
+definitions entry K rests on, and whether a TH-DED entry was used on the
+way. An axiom or rule rests on itself; a definition's NAME-DEF on itself
+plus whatever its existence and uniqueness theorems rest on."
   (let ((memo (gethash k (deps-foundations d))))
     (when memo (return-from entry-foundations (values (car memo) (cdr memo)))))
   (let* ((e (deps-entry d k))
@@ -94,7 +100,7 @@ whatever its existence and uniqueness theorems rest on."
                       (setf ks (union ks cks) meta (or meta cmeta)))))
                 (cons ks meta)))
              ((derived-kind-p kind)
-              (let ((ks nil) (meta (eq kind 'th-ded)))
+              (let ((ks (and (definition-entry-p e) (list k))) (meta (eq kind 'th-ded)))
                 (dolist (c (gethash k (deps-cites d)))
                   (multiple-value-bind (cks cmeta) (entry-foundations d c)
                     (setf ks (union ks cks) meta (or meta cmeta))))

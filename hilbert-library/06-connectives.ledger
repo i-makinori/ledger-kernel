@@ -158,7 +158,7 @@
   (3 (.neg (.neg b)) :ir (mp 2 1))
   (4 (.to (.neg (.neg b)) (.neg (.to a (.neg b)))) :th-ded (th-neg-impl 0))
   (5 (.neg (.to a (.neg b))) :ir (mp 4 3))
-  (6 (.to (.neg (.to a (.neg b))) (.and a b)) :axiom (and-fold))
+  (6 (.to (.neg (.to a (.neg b))) (.and a b)) :th-ded (th-identity))
   (7 (.and a b) :ir (mp 6 5))
   (8 (.to (.and a b) (.to b (.and a b))) :axiom (ii.1))
   (9 (.to b (.and a b)) :ir (mp 8 7))
@@ -303,7 +303,7 @@
   (4 (.to (.to a (.neg b)) (.neg (.neg (.to a (.neg b))))) :th-ded
    (th-dneg-intro))
   (5 (.neg (.neg (.to a (.neg b)))) :ir (mp 4 3))
-  (6 (.to (.and a b) (.neg (.to a (.neg b)))) :axiom (and-unfold))
+  (6 (.to (.and a b) (.neg (.to a (.neg b)))) :th-ded (th-identity))
   (7
    (.to (.to (.and a b) (.neg (.to a (.neg b))))
     (.to (.neg (.neg (.to a (.neg b)))) (.neg (.and a b))))
@@ -319,7 +319,7 @@
   (4 (.to (.to a (.neg b)) (.neg (.neg (.to a (.neg b))))) :th-ded
    (th-dneg-intro))
   (5 (.neg (.neg (.to a (.neg b)))) :ir (mp 4 3))
-  (6 (.to (.and a b) (.neg (.to a (.neg b)))) :axiom (and-unfold))
+  (6 (.to (.and a b) (.neg (.to a (.neg b)))) :th-ded (th-identity))
   (7
    (.to (.to (.and a b) (.neg (.to a (.neg b))))
     (.to (.neg (.neg (.to a (.neg b)))) (.neg (.and a b))))
@@ -443,7 +443,7 @@
   (4 (.to (.to a (.neg b)) (.neg (.neg (.to a (.neg b))))) :th-ded
    (th-dneg-intro))
   (5 (.neg (.neg (.to a (.neg b)))) :ir (mp 4 3))
-  (6 (.to (.and a b) (.neg (.to a (.neg b)))) :axiom (and-unfold))
+  (6 (.to (.and a b) (.neg (.to a (.neg b)))) :th-ded (th-identity))
   (7
    (.to (.to (.and a b) (.neg (.to a (.neg b))))
     (.to (.neg (.neg (.to a (.neg b)))) (.neg (.and a b))))
@@ -463,7 +463,7 @@
   (4 (.to (.to a (.neg b)) (.neg (.neg (.to a (.neg b))))) :th-ded
    (th-dneg-intro))
   (5 (.neg (.neg (.to a (.neg b)))) :ir (mp 4 3))
-  (6 (.to (.and a b) (.neg (.to a (.neg b)))) :axiom (and-unfold))
+  (6 (.to (.and a b) (.neg (.to a (.neg b)))) :th-ded (th-identity))
   (7
    (.to (.to (.and a b) (.neg (.to a (.neg b))))
     (.to (.neg (.neg (.to a (.neg b)))) (.neg (.and a b))))
@@ -583,7 +583,7 @@
   (3 (.neg (.neg a)) :ir (mp 2 0))
   (4 (.to (.neg (.neg a)) (.neg (.to b (.neg a)))) :th-ded (th-neg-impl 1))
   (5 (.neg (.to b (.neg a))) :ir (mp 4 3))
-  (6 (.to (.neg (.to b (.neg a))) (.and b a)) :axiom (and-fold))
+  (6 (.to (.neg (.to b (.neg a))) (.and b a)) :th-ded (th-identity))
   (7 (.and b a) :ir (mp 6 5))
   (8 (.to (.and b a) (.to (.and a b) (.and b a))) :axiom (ii.1))
   (9 (.to (.and a b) (.and b a)) :ir (mp 8 7))))
@@ -594,7 +594,7 @@
   (4 (.to (.to a (.neg b)) (.neg (.neg (.to a (.neg b))))) :th-ded
    (th-dneg-intro))
   (5 (.neg (.neg (.to a (.neg b)))) :ir (mp 4 3))
-  (6 (.to (.and a b) (.neg (.to a (.neg b)))) :axiom (and-unfold))
+  (6 (.to (.and a b) (.neg (.to a (.neg b)))) :th-ded (th-identity))
   (7
    (.to (.to (.and a b) (.neg (.to a (.neg b))))
     (.to (.neg (.neg (.to a (.neg b)))) (.neg (.and a b))))
@@ -611,7 +611,7 @@
   (4 (.to (.to a (.neg b)) (.neg (.neg (.to a (.neg b))))) :th-ded
    (th-dneg-intro))
   (5 (.neg (.neg (.to a (.neg b)))) :ir (mp 4 3))
-  (6 (.to (.and a b) (.neg (.to a (.neg b)))) :axiom (and-unfold))
+  (6 (.to (.and a b) (.neg (.to a (.neg b)))) :th-ded (th-identity))
   (7
    (.to (.to (.and a b) (.neg (.to a (.neg b))))
     (.to (.neg (.neg (.to a (.neg b)))) (.neg (.and a b))))
@@ -628,7 +628,7 @@
   (4 (.to (.to a (.neg b)) (.neg (.neg (.to a (.neg b))))) :th-ded
    (th-dneg-intro))
   (5 (.neg (.neg (.to a (.neg b)))) :ir (mp 4 3))
-  (6 (.to (.and a b) (.neg (.to a (.neg b)))) :axiom (and-unfold))
+  (6 (.to (.and a b) (.neg (.to a (.neg b)))) :th-ded (th-identity))
   (7
    (.to (.to (.and a b) (.neg (.to a (.neg b))))
     (.to (.neg (.neg (.to a (.neg b)))) (.neg (.and a b))))
@@ -756,7 +756,7 @@
 (:th-ded th-or-intro-l.t1 b
  ((0 a :hyp nil) (1 b :hyp nil) (2 (.to b (.to (.neg a) b)) :axiom (ii.1))
   (3 (.to (.neg a) b) :ir (mp 2 1))
-  (4 (.to (.to (.neg a) b) (.or a b)) :axiom (or-fold))
+  (4 (.to (.to (.neg a) b) (.or a b)) :th-ded (th-identity))
   (5 (.or a b) :ir (mp 4 3))
   (6 (.to (.or a b) (.to a (.or a b))) :axiom (ii.1))
   (7 (.to a (.or a b)) :ir (mp 6 5))))
@@ -766,14 +766,14 @@
   (3 (.neg (.neg a)) :ir (mp 2 0))
   (4 (.to (.neg (.neg a)) (.to (.neg a) b)) :th-ded (th-ex-falso))
   (5 (.to (.neg a) b) :ir (mp 4 3))
-  (6 (.to (.to (.neg a) b) (.or a b)) :axiom (or-fold))
+  (6 (.to (.to (.neg a) b) (.or a b)) :th-ded (th-identity))
   (7 (.or a b) :ir (mp 6 5))
   (8 (.to (.or a b) (.to a (.or a b))) :axiom (ii.1))
   (9 (.to a (.or a b)) :ir (mp 8 7))))
 (:th-ded th-or-intro-l.t3 b
  ((0 (.neg a) :hyp nil) (1 b :hyp nil)
   (2 (.to b (.to (.neg a) b)) :axiom (ii.1)) (3 (.to (.neg a) b) :ir (mp 2 1))
-  (4 (.to (.to (.neg a) b) (.or a b)) :axiom (or-fold))
+  (4 (.to (.to (.neg a) b) (.or a b)) :th-ded (th-identity))
   (5 (.or a b) :ir (mp 4 3))
   (6 (.to (.or a b) (.to a (.or a b))) :axiom (ii.1))
   (7 (.to a (.or a b)) :ir (mp 6 5))))
@@ -889,7 +889,7 @@
 (:th-ded th-or-intro-r.t1 b
  ((0 a :hyp nil) (1 b :hyp nil) (2 (.to b (.to (.neg a) b)) :axiom (ii.1))
   (3 (.to (.neg a) b) :ir (mp 2 1))
-  (4 (.to (.to (.neg a) b) (.or a b)) :axiom (or-fold))
+  (4 (.to (.to (.neg a) b) (.or a b)) :th-ded (th-identity))
   (5 (.or a b) :ir (mp 4 3))
   (6 (.to (.or a b) (.to b (.or a b))) :axiom (ii.1))
   (7 (.to b (.or a b)) :ir (mp 6 5))))
@@ -899,14 +899,14 @@
   (3 (.neg (.neg a)) :ir (mp 2 0))
   (4 (.to (.neg (.neg a)) (.to (.neg a) b)) :th-ded (th-ex-falso))
   (5 (.to (.neg a) b) :ir (mp 4 3))
-  (6 (.to (.to (.neg a) b) (.or a b)) :axiom (or-fold))
+  (6 (.to (.to (.neg a) b) (.or a b)) :th-ded (th-identity))
   (7 (.or a b) :ir (mp 6 5))
   (8 (.to (.or a b) (.to b (.or a b))) :axiom (ii.1))
   (9 (.to b (.or a b)) :ir (mp 8 7))))
 (:th-ded th-or-intro-r.t3 b
  ((0 (.neg a) :hyp nil) (1 b :hyp nil)
   (2 (.to b (.to (.neg a) b)) :axiom (ii.1)) (3 (.to (.neg a) b) :ir (mp 2 1))
-  (4 (.to (.to (.neg a) b) (.or a b)) :axiom (or-fold))
+  (4 (.to (.to (.neg a) b) (.or a b)) :th-ded (th-identity))
   (5 (.or a b) :ir (mp 4 3))
   (6 (.to (.or a b) (.to b (.or a b))) :axiom (ii.1))
   (7 (.to b (.or a b)) :ir (mp 6 5))))
@@ -1130,7 +1130,7 @@
  ((0 (.neg a) :hyp nil) (1 (.neg b) :hyp nil) (2 (.neg c) :hyp nil)
   (3 (.to (.neg b) (.neg (.to (.neg a) b))) :th-ded (th-neg-impl 0))
   (4 (.neg (.to (.neg a) b)) :ir (mp 3 1))
-  (5 (.to (.or a b) (.to (.neg a) b)) :axiom (or-unfold))
+  (5 (.to (.or a b) (.to (.neg a) b)) :th-ded (th-identity))
   (6
    (.to (.to (.or a b) (.to (.neg a) b))
     (.to (.neg (.to (.neg a) b)) (.neg (.or a b))))
@@ -1305,14 +1305,14 @@
 (:th-ded th-or-comm.t1 b
  ((0 a :hyp nil) (1 b :hyp nil) (2 (.to a (.to (.neg b) a)) :axiom (ii.1))
   (3 (.to (.neg b) a) :ir (mp 2 0))
-  (4 (.to (.to (.neg b) a) (.or b a)) :axiom (or-fold))
+  (4 (.to (.to (.neg b) a) (.or b a)) :th-ded (th-identity))
   (5 (.or b a) :ir (mp 4 3))
   (6 (.to (.or b a) (.to (.or a b) (.or b a))) :axiom (ii.1))
   (7 (.to (.or a b) (.or b a)) :ir (mp 6 5))))
 (:th-ded th-or-comm.f2 (.neg b)
  ((0 a :hyp nil) (1 (.neg b) :hyp nil)
   (2 (.to a (.to (.neg b) a)) :axiom (ii.1)) (3 (.to (.neg b) a) :ir (mp 2 0))
-  (4 (.to (.to (.neg b) a) (.or b a)) :axiom (or-fold))
+  (4 (.to (.to (.neg b) a) (.or b a)) :th-ded (th-identity))
   (5 (.or b a) :ir (mp 4 3))
   (6 (.to (.or b a) (.to (.or a b) (.or b a))) :axiom (ii.1))
   (7 (.to (.or a b) (.or b a)) :ir (mp 6 5))))
@@ -1322,7 +1322,7 @@
   (3 (.neg (.neg b)) :ir (mp 2 1))
   (4 (.to (.neg (.neg b)) (.to (.neg b) a)) :th-ded (th-ex-falso))
   (5 (.to (.neg b) a) :ir (mp 4 3))
-  (6 (.to (.to (.neg b) a) (.or b a)) :axiom (or-fold))
+  (6 (.to (.to (.neg b) a) (.or b a)) :th-ded (th-identity))
   (7 (.or b a) :ir (mp 6 5))
   (8 (.to (.or b a) (.to (.or a b) (.or b a))) :axiom (ii.1))
   (9 (.to (.or a b) (.or b a)) :ir (mp 8 7))))
@@ -1330,7 +1330,7 @@
  ((0 (.neg a) :hyp nil) (1 (.neg b) :hyp nil)
   (2 (.to (.neg b) (.neg (.to (.neg a) b))) :th-ded (th-neg-impl 0))
   (3 (.neg (.to (.neg a) b)) :ir (mp 2 1))
-  (4 (.to (.or a b) (.to (.neg a) b)) :axiom (or-unfold))
+  (4 (.to (.or a b) (.to (.neg a) b)) :th-ded (th-identity))
   (5
    (.to (.to (.or a b) (.to (.neg a) b))
     (.to (.neg (.to (.neg a) b)) (.neg (.or a b))))
@@ -1453,13 +1453,13 @@
   (2 (.neg (.neg a)) :ir (mp 1 0))
   (3 (.to (.neg (.neg a)) (.to (.neg a) (.neg a))) :th-ded (th-ex-falso))
   (4 (.to (.neg a) (.neg a)) :ir (mp 3 2))
-  (5 (.to (.to (.neg a) (.neg a)) (.or a (.neg a))) :axiom (or-fold))
+  (5 (.to (.to (.neg a) (.neg a)) (.or a (.neg a))) :th-ded (th-identity))
   (6 (.or a (.neg a)) :ir (mp 5 4))))
 (:th-ded th-excluded-middle.f2 (.neg a)
  ((0 (.neg a) :hyp nil)
   (1 (.to (.neg a) (.to (.neg a) (.neg a))) :axiom (ii.1))
   (2 (.to (.neg a) (.neg a)) :ir (mp 1 0))
-  (3 (.to (.to (.neg a) (.neg a)) (.or a (.neg a))) :axiom (or-fold))
+  (3 (.to (.to (.neg a) (.neg a)) (.or a (.neg a))) :th-ded (th-identity))
   (4 (.or a (.neg a)) :ir (mp 3 2))))
 (:th th-excluded-middle
  ((0 (.to a (.or a (.neg a))) :th-ded (th-excluded-middle.t1))
@@ -1557,9 +1557,9 @@
    :th-ded (th-neg-impl 3))
   (9 (.neg (.to (.to a b) (.neg (.to b a)))) :ir (mp 8 7))
   (10 (.to (.neg (.to (.to a b) (.neg (.to b a)))) (.and (.to a b) (.to b a)))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (11 (.and (.to a b) (.to b a)) :ir (mp 10 9))
-  (12 (.to (.and (.to a b) (.to b a)) (.iff a b)) :axiom (iff-fold))
+  (12 (.to (.and (.to a b) (.to b a)) (.iff a b)) :th-ded (th-identity))
   (13 (.iff a b) :ir (mp 12 11))
   (14 (.to (.iff a b) (.to (.to b a) (.iff a b))) :axiom (ii.1))
   (15 (.to (.to b a) (.iff a b)) :ir (mp 14 13))
@@ -1594,9 +1594,9 @@
    :th-ded (th-neg-impl 3))
   (9 (.neg (.to (.to a b) (.neg (.to b a)))) :ir (mp 8 7))
   (10 (.to (.neg (.to (.to a b) (.neg (.to b a)))) (.and (.to a b) (.to b a)))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (11 (.and (.to a b) (.to b a)) :ir (mp 10 9))
-  (12 (.to (.and (.to a b) (.to b a)) (.iff a b)) :axiom (iff-fold))
+  (12 (.to (.and (.to a b) (.to b a)) (.iff a b)) :th-ded (th-identity))
   (13 (.iff a b) :ir (mp 12 11))
   (14 (.to (.iff a b) (.to (.to b a) (.iff a b))) :axiom (ii.1))
   (15 (.to (.to b a) (.iff a b)) :ir (mp 14 13))
@@ -1746,7 +1746,7 @@
    :th-ded (th-dneg-intro))
   (7 (.neg (.neg (.to (.to a b) (.neg (.to b a))))) :ir (mp 6 5))
   (8 (.to (.and (.to a b) (.to b a)) (.neg (.to (.to a b) (.neg (.to b a)))))
-   :axiom (and-unfold))
+   :th-ded (th-identity))
   (9
    (.to
     (.to (.and (.to a b) (.to b a)) (.neg (.to (.to a b) (.neg (.to b a)))))
@@ -1758,7 +1758,7 @@
     (.neg (.and (.to a b) (.to b a))))
    :ir (mp 9 8))
   (11 (.neg (.and (.to a b) (.to b a))) :ir (mp 10 7))
-  (12 (.to (.iff a b) (.and (.to a b) (.to b a))) :axiom (iff-unfold))
+  (12 (.to (.iff a b) (.and (.to a b) (.to b a))) :th-ded (th-identity))
   (13
    (.to (.to (.iff a b) (.and (.to a b) (.to b a)))
     (.to (.neg (.and (.to a b) (.to b a))) (.neg (.iff a b))))
@@ -1908,7 +1908,7 @@
    :th-ded (th-dneg-intro))
   (7 (.neg (.neg (.to (.to a b) (.neg (.to b a))))) :ir (mp 6 5))
   (8 (.to (.and (.to a b) (.to b a)) (.neg (.to (.to a b) (.neg (.to b a)))))
-   :axiom (and-unfold))
+   :th-ded (th-identity))
   (9
    (.to
     (.to (.and (.to a b) (.to b a)) (.neg (.to (.to a b) (.neg (.to b a)))))
@@ -1920,7 +1920,7 @@
     (.neg (.and (.to a b) (.to b a))))
    :ir (mp 9 8))
   (11 (.neg (.and (.to a b) (.to b a))) :ir (mp 10 7))
-  (12 (.to (.iff a b) (.and (.to a b) (.to b a))) :axiom (iff-unfold))
+  (12 (.to (.iff a b) (.and (.to a b) (.to b a))) :th-ded (th-identity))
   (13
    (.to (.to (.iff a b) (.and (.to a b) (.to b a)))
     (.to (.neg (.and (.to a b) (.to b a))) (.neg (.iff a b))))
@@ -2051,9 +2051,9 @@
    :th-ded (th-neg-impl 2))
   (6 (.neg (.to (.to a a) (.neg (.to a a)))) :ir (mp 5 4))
   (7 (.to (.neg (.to (.to a a) (.neg (.to a a)))) (.and (.to a a) (.to a a)))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (8 (.and (.to a a) (.to a a)) :ir (mp 7 6))
-  (9 (.to (.and (.to a a) (.to a a)) (.iff a a)) :axiom (iff-fold))
+  (9 (.to (.and (.to a a) (.to a a)) (.iff a a)) :th-ded (th-identity))
   (10 (.iff a a) :ir (mp 9 8))))
 (:th-ded th-iff-refl.f2 (.neg a)
  ((0 (.neg a) :hyp nil) (1 (.to (.neg a) (.to a a)) :th-ded (th-ex-falso))
@@ -2064,9 +2064,9 @@
    :th-ded (th-neg-impl 2))
   (6 (.neg (.to (.to a a) (.neg (.to a a)))) :ir (mp 5 4))
   (7 (.to (.neg (.to (.to a a) (.neg (.to a a)))) (.and (.to a a) (.to a a)))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (8 (.and (.to a a) (.to a a)) :ir (mp 7 6))
-  (9 (.to (.and (.to a a) (.to a a)) (.iff a a)) :axiom (iff-fold))
+  (9 (.to (.and (.to a a) (.to a a)) (.iff a a)) :th-ded (th-identity))
   (10 (.iff a a) :ir (mp 9 8))))
 (:th th-iff-refl
  ((0 (.to a (.iff a a)) :th-ded (th-iff-refl.t1))
@@ -2161,9 +2161,9 @@
    :th-ded (th-neg-impl 3))
   (9 (.neg (.to (.to b a) (.neg (.to a b)))) :ir (mp 8 7))
   (10 (.to (.neg (.to (.to b a) (.neg (.to a b)))) (.and (.to b a) (.to a b)))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (11 (.and (.to b a) (.to a b)) :ir (mp 10 9))
-  (12 (.to (.and (.to b a) (.to a b)) (.iff b a)) :axiom (iff-fold))
+  (12 (.to (.and (.to b a) (.to a b)) (.iff b a)) :th-ded (th-identity))
   (13 (.iff b a) :ir (mp 12 11))
   (14 (.to (.iff b a) (.to (.iff a b) (.iff b a))) :axiom (ii.1))
   (15 (.to (.iff a b) (.iff b a)) :ir (mp 14 13))))
@@ -2180,7 +2180,7 @@
    :th-ded (th-dneg-intro))
   (7 (.neg (.neg (.to (.to a b) (.neg (.to b a))))) :ir (mp 6 5))
   (8 (.to (.and (.to a b) (.to b a)) (.neg (.to (.to a b) (.neg (.to b a)))))
-   :axiom (and-unfold))
+   :th-ded (th-identity))
   (9
    (.to
     (.to (.and (.to a b) (.to b a)) (.neg (.to (.to a b) (.neg (.to b a)))))
@@ -2192,7 +2192,7 @@
     (.neg (.and (.to a b) (.to b a))))
    :ir (mp 9 8))
   (11 (.neg (.and (.to a b) (.to b a))) :ir (mp 10 7))
-  (12 (.to (.iff a b) (.and (.to a b) (.to b a))) :axiom (iff-unfold))
+  (12 (.to (.iff a b) (.and (.to a b) (.to b a))) :th-ded (th-identity))
   (13
    (.to (.to (.iff a b) (.and (.to a b) (.to b a)))
     (.to (.neg (.and (.to a b) (.to b a))) (.neg (.iff a b))))
@@ -2214,7 +2214,7 @@
    :th-ded (th-dneg-intro))
   (7 (.neg (.neg (.to (.to a b) (.neg (.to b a))))) :ir (mp 6 5))
   (8 (.to (.and (.to a b) (.to b a)) (.neg (.to (.to a b) (.neg (.to b a)))))
-   :axiom (and-unfold))
+   :th-ded (th-identity))
   (9
    (.to
     (.to (.and (.to a b) (.to b a)) (.neg (.to (.to a b) (.neg (.to b a)))))
@@ -2226,7 +2226,7 @@
     (.neg (.and (.to a b) (.to b a))))
    :ir (mp 9 8))
   (11 (.neg (.and (.to a b) (.to b a))) :ir (mp 10 7))
-  (12 (.to (.iff a b) (.and (.to a b) (.to b a))) :axiom (iff-unfold))
+  (12 (.to (.iff a b) (.and (.to a b) (.to b a))) :th-ded (th-identity))
   (13
    (.to (.to (.iff a b) (.and (.to a b) (.to b a)))
     (.to (.neg (.and (.to a b) (.to b a))) (.neg (.iff a b))))
@@ -2246,9 +2246,9 @@
    :th-ded (th-neg-impl 3))
   (9 (.neg (.to (.to b a) (.neg (.to a b)))) :ir (mp 8 7))
   (10 (.to (.neg (.to (.to b a) (.neg (.to a b)))) (.and (.to b a) (.to a b)))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (11 (.and (.to b a) (.to a b)) :ir (mp 10 9))
-  (12 (.to (.and (.to b a) (.to a b)) (.iff b a)) :axiom (iff-fold))
+  (12 (.to (.and (.to b a) (.to a b)) (.iff b a)) :th-ded (th-identity))
   (13 (.iff b a) :ir (mp 12 11))
   (14 (.to (.iff b a) (.to (.iff a b) (.iff b a))) :axiom (ii.1))
   (15 (.to (.iff a b) (.iff b a)) :ir (mp 14 13))))
@@ -2377,9 +2377,9 @@
    :th-ded (th-neg-impl 4))
   (10 (.neg (.to (.to a c) (.neg (.to c a)))) :ir (mp 9 8))
   (11 (.to (.neg (.to (.to a c) (.neg (.to c a)))) (.and (.to a c) (.to c a)))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (12 (.and (.to a c) (.to c a)) :ir (mp 11 10))
-  (13 (.to (.and (.to a c) (.to c a)) (.iff a c)) :axiom (iff-fold))
+  (13 (.to (.and (.to a c) (.to c a)) (.iff a c)) :th-ded (th-identity))
   (14 (.iff a c) :ir (mp 13 12))
   (15 (.to (.iff a c) (.to (.iff b c) (.iff a c))) :axiom (ii.1))
   (16 (.to (.iff b c) (.iff a c)) :ir (mp 15 14))
@@ -2401,7 +2401,7 @@
    :th-ded (th-dneg-intro))
   (8 (.neg (.neg (.to (.to b c) (.neg (.to c b))))) :ir (mp 7 6))
   (9 (.to (.and (.to b c) (.to c b)) (.neg (.to (.to b c) (.neg (.to c b)))))
-   :axiom (and-unfold))
+   :th-ded (th-identity))
   (10
    (.to
     (.to (.and (.to b c) (.to c b)) (.neg (.to (.to b c) (.neg (.to c b)))))
@@ -2413,7 +2413,7 @@
     (.neg (.and (.to b c) (.to c b))))
    :ir (mp 10 9))
   (12 (.neg (.and (.to b c) (.to c b))) :ir (mp 11 8))
-  (13 (.to (.iff b c) (.and (.to b c) (.to c b))) :axiom (iff-unfold))
+  (13 (.to (.iff b c) (.and (.to b c) (.to c b))) :th-ded (th-identity))
   (14
    (.to (.to (.iff b c) (.and (.to b c) (.to c b)))
     (.to (.neg (.and (.to b c) (.to c b))) (.neg (.iff b c))))
@@ -2438,9 +2438,9 @@
    :th-ded (th-neg-impl 4))
   (10 (.neg (.to (.to a c) (.neg (.to c a)))) :ir (mp 9 8))
   (11 (.to (.neg (.to (.to a c) (.neg (.to c a)))) (.and (.to a c) (.to c a)))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (12 (.and (.to a c) (.to c a)) :ir (mp 11 10))
-  (13 (.to (.and (.to a c) (.to c a)) (.iff a c)) :axiom (iff-fold))
+  (13 (.to (.and (.to a c) (.to c a)) (.iff a c)) :th-ded (th-identity))
   (14 (.iff a c) :ir (mp 13 12))
   (15 (.to (.iff a c) (.to (.iff b c) (.iff a c))) :axiom (ii.1))
   (16 (.to (.iff b c) (.iff a c)) :ir (mp 15 14))
@@ -2462,7 +2462,7 @@
    :th-ded (th-dneg-intro))
   (8 (.neg (.neg (.to (.to a b) (.neg (.to b a))))) :ir (mp 7 6))
   (9 (.to (.and (.to a b) (.to b a)) (.neg (.to (.to a b) (.neg (.to b a)))))
-   :axiom (and-unfold))
+   :th-ded (th-identity))
   (10
    (.to
     (.to (.and (.to a b) (.to b a)) (.neg (.to (.to a b) (.neg (.to b a)))))
@@ -2474,7 +2474,7 @@
     (.neg (.and (.to a b) (.to b a))))
    :ir (mp 10 9))
   (12 (.neg (.and (.to a b) (.to b a))) :ir (mp 11 8))
-  (13 (.to (.iff a b) (.and (.to a b) (.to b a))) :axiom (iff-unfold))
+  (13 (.to (.iff a b) (.and (.to a b) (.to b a))) :th-ded (th-identity))
   (14
    (.to (.to (.iff a b) (.and (.to a b) (.to b a)))
     (.to (.neg (.and (.to a b) (.to b a))) (.neg (.iff a b))))
@@ -2528,7 +2528,7 @@
    :th-ded (th-dneg-intro))
   (8 (.neg (.neg (.to (.to a b) (.neg (.to b a))))) :ir (mp 7 6))
   (9 (.to (.and (.to a b) (.to b a)) (.neg (.to (.to a b) (.neg (.to b a)))))
-   :axiom (and-unfold))
+   :th-ded (th-identity))
   (10
    (.to
     (.to (.and (.to a b) (.to b a)) (.neg (.to (.to a b) (.neg (.to b a)))))
@@ -2540,7 +2540,7 @@
     (.neg (.and (.to a b) (.to b a))))
    :ir (mp 10 9))
   (12 (.neg (.and (.to a b) (.to b a))) :ir (mp 11 8))
-  (13 (.to (.iff a b) (.and (.to a b) (.to b a))) :axiom (iff-unfold))
+  (13 (.to (.iff a b) (.and (.to a b) (.to b a))) :th-ded (th-identity))
   (14
    (.to (.to (.iff a b) (.and (.to a b) (.to b a)))
     (.to (.neg (.and (.to a b) (.to b a))) (.neg (.iff a b))))
@@ -2560,9 +2560,9 @@
    :th-ded (th-neg-impl 4))
   (10 (.neg (.to (.to a c) (.neg (.to c a)))) :ir (mp 9 8))
   (11 (.to (.neg (.to (.to a c) (.neg (.to c a)))) (.and (.to a c) (.to c a)))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (12 (.and (.to a c) (.to c a)) :ir (mp 11 10))
-  (13 (.to (.and (.to a c) (.to c a)) (.iff a c)) :axiom (iff-fold))
+  (13 (.to (.and (.to a c) (.to c a)) (.iff a c)) :th-ded (th-identity))
   (14 (.iff a c) :ir (mp 13 12))
   (15 (.to (.iff a c) (.to (.iff b c) (.iff a c))) :axiom (ii.1))
   (16 (.to (.iff b c) (.iff a c)) :ir (mp 15 14))
@@ -2583,7 +2583,7 @@
    :th-ded (th-dneg-intro))
   (8 (.neg (.neg (.to (.to b c) (.neg (.to c b))))) :ir (mp 7 6))
   (9 (.to (.and (.to b c) (.to c b)) (.neg (.to (.to b c) (.neg (.to c b)))))
-   :axiom (and-unfold))
+   :th-ded (th-identity))
   (10
    (.to
     (.to (.and (.to b c) (.to c b)) (.neg (.to (.to b c) (.neg (.to c b)))))
@@ -2595,7 +2595,7 @@
     (.neg (.and (.to b c) (.to c b))))
    :ir (mp 10 9))
   (12 (.neg (.and (.to b c) (.to c b))) :ir (mp 11 8))
-  (13 (.to (.iff b c) (.and (.to b c) (.to c b))) :axiom (iff-unfold))
+  (13 (.to (.iff b c) (.and (.to b c) (.to c b))) :th-ded (th-identity))
   (14
    (.to (.to (.iff b c) (.and (.to b c) (.to c b)))
     (.to (.neg (.and (.to b c) (.to c b))) (.neg (.iff b c))))
@@ -2620,9 +2620,9 @@
    :th-ded (th-neg-impl 4))
   (10 (.neg (.to (.to a c) (.neg (.to c a)))) :ir (mp 9 8))
   (11 (.to (.neg (.to (.to a c) (.neg (.to c a)))) (.and (.to a c) (.to c a)))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (12 (.and (.to a c) (.to c a)) :ir (mp 11 10))
-  (13 (.to (.and (.to a c) (.to c a)) (.iff a c)) :axiom (iff-fold))
+  (13 (.to (.and (.to a c) (.to c a)) (.iff a c)) :th-ded (th-identity))
   (14 (.iff a c) :ir (mp 13 12))
   (15 (.to (.iff a c) (.to (.iff b c) (.iff a c))) :axiom (ii.1))
   (16 (.to (.iff b c) (.iff a c)) :ir (mp 15 14))
@@ -2793,7 +2793,7 @@
   (3 (.neg (.neg b)) :ir (mp 2 1))
   (4 (.to (.neg (.neg b)) (.neg (.to a (.neg b)))) :th-ded (th-neg-impl 0))
   (5 (.neg (.to a (.neg b))) :ir (mp 4 3))
-  (6 (.to (.neg (.to a (.neg b))) (.and a b)) :axiom (and-fold))
+  (6 (.to (.neg (.to a (.neg b))) (.and a b)) :th-ded (th-identity))
   (7 (.and a b) :ir (mp 6 5))
   (8 (.to (.and a b) (.neg (.neg (.and a b)))) :th-ded (th-dneg-intro))
   (9 (.neg (.neg (.and a b))) :ir (mp 8 7))
@@ -2807,8 +2807,8 @@
   (14 (.to (.neg (.neg b)) (.neg (.to (.neg (.neg a)) (.neg b)))) :th-ded
    (th-neg-impl 13))
   (15 (.neg (.to (.neg (.neg a)) (.neg b))) :ir (mp 14 3))
-  (16 (.to (.or (.neg a) (.neg b)) (.to (.neg (.neg a)) (.neg b))) :axiom
-   (or-unfold))
+  (16 (.to (.or (.neg a) (.neg b)) (.to (.neg (.neg a)) (.neg b))) :th-ded
+   (th-identity))
   (17
    (.to (.to (.or (.neg a) (.neg b)) (.to (.neg (.neg a)) (.neg b)))
     (.to (.neg (.to (.neg (.neg a)) (.neg b))) (.neg (.or (.neg a) (.neg b)))))
@@ -2846,7 +2846,7 @@
       (.neg (.to (.or (.neg a) (.neg b)) (.neg (.and a b))))))
     (.and (.to (.neg (.and a b)) (.or (.neg a) (.neg b)))
      (.to (.or (.neg a) (.neg b)) (.neg (.and a b)))))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (27
    (.and (.to (.neg (.and a b)) (.or (.neg a) (.neg b)))
     (.to (.or (.neg a) (.neg b)) (.neg (.and a b))))
@@ -2856,14 +2856,14 @@
     (.and (.to (.neg (.and a b)) (.or (.neg a) (.neg b)))
      (.to (.or (.neg a) (.neg b)) (.neg (.and a b))))
     (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))))
-   :axiom (iff-fold))
+   :th-ded (th-identity))
   (29 (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))) :ir (mp 28 27))))
 (:th-ded th-not-and.f2 (.neg b)
  ((0 a :hyp nil) (1 (.neg b) :hyp nil)
   (2 (.to (.neg b) (.to (.neg (.neg a)) (.neg b))) :axiom (ii.1))
   (3 (.to (.neg (.neg a)) (.neg b)) :ir (mp 2 1))
-  (4 (.to (.to (.neg (.neg a)) (.neg b)) (.or (.neg a) (.neg b))) :axiom
-   (or-fold))
+  (4 (.to (.to (.neg (.neg a)) (.neg b)) (.or (.neg a) (.neg b))) :th-ded
+   (th-identity))
   (5 (.or (.neg a) (.neg b)) :ir (mp 4 3))
   (6
    (.to (.or (.neg a) (.neg b))
@@ -2875,7 +2875,7 @@
   (10 (.to (.to a (.neg b)) (.neg (.neg (.to a (.neg b))))) :th-ded
    (th-dneg-intro))
   (11 (.neg (.neg (.to a (.neg b)))) :ir (mp 10 9))
-  (12 (.to (.and a b) (.neg (.to a (.neg b)))) :axiom (and-unfold))
+  (12 (.to (.and a b) (.neg (.to a (.neg b)))) :th-ded (th-identity))
   (13
    (.to (.to (.and a b) (.neg (.to a (.neg b))))
     (.to (.neg (.neg (.to a (.neg b)))) (.neg (.and a b))))
@@ -2909,7 +2909,7 @@
       (.neg (.to (.or (.neg a) (.neg b)) (.neg (.and a b))))))
     (.and (.to (.neg (.and a b)) (.or (.neg a) (.neg b)))
      (.to (.or (.neg a) (.neg b)) (.neg (.and a b)))))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (23
    (.and (.to (.neg (.and a b)) (.or (.neg a) (.neg b)))
     (.to (.or (.neg a) (.neg b)) (.neg (.and a b))))
@@ -2919,7 +2919,7 @@
     (.and (.to (.neg (.and a b)) (.or (.neg a) (.neg b)))
      (.to (.or (.neg a) (.neg b)) (.neg (.and a b))))
     (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))))
-   :axiom (iff-fold))
+   :th-ded (th-identity))
   (25 (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))) :ir (mp 24 23))))
 (:th-ded th-not-and.t3 b
  ((0 (.neg a) :hyp nil) (1 b :hyp nil)
@@ -2928,8 +2928,8 @@
   (4 (.to (.neg (.neg (.neg a))) (.to (.neg (.neg a)) (.neg b))) :th-ded
    (th-ex-falso))
   (5 (.to (.neg (.neg a)) (.neg b)) :ir (mp 4 3))
-  (6 (.to (.to (.neg (.neg a)) (.neg b)) (.or (.neg a) (.neg b))) :axiom
-   (or-fold))
+  (6 (.to (.to (.neg (.neg a)) (.neg b)) (.or (.neg a) (.neg b))) :th-ded
+   (th-identity))
   (7 (.or (.neg a) (.neg b)) :ir (mp 6 5))
   (8
    (.to (.or (.neg a) (.neg b))
@@ -2941,7 +2941,7 @@
   (12 (.to (.to a (.neg b)) (.neg (.neg (.to a (.neg b))))) :th-ded
    (th-dneg-intro))
   (13 (.neg (.neg (.to a (.neg b)))) :ir (mp 12 11))
-  (14 (.to (.and a b) (.neg (.to a (.neg b)))) :axiom (and-unfold))
+  (14 (.to (.and a b) (.neg (.to a (.neg b)))) :th-ded (th-identity))
   (15
    (.to (.to (.and a b) (.neg (.to a (.neg b))))
     (.to (.neg (.neg (.to a (.neg b)))) (.neg (.and a b))))
@@ -2975,7 +2975,7 @@
       (.neg (.to (.or (.neg a) (.neg b)) (.neg (.and a b))))))
     (.and (.to (.neg (.and a b)) (.or (.neg a) (.neg b)))
      (.to (.or (.neg a) (.neg b)) (.neg (.and a b)))))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (25
    (.and (.to (.neg (.and a b)) (.or (.neg a) (.neg b)))
     (.to (.or (.neg a) (.neg b)) (.neg (.and a b))))
@@ -2985,14 +2985,14 @@
     (.and (.to (.neg (.and a b)) (.or (.neg a) (.neg b)))
      (.to (.or (.neg a) (.neg b)) (.neg (.and a b))))
     (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))))
-   :axiom (iff-fold))
+   :th-ded (th-identity))
   (27 (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))) :ir (mp 26 25))))
 (:th-ded th-not-and.f4 (.neg b)
  ((0 (.neg a) :hyp nil) (1 (.neg b) :hyp nil)
   (2 (.to (.neg b) (.to (.neg (.neg a)) (.neg b))) :axiom (ii.1))
   (3 (.to (.neg (.neg a)) (.neg b)) :ir (mp 2 1))
-  (4 (.to (.to (.neg (.neg a)) (.neg b)) (.or (.neg a) (.neg b))) :axiom
-   (or-fold))
+  (4 (.to (.to (.neg (.neg a)) (.neg b)) (.or (.neg a) (.neg b))) :th-ded
+   (th-identity))
   (5 (.or (.neg a) (.neg b)) :ir (mp 4 3))
   (6
    (.to (.or (.neg a) (.neg b))
@@ -3004,7 +3004,7 @@
   (10 (.to (.to a (.neg b)) (.neg (.neg (.to a (.neg b))))) :th-ded
    (th-dneg-intro))
   (11 (.neg (.neg (.to a (.neg b)))) :ir (mp 10 9))
-  (12 (.to (.and a b) (.neg (.to a (.neg b)))) :axiom (and-unfold))
+  (12 (.to (.and a b) (.neg (.to a (.neg b)))) :th-ded (th-identity))
   (13
    (.to (.to (.and a b) (.neg (.to a (.neg b))))
     (.to (.neg (.neg (.to a (.neg b)))) (.neg (.and a b))))
@@ -3038,7 +3038,7 @@
       (.neg (.to (.or (.neg a) (.neg b)) (.neg (.and a b))))))
     (.and (.to (.neg (.and a b)) (.or (.neg a) (.neg b)))
      (.to (.or (.neg a) (.neg b)) (.neg (.and a b)))))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (23
    (.and (.to (.neg (.and a b)) (.or (.neg a) (.neg b)))
     (.to (.or (.neg a) (.neg b)) (.neg (.and a b))))
@@ -3048,7 +3048,7 @@
     (.and (.to (.neg (.and a b)) (.or (.neg a) (.neg b)))
      (.to (.or (.neg a) (.neg b)) (.neg (.and a b))))
     (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))))
-   :axiom (iff-fold))
+   :th-ded (th-identity))
   (25 (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))) :ir (mp 24 23))))
 (:th-ded th-not-and.t5 a
  ((0 a :hyp nil)
@@ -3177,7 +3177,7 @@
 (:th-ded th-not-or.t1 b
  ((0 a :hyp nil) (1 b :hyp nil) (2 (.to b (.to (.neg a) b)) :axiom (ii.1))
   (3 (.to (.neg a) b) :ir (mp 2 1))
-  (4 (.to (.to (.neg a) b) (.or a b)) :axiom (or-fold))
+  (4 (.to (.to (.neg a) b) (.or a b)) :th-ded (th-identity))
   (5 (.or a b) :ir (mp 4 3))
   (6 (.to (.or a b) (.neg (.neg (.or a b)))) :th-ded (th-dneg-intro))
   (7 (.neg (.neg (.or a b))) :ir (mp 6 5))
@@ -3196,7 +3196,7 @@
    :th-ded (th-dneg-intro))
   (15 (.neg (.neg (.to (.neg a) (.neg (.neg b))))) :ir (mp 14 13))
   (16 (.to (.and (.neg a) (.neg b)) (.neg (.to (.neg a) (.neg (.neg b)))))
-   :axiom (and-unfold))
+   :th-ded (th-identity))
   (17
    (.to (.to (.and (.neg a) (.neg b)) (.neg (.to (.neg a) (.neg (.neg b)))))
     (.to (.neg (.neg (.to (.neg a) (.neg (.neg b)))))
@@ -3236,7 +3236,7 @@
       (.neg (.to (.and (.neg a) (.neg b)) (.neg (.or a b))))))
     (.and (.to (.neg (.or a b)) (.and (.neg a) (.neg b)))
      (.to (.and (.neg a) (.neg b)) (.neg (.or a b)))))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (27
    (.and (.to (.neg (.or a b)) (.and (.neg a) (.neg b)))
     (.to (.and (.neg a) (.neg b)) (.neg (.or a b))))
@@ -3246,7 +3246,7 @@
     (.and (.to (.neg (.or a b)) (.and (.neg a) (.neg b)))
      (.to (.and (.neg a) (.neg b)) (.neg (.or a b))))
     (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))))
-   :axiom (iff-fold))
+   :th-ded (th-identity))
   (29 (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))) :ir (mp 28 27))))
 (:th-ded th-not-or.f2 (.neg b)
  ((0 a :hyp nil) (1 (.neg b) :hyp nil)
@@ -3254,7 +3254,7 @@
   (3 (.neg (.neg a)) :ir (mp 2 0))
   (4 (.to (.neg (.neg a)) (.to (.neg a) b)) :th-ded (th-ex-falso))
   (5 (.to (.neg a) b) :ir (mp 4 3))
-  (6 (.to (.to (.neg a) b) (.or a b)) :axiom (or-fold))
+  (6 (.to (.to (.neg a) b) (.or a b)) :th-ded (th-identity))
   (7 (.or a b) :ir (mp 6 5))
   (8 (.to (.or a b) (.neg (.neg (.or a b)))) :th-ded (th-dneg-intro))
   (9 (.neg (.neg (.or a b))) :ir (mp 8 7))
@@ -3272,7 +3272,7 @@
    :th-ded (th-dneg-intro))
   (15 (.neg (.neg (.to (.neg a) (.neg (.neg b))))) :ir (mp 14 13))
   (16 (.to (.and (.neg a) (.neg b)) (.neg (.to (.neg a) (.neg (.neg b)))))
-   :axiom (and-unfold))
+   :th-ded (th-identity))
   (17
    (.to (.to (.and (.neg a) (.neg b)) (.neg (.to (.neg a) (.neg (.neg b)))))
     (.to (.neg (.neg (.to (.neg a) (.neg (.neg b)))))
@@ -3312,7 +3312,7 @@
       (.neg (.to (.and (.neg a) (.neg b)) (.neg (.or a b))))))
     (.and (.to (.neg (.or a b)) (.and (.neg a) (.neg b)))
      (.to (.and (.neg a) (.neg b)) (.neg (.or a b)))))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (27
    (.and (.to (.neg (.or a b)) (.and (.neg a) (.neg b)))
     (.to (.and (.neg a) (.neg b)) (.neg (.or a b))))
@@ -3322,12 +3322,12 @@
     (.and (.to (.neg (.or a b)) (.and (.neg a) (.neg b)))
      (.to (.and (.neg a) (.neg b)) (.neg (.or a b))))
     (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))))
-   :axiom (iff-fold))
+   :th-ded (th-identity))
   (29 (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))) :ir (mp 28 27))))
 (:th-ded th-not-or.t3 b
  ((0 (.neg a) :hyp nil) (1 b :hyp nil)
   (2 (.to b (.to (.neg a) b)) :axiom (ii.1)) (3 (.to (.neg a) b) :ir (mp 2 1))
-  (4 (.to (.to (.neg a) b) (.or a b)) :axiom (or-fold))
+  (4 (.to (.to (.neg a) b) (.or a b)) :th-ded (th-identity))
   (5 (.or a b) :ir (mp 4 3))
   (6 (.to (.or a b) (.neg (.neg (.or a b)))) :th-ded (th-dneg-intro))
   (7 (.neg (.neg (.or a b))) :ir (mp 6 5))
@@ -3346,7 +3346,7 @@
    :th-ded (th-dneg-intro))
   (15 (.neg (.neg (.to (.neg a) (.neg (.neg b))))) :ir (mp 14 13))
   (16 (.to (.and (.neg a) (.neg b)) (.neg (.to (.neg a) (.neg (.neg b)))))
-   :axiom (and-unfold))
+   :th-ded (th-identity))
   (17
    (.to (.to (.and (.neg a) (.neg b)) (.neg (.to (.neg a) (.neg (.neg b)))))
     (.to (.neg (.neg (.to (.neg a) (.neg (.neg b)))))
@@ -3386,7 +3386,7 @@
       (.neg (.to (.and (.neg a) (.neg b)) (.neg (.or a b))))))
     (.and (.to (.neg (.or a b)) (.and (.neg a) (.neg b)))
      (.to (.and (.neg a) (.neg b)) (.neg (.or a b)))))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (27
    (.and (.to (.neg (.or a b)) (.and (.neg a) (.neg b)))
     (.to (.and (.neg a) (.neg b)) (.neg (.or a b))))
@@ -3396,7 +3396,7 @@
     (.and (.to (.neg (.or a b)) (.and (.neg a) (.neg b)))
      (.to (.and (.neg a) (.neg b)) (.neg (.or a b))))
     (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))))
-   :axiom (iff-fold))
+   :th-ded (th-identity))
   (29 (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))) :ir (mp 28 27))))
 (:th-ded th-not-or.f4 (.neg b)
  ((0 (.neg a) :hyp nil) (1 (.neg b) :hyp nil)
@@ -3406,7 +3406,7 @@
    (th-neg-impl 0))
   (5 (.neg (.to (.neg a) (.neg (.neg b)))) :ir (mp 4 3))
   (6 (.to (.neg (.to (.neg a) (.neg (.neg b)))) (.and (.neg a) (.neg b)))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (7 (.and (.neg a) (.neg b)) :ir (mp 6 5))
   (8
    (.to (.and (.neg a) (.neg b))
@@ -3415,7 +3415,7 @@
   (9 (.to (.neg (.or a b)) (.and (.neg a) (.neg b))) :ir (mp 8 7))
   (10 (.to (.neg b) (.neg (.to (.neg a) b))) :th-ded (th-neg-impl 0))
   (11 (.neg (.to (.neg a) b)) :ir (mp 10 1))
-  (12 (.to (.or a b) (.to (.neg a) b)) :axiom (or-unfold))
+  (12 (.to (.or a b) (.to (.neg a) b)) :th-ded (th-identity))
   (13
    (.to (.to (.or a b) (.to (.neg a) b))
     (.to (.neg (.to (.neg a) b)) (.neg (.or a b))))
@@ -3449,7 +3449,7 @@
       (.neg (.to (.and (.neg a) (.neg b)) (.neg (.or a b))))))
     (.and (.to (.neg (.or a b)) (.and (.neg a) (.neg b)))
      (.to (.and (.neg a) (.neg b)) (.neg (.or a b)))))
-   :axiom (and-fold))
+   :th-ded (th-identity))
   (23
    (.and (.to (.neg (.or a b)) (.and (.neg a) (.neg b)))
     (.to (.and (.neg a) (.neg b)) (.neg (.or a b))))
@@ -3459,7 +3459,7 @@
     (.and (.to (.neg (.or a b)) (.and (.neg a) (.neg b)))
      (.to (.and (.neg a) (.neg b)) (.neg (.or a b))))
     (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))))
-   :axiom (iff-fold))
+   :th-ded (th-identity))
   (25 (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))) :ir (mp 24 23))))
 (:th-ded th-not-or.t5 a
  ((0 a :hyp nil)

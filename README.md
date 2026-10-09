@@ -77,7 +77,7 @@ ledger. The tools themselves need not be trusted.
   and proof trees, links to symbols and cited entries, display of the axioms an entry
   depends on and of "the theorems that use this theorem", and in-browser proof checking
 
-Tests: all 301 kernel tests and 50 Web tests pass, with zero compiler warnings.
+Tests: all 310 kernel tests and 50 Web tests pass, with zero compiler warnings.
 
 The kernel (`src/`) is about 2000 lines including comments. The logic itself is not
 written in the code; it all lives in `.system` files. Unused features have been moved to
@@ -96,7 +96,7 @@ ASDF. Start SBCL at the root of the repository:
 (require :asdf)
 (asdf:load-asd (merge-pathnames "ledger-kernel.asd"))
 (asdf:load-system :ledger-kernel)
-(asdf:test-system :ledger-kernel)      ; ends with "301/301 self-tests passed."
+(asdf:test-system :ledger-kernel)      ; ends with "310/310 self-tests passed."
 (in-package :ledger-kernel)
 ```
 
@@ -398,7 +398,7 @@ deploy/                  Example systemd / nginx configurations for publishing t
 sbcl --non-interactive \
      --eval '(require :asdf)' \
      --eval '(asdf:load-asd (merge-pathnames "ledger-kernel.asd"))' \
-     --eval '(asdf:test-system :ledger-kernel)'        # kernel (301 tests)
+     --eval '(asdf:test-system :ledger-kernel)'        # kernel (310 tests)
 ```
 
 The Web UI tests are run with `(asdf:test-system :ledger-kernel/web)` (50 tests; no HTTP

@@ -67,7 +67,7 @@ Web UI も付いています。
   リンク、依存している公理と「この定理を使っている定理」の表示、ブラウザ上での
   証明の検証
 
-テスト: カーネル 301 件、Web 50 件がすべて通り、コンパイル警告 0 の状態です。
+テスト: カーネル 310 件、Web 50 件がすべて通り、コンパイル警告 0 の状態です。
 
 カーネル（`src/`）はコメント込みで約 2000 行です。論理そのものはコードに書かず、
 すべて `.system` ファイルに置いています。使われていない機能は `backup/` に、元の
@@ -85,7 +85,7 @@ Web UI も付いています。
 (require :asdf)
 (asdf:load-asd (merge-pathnames "ledger-kernel.asd"))
 (asdf:load-system :ledger-kernel)
-(asdf:test-system :ledger-kernel)      ; 最後に "301/301 self-tests passed." と出る
+(asdf:test-system :ledger-kernel)      ; 最後に "310/310 self-tests passed." と出る
 (in-package :ledger-kernel)
 ```
 
@@ -370,7 +370,7 @@ deploy/                  サーバー版を公開するための systemd / nginx
 sbcl --non-interactive \
      --eval '(require :asdf)' \
      --eval '(asdf:load-asd (merge-pathnames "ledger-kernel.asd"))' \
-     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（301 件）
+     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（310 件）
 ```
 
 Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（50 件。HTTP は使いません）。

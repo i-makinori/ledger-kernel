@@ -180,11 +180,16 @@ never be declared. (BINDER-HEADS) must be LIST*'s last argument."
   (member sym (list* :=> '.to '.eq '.neg (binder-heads)) :test #'eq))
 
 (defun fresh-symbol-name-p (sym ledger)
-  "T iff SYM may be declared: a symbol that is not a pattern variable,
+  "T iff SYM may be declared: a non-NIL, non-keyword symbol that is not a pattern variable,
 meta-tag or reserved head, and not already declared in any Sigma
 namespace (atomic wffs, variables and predicate schemas share one pool),
 nor a fresh variable %n."
   (and (symbolp sym)
+       ;; NIL ends every list and keywords (:BV, :INST, :LAMBDA, :HYP,
+       ;; ...) are the kernel's own markers; a declared NIL would make
+       ;; the schema matcher treat the end of every list as an atom.
+       sym
+       (not (keywordp sym))
        (not (pat-var-p sym))
        (not (at-symbol-p sym))
        (not (reserved-head-symbol-p sym))

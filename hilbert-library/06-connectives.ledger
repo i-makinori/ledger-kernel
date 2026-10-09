@@ -38,7 +38,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -54,7 +54,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -69,7 +69,7 @@
    (.to (.to a (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -115,7 +115,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -131,7 +131,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -146,7 +146,7 @@
    (.to (.to a (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -187,7 +187,7 @@
   (3
    (.to (.to b (.to a (.to b (.and a b))))
     (.to (.to (.neg b) (.to a (.to b (.and a b)))) (.to a (.to b (.and a b)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4 (.to (.to (.neg b) (.to a (.to b (.and a b)))) (.to a (.to b (.and a b))))
    :ir (mp 3 1))
   (5 (.to a (.to b (.and a b))) :ir (mp 4 2))))
@@ -198,7 +198,7 @@
   (3
    (.to (.to b (.to a (.to b (.and a b))))
     (.to (.to (.neg b) (.to a (.to b (.and a b)))) (.to a (.to b (.and a b)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4 (.to (.to (.neg b) (.to a (.to b (.and a b)))) (.to a (.to b (.and a b))))
    :ir (mp 3 1))
   (5 (.to a (.to b (.and a b))) :ir (mp 4 2))))
@@ -208,7 +208,7 @@
   (2
    (.to (.to a (.to a (.to b (.and a b))))
     (.to (.to (.neg a) (.to a (.to b (.and a b)))) (.to a (.to b (.and a b)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3 (.to (.to (.neg a) (.to a (.to b (.and a b)))) (.to a (.to b (.and a b))))
    :ir (mp 2 0))
   (4 (.to a (.to b (.and a b))) :ir (mp 3 1))))
@@ -252,7 +252,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -268,7 +268,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -283,7 +283,7 @@
    (.to (.to a (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -334,7 +334,7 @@
   (3
    (.to (.to b (.to (.and a b) a))
     (.to (.to (.neg b) (.to (.and a b) a)) (.to (.and a b) a)))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4 (.to (.to (.neg b) (.to (.and a b) a)) (.to (.and a b) a)) :ir (mp 3 1))
   (5 (.to (.and a b) a) :ir (mp 4 2))))
 (:th-ded th-and-elim-l.f6 (.neg a)
@@ -344,7 +344,7 @@
   (3
    (.to (.to b (.to (.and a b) a))
     (.to (.to (.neg b) (.to (.and a b) a)) (.to (.and a b) a)))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4 (.to (.to (.neg b) (.to (.and a b) a)) (.to (.and a b) a)) :ir (mp 3 1))
   (5 (.to (.and a b) a) :ir (mp 4 2))))
 (:th th-and-elim-l
@@ -353,7 +353,7 @@
   (2
    (.to (.to a (.to (.and a b) a))
     (.to (.to (.neg a) (.to (.and a b) a)) (.to (.and a b) a)))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3 (.to (.to (.neg a) (.to (.and a b) a)) (.to (.and a b) a)) :ir (mp 2 0))
   (4 (.to (.and a b) a) :ir (mp 3 1))))
 (:th-ded th-and-elim-r.contra.t1 b
@@ -396,7 +396,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -412,7 +412,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -427,7 +427,7 @@
    (.to (.to a (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -478,7 +478,7 @@
   (3
    (.to (.to b (.to (.and a b) b))
     (.to (.to (.neg b) (.to (.and a b) b)) (.to (.and a b) b)))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4 (.to (.to (.neg b) (.to (.and a b) b)) (.to (.and a b) b)) :ir (mp 3 1))
   (5 (.to (.and a b) b) :ir (mp 4 2))))
 (:th-ded th-and-elim-r.f6 (.neg a)
@@ -488,7 +488,7 @@
   (3
    (.to (.to b (.to (.and a b) b))
     (.to (.to (.neg b) (.to (.and a b) b)) (.to (.and a b) b)))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4 (.to (.to (.neg b) (.to (.and a b) b)) (.to (.and a b) b)) :ir (mp 3 1))
   (5 (.to (.and a b) b) :ir (mp 4 2))))
 (:th th-and-elim-r
@@ -497,7 +497,7 @@
   (2
    (.to (.to a (.to (.and a b) b))
     (.to (.to (.neg a) (.to (.and a b) b)) (.to (.and a b) b)))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3 (.to (.to (.neg a) (.to (.and a b) b)) (.to (.and a b) b)) :ir (mp 2 0))
   (4 (.to (.and a b) b) :ir (mp 3 1))))
 (:th-ded th-and-comm.contra.t1 b
@@ -540,7 +540,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -556,7 +556,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -571,7 +571,7 @@
    (.to (.to a (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -646,7 +646,7 @@
    (.to (.to b (.to (.and a b) (.and b a)))
     (.to (.to (.neg b) (.to (.and a b) (.and b a)))
      (.to (.and a b) (.and b a))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.and a b) (.and b a))) (.to (.and a b) (.and b a)))
    :ir (mp 3 1))
@@ -659,7 +659,7 @@
    (.to (.to b (.to (.and a b) (.and b a)))
     (.to (.to (.neg b) (.to (.and a b) (.and b a)))
      (.to (.and a b) (.and b a))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.and a b) (.and b a))) (.to (.and a b) (.and b a)))
    :ir (mp 3 1))
@@ -671,7 +671,7 @@
    (.to (.to a (.to (.and a b) (.and b a)))
     (.to (.to (.neg a) (.to (.and a b) (.and b a)))
      (.to (.and a b) (.and b a))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.and a b) (.and b a))) (.to (.and a b) (.and b a)))
    :ir (mp 2 0))
@@ -716,7 +716,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -732,7 +732,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -747,7 +747,7 @@
    (.to (.to a (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -787,7 +787,7 @@
   (3
    (.to (.to b (.to a (.or a b)))
     (.to (.to (.neg b) (.to a (.or a b))) (.to a (.or a b))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4 (.to (.to (.neg b) (.to a (.or a b))) (.to a (.or a b))) :ir (mp 3 1))
   (5 (.to a (.or a b)) :ir (mp 4 2))))
 (:th-ded th-or-intro-l.f6 (.neg a)
@@ -797,7 +797,7 @@
   (3
    (.to (.to b (.to a (.or a b)))
     (.to (.to (.neg b) (.to a (.or a b))) (.to a (.or a b))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4 (.to (.to (.neg b) (.to a (.or a b))) (.to a (.or a b))) :ir (mp 3 1))
   (5 (.to a (.or a b)) :ir (mp 4 2))))
 (:th th-or-intro-l
@@ -806,7 +806,7 @@
   (2
    (.to (.to a (.to a (.or a b)))
     (.to (.to (.neg a) (.to a (.or a b))) (.to a (.or a b))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3 (.to (.to (.neg a) (.to a (.or a b))) (.to a (.or a b))) :ir (mp 2 0))
   (4 (.to a (.or a b)) :ir (mp 3 1))))
 (:th-ded th-or-intro-r.contra.t1 b
@@ -849,7 +849,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -865,7 +865,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -880,7 +880,7 @@
    (.to (.to a (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -920,7 +920,7 @@
   (3
    (.to (.to b (.to b (.or a b)))
     (.to (.to (.neg b) (.to b (.or a b))) (.to b (.or a b))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4 (.to (.to (.neg b) (.to b (.or a b))) (.to b (.or a b))) :ir (mp 3 1))
   (5 (.to b (.or a b)) :ir (mp 4 2))))
 (:th-ded th-or-intro-r.f6 (.neg a)
@@ -930,7 +930,7 @@
   (3
    (.to (.to b (.to b (.or a b)))
     (.to (.to (.neg b) (.to b (.or a b))) (.to b (.or a b))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4 (.to (.to (.neg b) (.to b (.or a b))) (.to b (.or a b))) :ir (mp 3 1))
   (5 (.to b (.or a b)) :ir (mp 4 2))))
 (:th th-or-intro-r
@@ -939,7 +939,7 @@
   (2
    (.to (.to a (.to b (.or a b)))
     (.to (.to (.neg a) (.to b (.or a b))) (.to b (.or a b))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3 (.to (.to (.neg a) (.to b (.or a b))) (.to b (.or a b))) :ir (mp 2 0))
   (4 (.to b (.or a b)) :ir (mp 3 1))))
 (:th-ded th-or-elim.contra.t1 b
@@ -982,7 +982,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -998,7 +998,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -1013,7 +1013,7 @@
    (.to (.to a (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -1070,7 +1070,7 @@
    (.to (.to c (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
     (.to (.to (.neg c) (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
      (.to (.to a c) (.to (.to b c) (.to (.or a b) c)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (5
    (.to (.to (.neg c) (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
     (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
@@ -1086,7 +1086,7 @@
    (.to (.to c (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
     (.to (.to (.neg c) (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
      (.to (.to a c) (.to (.to b c) (.to (.or a b) c)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (5
    (.to (.to (.neg c) (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
     (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
@@ -1156,7 +1156,7 @@
    (.to (.to c (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
     (.to (.to (.neg c) (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
      (.to (.to a c) (.to (.to b c) (.to (.or a b) c)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (5
    (.to (.to (.neg c) (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
     (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
@@ -1172,7 +1172,7 @@
    (.to (.to c (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
     (.to (.to (.neg c) (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
      (.to (.to a c) (.to (.to b c) (.to (.or a b) c)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (5
    (.to (.to (.neg c) (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
     (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
@@ -1188,7 +1188,7 @@
    (.to (.to b (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
     (.to (.to (.neg b) (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
      (.to (.to a c) (.to (.to b c) (.to (.or a b) c)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
     (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
@@ -1204,7 +1204,7 @@
    (.to (.to b (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
     (.to (.to (.neg b) (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
      (.to (.to a c) (.to (.to b c) (.to (.or a b) c)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
     (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
@@ -1219,7 +1219,7 @@
    (.to (.to a (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
     (.to (.to (.neg a) (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
      (.to (.to a c) (.to (.to b c) (.to (.or a b) c)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
     (.to (.to a c) (.to (.to b c) (.to (.or a b) c))))
@@ -1265,7 +1265,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -1281,7 +1281,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -1296,7 +1296,7 @@
    (.to (.to a (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -1346,7 +1346,7 @@
   (3
    (.to (.to b (.to (.or a b) (.or b a)))
     (.to (.to (.neg b) (.to (.or a b) (.or b a))) (.to (.or a b) (.or b a))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4 (.to (.to (.neg b) (.to (.or a b) (.or b a))) (.to (.or a b) (.or b a)))
    :ir (mp 3 1))
   (5 (.to (.or a b) (.or b a)) :ir (mp 4 2))))
@@ -1357,7 +1357,7 @@
   (3
    (.to (.to b (.to (.or a b) (.or b a)))
     (.to (.to (.neg b) (.to (.or a b) (.or b a))) (.to (.or a b) (.or b a))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4 (.to (.to (.neg b) (.to (.or a b) (.or b a))) (.to (.or a b) (.or b a)))
    :ir (mp 3 1))
   (5 (.to (.or a b) (.or b a)) :ir (mp 4 2))))
@@ -1367,7 +1367,7 @@
   (2
    (.to (.to a (.to (.or a b) (.or b a)))
     (.to (.to (.neg a) (.to (.or a b) (.or b a))) (.to (.or a b) (.or b a))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3 (.to (.to (.neg a) (.to (.or a b) (.or b a))) (.to (.or a b) (.or b a)))
    :ir (mp 2 0))
   (4 (.to (.or a b) (.or b a)) :ir (mp 3 1))))
@@ -1411,7 +1411,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -1427,7 +1427,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -1442,7 +1442,7 @@
    (.to (.to a (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -1467,7 +1467,7 @@
   (2
    (.to (.to a (.or a (.neg a)))
     (.to (.to (.neg a) (.or a (.neg a))) (.or a (.neg a))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3 (.to (.to (.neg a) (.or a (.neg a))) (.or a (.neg a))) :ir (mp 2 0))
   (4 (.or a (.neg a)) :ir (mp 3 1))))
 (:th-ded th-iff-intro.contra.t1 b
@@ -1510,7 +1510,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -1526,7 +1526,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -1541,7 +1541,7 @@
    (.to (.to a (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -1614,7 +1614,7 @@
    (.to (.to b (.to (.to a b) (.to (.to b a) (.iff a b))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.to b a) (.iff a b))))
      (.to (.to a b) (.to (.to b a) (.iff a b)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.to b a) (.iff a b))))
     (.to (.to a b) (.to (.to b a) (.iff a b))))
@@ -1630,7 +1630,7 @@
    (.to (.to b (.to (.to a b) (.to (.to b a) (.iff a b))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.to b a) (.iff a b))))
      (.to (.to a b) (.to (.to b a) (.iff a b)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.to b a) (.iff a b))))
     (.to (.to a b) (.to (.to b a) (.iff a b))))
@@ -1645,7 +1645,7 @@
    (.to (.to a (.to (.to a b) (.to (.to b a) (.iff a b))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.to b a) (.iff a b))))
      (.to (.to a b) (.to (.to b a) (.iff a b)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.to b a) (.iff a b))))
     (.to (.to a b) (.to (.to b a) (.iff a b))))
@@ -1691,7 +1691,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -1707,7 +1707,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -1722,7 +1722,7 @@
    (.to (.to a (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -1784,7 +1784,7 @@
   (3
    (.to (.to b (.to (.iff a b) (.to a b)))
     (.to (.to (.neg b) (.to (.iff a b) (.to a b))) (.to (.iff a b) (.to a b))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4 (.to (.to (.neg b) (.to (.iff a b) (.to a b))) (.to (.iff a b) (.to a b)))
    :ir (mp 3 1))
   (5 (.to (.iff a b) (.to a b)) :ir (mp 4 2))))
@@ -1795,7 +1795,7 @@
   (3
    (.to (.to b (.to (.iff a b) (.to a b)))
     (.to (.to (.neg b) (.to (.iff a b) (.to a b))) (.to (.iff a b) (.to a b))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4 (.to (.to (.neg b) (.to (.iff a b) (.to a b))) (.to (.iff a b) (.to a b)))
    :ir (mp 3 1))
   (5 (.to (.iff a b) (.to a b)) :ir (mp 4 2))))
@@ -1805,7 +1805,7 @@
   (2
    (.to (.to a (.to (.iff a b) (.to a b)))
     (.to (.to (.neg a) (.to (.iff a b) (.to a b))) (.to (.iff a b) (.to a b))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3 (.to (.to (.neg a) (.to (.iff a b) (.to a b))) (.to (.iff a b) (.to a b)))
    :ir (mp 2 0))
   (4 (.to (.iff a b) (.to a b)) :ir (mp 3 1))))
@@ -1849,7 +1849,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -1865,7 +1865,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -1880,7 +1880,7 @@
    (.to (.to a (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -1941,7 +1941,7 @@
   (3
    (.to (.to b (.to (.iff a b) (.to b a)))
     (.to (.to (.neg b) (.to (.iff a b) (.to b a))) (.to (.iff a b) (.to b a))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4 (.to (.to (.neg b) (.to (.iff a b) (.to b a))) (.to (.iff a b) (.to b a)))
    :ir (mp 3 1))
   (5 (.to (.iff a b) (.to b a)) :ir (mp 4 2))))
@@ -1952,7 +1952,7 @@
   (3
    (.to (.to b (.to (.iff a b) (.to b a)))
     (.to (.to (.neg b) (.to (.iff a b) (.to b a))) (.to (.iff a b) (.to b a))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4 (.to (.to (.neg b) (.to (.iff a b) (.to b a))) (.to (.iff a b) (.to b a)))
    :ir (mp 3 1))
   (5 (.to (.iff a b) (.to b a)) :ir (mp 4 2))))
@@ -1962,7 +1962,7 @@
   (2
    (.to (.to a (.to (.iff a b) (.to b a)))
     (.to (.to (.neg a) (.to (.iff a b) (.to b a))) (.to (.iff a b) (.to b a))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3 (.to (.to (.neg a) (.to (.iff a b) (.to b a))) (.to (.iff a b) (.to b a)))
    :ir (mp 2 0))
   (4 (.to (.iff a b) (.to b a)) :ir (mp 3 1))))
@@ -2006,7 +2006,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -2022,7 +2022,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -2037,7 +2037,7 @@
    (.to (.to a (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -2071,8 +2071,7 @@
 (:th th-iff-refl
  ((0 (.to a (.iff a a)) :th-ded (th-iff-refl.t1))
   (1 (.to (.neg a) (.iff a a)) :th-ded (th-iff-refl.f2))
-  (2 (.to (.to a (.iff a a)) (.to (.to (.neg a) (.iff a a)) (.iff a a))) :axiom
-   (ii.4))
+  (2 (.to (.to a (.iff a a)) (.to (.to (.neg a) (.iff a a)) (.iff a a))) :th-ded (th-case-split))
   (3 (.to (.to (.neg a) (.iff a a)) (.iff a a)) :ir (mp 2 0))
   (4 (.iff a a) :ir (mp 3 1))))
 (:th-ded th-iff-sym.contra.t1 b
@@ -2115,7 +2114,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -2131,7 +2130,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -2146,7 +2145,7 @@
    (.to (.to a (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -2261,7 +2260,7 @@
    (.to (.to b (.to (.iff a b) (.iff b a)))
     (.to (.to (.neg b) (.to (.iff a b) (.iff b a)))
      (.to (.iff a b) (.iff b a))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.iff a b) (.iff b a))) (.to (.iff a b) (.iff b a)))
    :ir (mp 3 1))
@@ -2274,7 +2273,7 @@
    (.to (.to b (.to (.iff a b) (.iff b a)))
     (.to (.to (.neg b) (.to (.iff a b) (.iff b a)))
      (.to (.iff a b) (.iff b a))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.iff a b) (.iff b a))) (.to (.iff a b) (.iff b a)))
    :ir (mp 3 1))
@@ -2286,7 +2285,7 @@
    (.to (.to a (.to (.iff a b) (.iff b a)))
     (.to (.to (.neg a) (.to (.iff a b) (.iff b a)))
      (.to (.iff a b) (.iff b a))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.iff a b) (.iff b a))) (.to (.iff a b) (.iff b a)))
    :ir (mp 2 0))
@@ -2331,7 +2330,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -2347,7 +2346,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -2362,7 +2361,7 @@
    (.to (.to a (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -2495,7 +2494,7 @@
    (.to (.to c (.to (.iff a b) (.to (.iff b c) (.iff a c))))
     (.to (.to (.neg c) (.to (.iff a b) (.to (.iff b c) (.iff a c))))
      (.to (.iff a b) (.to (.iff b c) (.iff a c)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (5
    (.to (.to (.neg c) (.to (.iff a b) (.to (.iff b c) (.iff a c))))
     (.to (.iff a b) (.to (.iff b c) (.iff a c))))
@@ -2511,7 +2510,7 @@
    (.to (.to c (.to (.iff a b) (.to (.iff b c) (.iff a c))))
     (.to (.to (.neg c) (.to (.iff a b) (.to (.iff b c) (.iff a c))))
      (.to (.iff a b) (.to (.iff b c) (.iff a c)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (5
    (.to (.to (.neg c) (.to (.iff a b) (.to (.iff b c) (.iff a c))))
     (.to (.iff a b) (.to (.iff b c) (.iff a c))))
@@ -2642,7 +2641,7 @@
    (.to (.to c (.to (.iff a b) (.to (.iff b c) (.iff a c))))
     (.to (.to (.neg c) (.to (.iff a b) (.to (.iff b c) (.iff a c))))
      (.to (.iff a b) (.to (.iff b c) (.iff a c)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (5
    (.to (.to (.neg c) (.to (.iff a b) (.to (.iff b c) (.iff a c))))
     (.to (.iff a b) (.to (.iff b c) (.iff a c))))
@@ -2658,7 +2657,7 @@
    (.to (.to c (.to (.iff a b) (.to (.iff b c) (.iff a c))))
     (.to (.to (.neg c) (.to (.iff a b) (.to (.iff b c) (.iff a c))))
      (.to (.iff a b) (.to (.iff b c) (.iff a c)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (5
    (.to (.to (.neg c) (.to (.iff a b) (.to (.iff b c) (.iff a c))))
     (.to (.iff a b) (.to (.iff b c) (.iff a c))))
@@ -2674,7 +2673,7 @@
    (.to (.to b (.to (.iff a b) (.to (.iff b c) (.iff a c))))
     (.to (.to (.neg b) (.to (.iff a b) (.to (.iff b c) (.iff a c))))
      (.to (.iff a b) (.to (.iff b c) (.iff a c)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.iff a b) (.to (.iff b c) (.iff a c))))
     (.to (.iff a b) (.to (.iff b c) (.iff a c))))
@@ -2690,7 +2689,7 @@
    (.to (.to b (.to (.iff a b) (.to (.iff b c) (.iff a c))))
     (.to (.to (.neg b) (.to (.iff a b) (.to (.iff b c) (.iff a c))))
      (.to (.iff a b) (.to (.iff b c) (.iff a c)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.iff a b) (.to (.iff b c) (.iff a c))))
     (.to (.iff a b) (.to (.iff b c) (.iff a c))))
@@ -2705,7 +2704,7 @@
    (.to (.to a (.to (.iff a b) (.to (.iff b c) (.iff a c))))
     (.to (.to (.neg a) (.to (.iff a b) (.to (.iff b c) (.iff a c))))
      (.to (.iff a b) (.to (.iff b c) (.iff a c)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.iff a b) (.to (.iff b c) (.iff a c))))
     (.to (.iff a b) (.to (.iff b c) (.iff a c))))
@@ -2751,7 +2750,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -2767,7 +2766,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -2782,7 +2781,7 @@
    (.to (.to a (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -3061,7 +3060,7 @@
    (.to (.to b (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))))
     (.to (.to (.neg b) (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))))
      (.iff (.neg (.and a b)) (.or (.neg a) (.neg b)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))))
     (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))))
@@ -3077,7 +3076,7 @@
    (.to (.to b (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))))
     (.to (.to (.neg b) (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))))
      (.iff (.neg (.and a b)) (.or (.neg a) (.neg b)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))))
     (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))))
@@ -3092,7 +3091,7 @@
    (.to (.to a (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))))
     (.to (.to (.neg a) (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))))
      (.iff (.neg (.and a b)) (.or (.neg a) (.neg b)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))))
     (.iff (.neg (.and a b)) (.or (.neg a) (.neg b))))
@@ -3138,7 +3137,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -3154,7 +3153,7 @@
    (.to (.to b (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -3169,7 +3168,7 @@
    (.to (.to a (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
      (.to (.to a b) (.to (.neg b) (.neg a)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.to (.to a b) (.to (.neg b) (.neg a))))
     (.to (.to a b) (.to (.neg b) (.neg a))))
@@ -3472,7 +3471,7 @@
    (.to (.to b (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))))
     (.to (.to (.neg b) (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))))
      (.iff (.neg (.or a b)) (.and (.neg a) (.neg b)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))))
     (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))))
@@ -3488,7 +3487,7 @@
    (.to (.to b (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))))
     (.to (.to (.neg b) (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))))
      (.iff (.neg (.or a b)) (.and (.neg a) (.neg b)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (4
    (.to (.to (.neg b) (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))))
     (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))))
@@ -3503,7 +3502,7 @@
    (.to (.to a (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))))
     (.to (.to (.neg a) (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))))
      (.iff (.neg (.or a b)) (.and (.neg a) (.neg b)))))
-   :axiom (ii.4))
+   :th-ded (th-case-split))
   (3
    (.to (.to (.neg a) (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))))
     (.iff (.neg (.or a b)) (.and (.neg a) (.neg b))))

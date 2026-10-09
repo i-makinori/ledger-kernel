@@ -1,7 +1,7 @@
 # backup/
 
 Code removed from `src/` to keep the kernel small. None of it is loaded by
-any ASDF system, and nothing in `hilbert-library/` or `zf-library/` used it.
+any ASDF system, and nothing in `hilbert-library/` or `zf-library/` needs it to load.
 Each file starts with what the code did and step-by-step notes for putting
 it back, followed by the original code (and its tests) verbatim.
 
@@ -12,6 +12,9 @@ it back, followed by the original code (and its tests) verbatim.
 | `_backup_deduction-transform.lisp` | `@DEDUCTION`: the Deduction Theorem as a proof transformation (no trust needed) |
 | `_backup_ith-def-abbrev.lisp` | the `ITH` and `DEF-ABBREV` entry kinds (both checked exactly like `TH`) |
 | `_backup_meta-unused.lisp` | the `@PROVEN?`, `@SUBSTN`, `@SUBSTN-OK?` meta operations |
+| `_backup_tautology.lisp` | `PROVE-TAUTOLOGY`: tautologies proved by Kalmár's completeness construction (removed with axiom II.4) |
+| `_backup_tautology-tests.lisp` | its tests |
+| `_backup_generate-connectives-ledger.lisp` | the script (formerly in `tools/`) that generated `06-connectives.ledger` with it |
 
 The hardcoded `BOOTSTRAP-KERNEL` (FOL, equality and Peano axioms written
 in Lisp) was removed as well but is not kept here: it was an exact copy of

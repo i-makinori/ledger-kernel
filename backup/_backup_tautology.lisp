@@ -1,3 +1,37 @@
+;;;; _backup_tautology.lisp -- BACKUP (not loaded by any ASDF system)
+;;;;
+;;;; Removed from the kernel on 2026-10-09. PROVE-TAUTOLOGY builds proofs by
+;;;; following Kalmar's proof of the completeness theorem, a meta-theorem;
+;;;; generating proofs by relying on it is beyond what the kernel should
+;;;; vouch for, so it is no longer part of the system. Axiom II.4 (the case
+;;;; split), which existed for this construction, was removed from
+;;;; 00-classical-fol-equality.system at the same time and is now the
+;;;; theorem TH-CASE-SPLIT of 05-classical-logic.ledger.
+;;;;
+;;;; WHAT IT WAS
+;;;;   PROVE-TAUTOLOGY: truth-table check of a propositional formula, then a
+;;;;   Hilbert proof of it by Kalmar's Lemma (signed atoms prove the signed
+;;;;   formula, by induction) and elimination of the atoms one at a time by
+;;;;   the case split. Every emitted line was still checked by the kernel.
+;;;;   hilbert-library/06-connectives.ledger was generated with it
+;;;;   (_backup_generate-connectives-ledger.lisp); that file is ordinary
+;;;;   checked proofs and no longer needs this code.
+;;;;
+;;;; HOW TO RESTORE
+;;;;   1. Move this file back to src/tautology.lisp and add (:file "tautology")
+;;;;      after "deduction" in ledger-kernel.asd; re-export PROVE-TAUTOLOGY.
+;;;;   2. It emits ':axiom (ii.4)' lines (KALMAR-COMBINE). Either restore the
+;;;;      II.4 axiom in the .system file, or emit ':th-ded (th-case-split)'
+;;;;      instead (the same formula, with A and C matched schematically).
+;;;;   3. Tests: _backup_tautology-tests.lisp (add (:file "tautology-tests")
+;;;;      and call RUN-TACTICS-SELF-TESTS from tests/run.lisp); it also holds
+;;;;      the PROVE-TAUTOLOGY tests that were in connectives-tests.lisp and
+;;;;      empty-set-tests.lisp.
+;;;;
+;;;; ---------------------------------------------------------------------
+;;;; Original code (src/tautology.lisp), verbatim:
+;;;; ---------------------------------------------------------------------
+
 ;;;; tautology.lisp -- PROVE-TAUTOLOGY (Kalmar's completeness proof as a tactic)
 ;;;; Part of the ledger-kernel system (see ledger-kernel.asd).
 

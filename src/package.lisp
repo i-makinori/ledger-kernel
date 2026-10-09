@@ -12,7 +12,7 @@
 ;;;; Layers:
 ;;;;   kernel -- pattern, treap, ledger, debruijn, side-conditions, meta, judgement,
 ;;;;             k-proof: the trusted checker.
-;;;;   tools  -- persistence, deduction, tautology, system-spec,
+;;;;   tools  -- persistence, deduction, system-spec,
 ;;;;             function-definition: build or load ledgers and proofs;
 ;;;;             every :DERIVED result still passes the kernel.
 
@@ -27,7 +27,6 @@
            #:write-ledger-to-file #:read-ledger-from-file
            #:write-commands-to-file
            #:check-and-extend-by-deduction-direct
-           #:prove-tautology
            #:enable-derived-entry-memoization
            #:disable-derived-entry-memoization
            #:reset-derived-entry-memoization

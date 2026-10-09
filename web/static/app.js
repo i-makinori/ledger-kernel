@@ -203,7 +203,9 @@ async function showEntry(k) {
     el("pre", { class: "sexp" }, e.conclusion.sexp),
   ];
   if (e.discharged) {
-    parts.push(el("p", { class: "muted" }, "演繹定理で仮定 ", el("span", { style: "font-family: var(--math)" }, formulaNode(e.discharged)), " を含意の前件に移した定理です。"));
+    parts.push(el("p", { class: "muted" }, "演繹定理で仮定 ", el("span", { style: "font-family: var(--math)" }, formulaNode(e.discharged)), " を含意の前件に移した定理です。",
+      e.expanded ? "移した後の証明も実際の推論図として組み立て、検証済みです。"
+                 : "体系が宣言した演繹定理の規則を信頼して登録しています。"));
   }
   parts.push(...dependencySections(e));
   if (e.conditions.length) {
@@ -266,7 +268,7 @@ function dependencySections(e) {
     }
     if (f.deductionMeta) {
       body.push(el("p", { class: "trust-note" },
-        "途中で、演繹定理をメタ定理として信頼して登録した定理（th-ded）を使っています。"));
+        "途中で、演繹定理の規則を（推論図に展開せずに）信頼して登録した定理（th-ded）を使っています。"));
     }
     out.push(el("details", { class: "deps", open: "" },
       el("summary", {}, "この" + (e.hasProof ? "定理" : "エントリ") + "が依存している基礎"),

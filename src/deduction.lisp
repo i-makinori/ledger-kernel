@@ -93,6 +93,178 @@ respect to each of its premises that comes from such a line."
                         (dischargeable-p instantiated (cdr (assoc n proven :test #'equal)) view)))
                   cited)))))
 
+;;; --- Expansion: the Deduction Theorem as a real proof ---------------------
+;;;
+;;; With a proof template for every case it needs (meta-theorem.lisp), a
+;;; proof of Gamma, H |- PHI is turned into an ordinary proof of
+;;; Gamma |- H -> PHI, line by line, the textbook way:
+;;;   - a line that does not depend on H is kept as it is (its references
+;;;     pointing to the kept lines), and, when a later step needs H -> A,
+;;;     the :INDEPENDENT template derives it;
+;;;   - H itself becomes the :ASSUMPTION template's H -> H;
+;;;   - a line made by an irule from lines that depend on H becomes that
+;;;     irule's template, from the H -> P of its premises;
+;;;   - a theorem cited from lines that depend on H is first unfolded --
+;;;     a theorem abbreviates a proof figure -- by splicing in its checked
+;;;     instance (a cited TH-DED expanded first, recursively), whose lines
+;;;     are then treated like the others.
+;;; The result is checked by %CHECK-K-PROOF like any proof.
+
+(defun expand-deduction (raw-proof hyp ledger)
+  "An ordinary kernel-form proof of Gamma |- H -> PHI from kernel-form
+RAW-PROOF of Gamma, HYP |- PHI (already accepted by CHECK-K-PROOF against
+LEDGER), or (VALUES NIL reason) when some step has no template or cannot
+be unfolded. Not checked here; see EXPANDED-DEDUCTION-CHECKS-P."
+  (let ((out nil) (counter 0)
+        (formula (make-hash-table :test #'equal))   ; label -> formula
+        (orig (make-hash-table :test #'equal))      ; label -> emitted label of the line itself
+        (trans (make-hash-table :test #'equal))     ; label -> emitted label of H -> formula
+        (dep (make-hash-table :test #'equal))       ; label -> T if it depends on HYP
+        (alias (make-hash-table :test #'equal))     ; label -> label it stands for
+        (open-hyps nil) (inline-id 0))
+    (labels ((fail (reason) (throw 'expand-deduction (values nil reason)))
+             (res (l) (let ((a (gethash l alias))) (if a (res a) l)))
+             (emit (f role by)
+               (let ((label (incf counter)))
+                 (push (list label f role by) out)
+                 label))
+             (template-lines (case-name premises premise-labels extras concl &optional line-label)
+               (multiple-value-bind (ok binds template)
+                   (deduction-case-holds-p case-name hyp premises extras concl ledger open-hyps)
+                 (unless ok (fail (list :no-case case-name)))
+                 (unless template (fail (list :no-template case-name)))
+                 (let ((local (make-hash-table :test #'equal)) (last-label nil))
+                   (dolist (tl template last-label)
+                     (destructuring-bind (tlabel tformula trole tby) tl
+                       (flet ((arg (a)
+                                (cond ((and (keywordp a) (string= (symbol-name a) "LINE")) line-label)
+                                      ((and (keywordp a)
+                                            (> (length (symbol-name a)) 8)
+                                            (string= (subseq (symbol-name a) 0 8) "PREMISE-"))
+                                       (nth (parse-integer (symbol-name a) :start 8) premise-labels))
+                                      ((nth-value 1 (gethash a local)) (gethash a local))
+                                      (t (instantiate-template-term a binds)))))
+                         (setf last-label
+                               (emit (instantiate-template-term tformula binds) trole
+                                     (if (consp tby) (cons (car tby) (mapcar #'arg (cdr tby))) tby)))
+                         (setf (gethash tlabel local) last-label)))))))
+             (ensure-trans (l)
+               (let ((l (res l)))
+                 (or (gethash l trans)
+                     (setf (gethash l trans)
+                           (template-lines :independent nil nil nil (gethash l formula) (gethash l orig))))))
+             (unfold (line)
+               ;; The lines of the checked instance behind derived citation LINE.
+               (multiple-value-bind (instantiated e cited inst-hyp)
+                   (derived-line-instance line (let ((alist nil))
+                                                 (maphash (lambda (k v) (push (cons k v) alist)) formula)
+                                                 alist)
+                                          ledger)
+                 (unless instantiated (fail (list :no-instance (k-line-numbering line))))
+                 (let* ((view (entries-upto (entry-k e) ledger))
+                        (proof (if (eq (entry-kind e) 'th-ded)
+                                   (multiple-value-bind (p why) (expand-deduction instantiated inst-hyp view)
+                                     (or p (fail (list :cited (first (entry-payload e)) why))))
+                                   instantiated))
+                        (hyp-lines (remove-if-not (lambda (l) (eq (third l) :hyp)) proof))
+                        (id (incf inline-id))
+                        (map (make-hash-table :test #'equal)))
+                   (unless (= (length hyp-lines) (length cited))
+                     (fail (list :premise-count (k-line-numbering line))))
+                   (loop for hl in hyp-lines for c in cited
+                         do (setf (gethash (first hl) map) c))
+                   (let ((last (car (last proof))))
+                     (loop for l in proof
+                           unless (eq (third l) :hyp)
+                             do (setf (gethash (first l) map)
+                                      (if (eq l last) (k-line-numbering line) (list :inline id (first l)))))
+                     (when (eq (third last) :hyp)
+                       ;; The theorem is one of its own premises.
+                       (setf (gethash (k-line-numbering line) alias) (gethash (first last) map))))
+                   (flet ((rl (x) (multiple-value-bind (v found) (gethash x map) (if found v x))))
+                     (loop for (num f role by) in proof
+                           unless (eq role :hyp)
+                             collect (list (rl num) f role
+                                           (if (and (consp by) (not (eq role :hyp)))
+                                               (cons (car by)
+                                                     (if (member role '(:ir :axiom))
+                                                         (mapcar #'rl (cdr by))
+                                                         (let ((after-inst nil))
+                                                           (mapcar (lambda (a)
+                                                                     (prog1 (if after-inst a (rl a))
+                                                                       (setf after-inst (eq a :inst))))
+                                                                   (cdr by)))))
+                                               by)))))))
+             (cited-of (role by)
+               (if (eq role :ir)
+                   (let ((count (or (irule-premise-count (car by) ledger) 0)))
+                     (values (subseq (cdr by) 0 (min count (length (cdr by)))) (nthcdr count (cdr by))))
+                   (values (split-citation-inst (cdr by)) nil))))
+      (catch 'expand-deduction
+        (let ((work (copy-list raw-proof)))
+          (loop while work
+                do (destructuring-bind (n f role by) (pop work)
+                     (setf (gethash n formula) f)
+                     (case role
+                       (:hyp
+                        (if (equal f hyp)
+                            (setf (gethash n dep) t
+                                  (gethash n trans) (template-lines :assumption nil nil nil f))
+                            (progn (setf (gethash n orig) (emit f :hyp nil))
+                                   (push f open-hyps))))
+                       (:axiom (setf (gethash n orig) (emit f :axiom by)))
+                       (t
+                        (multiple-value-bind (cited extras) (cited-of role by)
+                          (let ((cited (mapcar #'res cited)))
+                            (cond
+                              ((notany (lambda (c) (gethash c dep)) cited)
+                               (setf (gethash n orig)
+                                     (emit f role
+                                           (cons (car by)
+                                                 (if (eq role :ir)
+                                                     (append (mapcar (lambda (c) (gethash c orig)) cited) extras)
+                                                     (let ((after-inst nil))
+                                                       (mapcar (lambda (a)
+                                                                 (prog1 (if (and (not after-inst)
+                                                                                 (member (res a) cited :test #'equal))
+                                                                            (gethash (res a) orig)
+                                                                            a)
+                                                                   (setf after-inst (eq a :inst))))
+                                                               (cdr by))))))))
+                              ((eq role :ir)
+                               (setf (gethash n dep) t
+                                     (gethash n trans)
+                                     (template-lines (car by) (mapcar (lambda (c) (gethash c formula)) cited)
+                                                     (mapcar #'ensure-trans cited) extras f)))
+                              (t
+                               ;; Unfold the citation and process its lines in its place.
+                               (setf work (append (unfold (make-k-line :numbering n :formula f
+                                                                       :role role :by by))
+                                                  work))))))))))
+          ;; The last line's H -> PHI must be the last line of the result.
+          (let* ((last-n (res (first (car (last raw-proof)))))
+                 (t-label (ensure-trans last-n)))
+            (unless (eql t-label (first (first out)))
+              (fail :conclusion-not-last))
+            (nreverse out)))))))
+
+(defun expanded-deduction-checks-p (raw-proof hyp ledger)
+  "T iff RAW-PROOF (kernel form, Gamma, HYP |- PHI) expands
+(EXPAND-DEDUCTION) into a proof that CHECK-K-PROOF accepts against LEDGER,
+whose hypotheses are Gamma and whose conclusion is HYP -> PHI as the
+system writes it. Otherwise (VALUES NIL reason)."
+  (multiple-value-bind (expanded why) (expand-deduction raw-proof hyp ledger)
+    (cond
+      ((null expanded) (values nil why))
+      ((not (equal (proof-conclusion expanded)
+                   (discharge-formula hyp (proof-conclusion raw-proof) ledger)))
+       (values nil :wrong-conclusion))
+      ((not (equal (proof-hypotheses expanded)
+                   (remove hyp (proof-hypotheses raw-proof) :test #'equal)))
+       (values nil :wrong-hypotheses))
+      (t (multiple-value-bind (ok bad) (%check-k-proof expanded ledger)
+           (if ok t (values nil (list :rejected-line bad))))))))
+
 (defun check-and-extend-by-deduction-direct (ledger name hyp-formula raw-proof &optional (log (silent-log)))
   "Admit HYP-FORMULA -> PHI (as the system's :DISCHARGE declaration writes
 it), PHI being RAW-PROOF's conclusion, as TH-DED entry NAME. Requires the
@@ -124,7 +296,26 @@ new ledger."
         (unless ok
           (refuse "line ~S of ~S is not covered by any Deduction Theorem case of ~
                    this system, so ~S cannot be discharged." bad-line name hyp-formula)))
-      (log-admission-result log name t)
-      ;; Kernel form in the payload, the text as written in the ORIGIN.
-      (ledger-append ledger 'th-ded (list name db-hyp db-proof)
-                     (list :derived-by-deduction hyp-formula raw-proof)))))
+      ;; With proof templates for every case it uses, the discharge is
+      ;; also built as a real proof and checked; the ORIGIN records whether
+      ;; it was (:EXPANDED T), or why not, in which case the declared cases
+      ;; are trusted for this entry.
+      (multiple-value-bind (expanded why) (expanded-deduction-checks-p db-proof db-hyp ledger)
+        (log-admission-result log name t)
+        ;; Kernel form in the payload, the text as written in the ORIGIN.
+        (ledger-append ledger 'th-ded (list name db-hyp db-proof)
+                       (list :derived-by-deduction hyp-formula raw-proof
+                             :expanded (and expanded t)
+                             :not-expanded-because (and (not expanded) why)))))))
+
+(defun deduction-entry-expanded-p (e)
+  "T iff TH-DED entry E was admitted with its discharge built as a real,
+checked proof (EXPANDED-DEDUCTION-CHECKS-P)."
+  (getf (cdddr (entry-origin e)) :expanded))
+
+(defun expand-deduction-entry (e ledger)
+  "The real proof of Gamma |- H -> PHI behind TH-DED entry E of LEDGER, in
+kernel form, or (VALUES NIL reason)."
+  (destructuring-bind (name hyp proof) (entry-payload e)
+    (declare (ignore name))
+    (expand-deduction proof hyp (entries-upto (entry-k e) ledger))))

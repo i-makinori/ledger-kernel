@@ -97,6 +97,16 @@ alongside TH-EXISTS-V0-EQ-V1 as IOTA's two premises to conclude
                               (2 (.eq (.iota v0 (.eq v0 v1)) v1) :ir (IOTA 0 1)))
                             ledger)
             t)
+    (expect "a discharge through IOTA, whose case has no proof template, is admitted but not expanded"
+            (let ((l (check-and-extend-by-deduction-direct
+                      ledger 'th-iota-ded-flag '(.exists v0 (.eq v0 v1))
+                      '((0 (.exists v0 (.eq v0 v1)) :hyp nil)
+                        (1 (.forall v2 (.forall v3 (.to (.eq v2 v1) (.to (.eq v3 v1) (.eq v2 v3))))) :th (uniq-full))
+                        (2 (.eq (.iota v0 (.eq v0 v1)) v1) :ir (IOTA 0 1))))))
+              (let ((e (first (last (entries-of-kind 'th-ded l)))))
+                (and (not (deduction-entry-expanded-p e))
+                     (equal (getf (cdddr (entry-origin e)) :not-expanded-because) '(:no-template iota)))))
+            t)
     (expect "Deduction Theorem through IOTA: |- exists v0 (v0=v1) -> (iota v0 (v0=v1)) = v1"
             (handler-case
                 (check-k-proof

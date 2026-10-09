@@ -177,6 +177,29 @@ Lispソースレベルの拡張です）。それでも、命題論理の別の�
 `:case` のない推論規則は、普通の証明では使えますが、その規則で ?H から作った行は
 離脱できません。
 
+**型紙で実際の推論図に戻す**: 各 `:case` には、その帰納法の1ステップを体系の中の証明として
+書いた型紙を添えられます。`:premise-0`, `:premise-1`, ... は前提を H → … にした行、`:line` は
+元の行（`:independent` 用）を指します。
+
+```lisp
+(:case MP ((wff? ?H) (wff? ?A) (wff? ?B))
+       (((@vdash ?H (.to ?A ?B)) (@vdash ?H ?A)) nil :=> (@vdash ?H ?B))
+       (:proof ((1 (.to (.to ?H (.to ?A ?B)) (.to (.to ?H ?A) (.to ?H ?B))) :axiom (II.2))
+                (2 (.to (.to ?H ?A) (.to ?H ?B)) :ir (MP 1 :premise-0))
+                (3 (.to ?H ?B) :ir (MP 2 :premise-1)))))
+```
+
+使った規則すべてに型紙があれば、カーネルは `th-ded` を登録するときに、証明を1行ずつ型紙で
+置き換えて Γ ⊢ H → Φ の普通の証明を組み立て、`%check-k-proof` で検証します。H に依存する
+定理の引用は、その定理の検証済みの実例（`th-ded` ならそれ自身も展開したもの）を差し込んで
+から展開します。こうして演繹定理は信頼されず、`(expand-deduction-entry 項目 台帳)` で
+いつでも実際の推論図を取り出せます。
+
+標準の宣言では `:assumption`・`:independent`・MP・Gen に型紙があり、II.1・II.2・III.2
+だけで書かれています。IOTA には型紙がありません（IOTA を述べる公理がないため）。IOTA を
+通る離脱は、宣言を信頼して登録され、項目の ORIGIN に `:not-expanded-because` が残ります。
+現在のライブラリの `th-ded` は、すべて展開して検証済みです。
+
 標準の宣言は `hilbert-library/00-classical-fol-equality.system` にあり、MP・Gen・IOTA・
 EXISTS-ELIM の4規則を覆っています。各 `:case` は「教科書の帰納法のその1ステップが
 この体系で成り立つ」という主張で、公理と同じく信頼されます。

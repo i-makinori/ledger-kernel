@@ -107,6 +107,8 @@ each symbol/operator linked to the entry that introduced it -- when
               (gethash "discharged" h) (if (eq (entry-kind e) 'th-ded)
                                            (formula-json (entry-discharged e ledger) ledger)
                                            nil)
+              (gethash "expanded" h) (json-bool (and (eq (entry-kind e) 'th-ded)
+                                                     (deduction-entry-expanded-p e)))
               (gethash "proof" h) (if proof (proof-lines-json w proof ledger) nil)
               (gethash "usedBy" h) (json-arr (mapcar (lambda (c) (entry-ref-json w c))
                                                      (entry-used-by (world-deps w) k)))

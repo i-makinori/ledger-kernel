@@ -441,7 +441,8 @@ A, (.to A B) |- B into the non-tautology (.to (.to A B) B).)"
                                   ;; deduction meta-theorem (meta-theorem.lisp).
                                   (values (verify-derived-instantiation e (cons renaming b2) instantiated
                                                                         ledger log)
-                                          instantiated))))))))))))
+                                          instantiated
+                                          inst-hyp))))))))))))
 
 (defun check-k-derived-line (line proven-alist ledger &optional (log (silent-log)))
   "Check a derived citation: BY = (name cited-line... [:inst binds]).
@@ -459,27 +460,29 @@ instead of a scan of the whole ledger."
 
 (defun derived-citation-instance (candidates cited line proven-alist ledger log inst)
   "The first of CANDIDATES (TH / TH-DED entries) that justifies LINE, as
-(VALUES T INSTANTIATED-PROOF ENTRY), or NIL."
+(VALUES T INSTANTIATED-PROOF ENTRY HYP), HYP being a TH-DED's discharged
+hypothesis as instantiated, or NIL."
   (dolist (e candidates nil)
-    (multiple-value-bind (ok instantiated)
+    (multiple-value-bind (ok instantiated inst-hyp)
         (if (eq (entry-kind e) 'th-ded)
             (try-deduction-entry e cited line proven-alist ledger log inst)
             (try-derived-entry e cited line proven-alist ledger log inst))
-      (when ok (return (values t instantiated e))))))
+      (when ok (return (values t instantiated e inst-hyp))))))
 
 (defun derived-line-instance (line proven-alist ledger)
   "For a derived citation LINE already accepted by CHECK-K-PROOF:
-(VALUES INSTANTIATED-PROOF ENTRY CITED-LINE-NUMBERS), the checked
-instance of the cited entry that justifies it."
+(VALUES INSTANTIATED-PROOF ENTRY CITED-LINE-NUMBERS HYP), the checked
+instance of the cited entry that justifies it (HYP: a TH-DED's discharged
+hypothesis, instantiated)."
   (destructuring-bind (rule-name . args) (k-line-by line)
     (multiple-value-bind (cited inst ok) (split-citation-inst args)
       (when ok
-        (multiple-value-bind (found instantiated e)
+        (multiple-value-bind (found instantiated e inst-hyp)
             (derived-citation-instance
              (treap-values-below (alist-get (ledger-by-derived-name ledger) rule-name)
                                  (ledger-bound ledger))
              cited line proven-alist ledger (silent-log) inst)
-          (and found (values instantiated e cited)))))))
+          (and found (values instantiated e cited inst-hyp)))))))
 
 (defun derived-rule-name-taken-p (name ledger)
   "T iff NAME already labels a TH or TH-DED entry. Both kinds are cited

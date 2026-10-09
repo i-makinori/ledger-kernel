@@ -55,7 +55,10 @@
 ;;; that is being discharged, becomes Gamma |- ?H -> ?A. One case per way
 ;;; a line can arise; a TH-DED entry is admitted only if every line of its
 ;;; proof is covered (meta-theorem.lisp, deduction.lisp). Each case is the
-;;; textbook induction step for that rule, trusted like an axiom:
+;;; textbook induction step for that rule; its (:proof ...) template is
+;;; that step written out as a proof, so a TH-DED is also built as a real
+;;; proof of Gamma |- H -> PHI and checked. Only IOTA has no template (no
+;;; axiom states it), so a discharge through IOTA trusts its case:
 ;;;   :assumption  H -> H                           from II.1, II.2
 ;;;   :independent A |- H -> A                      from II.1
 ;;;   MP           H -> (A -> B), H -> A |- H -> B  from II.2
@@ -66,12 +69,26 @@
 
 (:meta-theorem deduction
   (:discharge (@vdash ?H ?A) (.to ?H ?A))
-  (:case :assumption ((wff? ?H)) (nil nil :=> (@vdash ?H ?H)))
-  (:case :independent ((wff? ?H) (wff? ?A)) (nil nil :=> (@vdash ?H ?A)))
+  (:case :assumption ((wff? ?H)) (nil nil :=> (@vdash ?H ?H))
+         (:proof ((1 (.to ?H (.to (.to ?H ?H) ?H)) :axiom (II.1))
+                  (2 (.to (.to ?H (.to (.to ?H ?H) ?H)) (.to (.to ?H (.to ?H ?H)) (.to ?H ?H)))
+                     :axiom (II.2))
+                  (3 (.to (.to ?H (.to ?H ?H)) (.to ?H ?H)) :ir (MP 2 1))
+                  (4 (.to ?H (.to ?H ?H)) :axiom (II.1))
+                  (5 (.to ?H ?H) :ir (MP 3 4)))))
+  (:case :independent ((wff? ?H) (wff? ?A)) (nil nil :=> (@vdash ?H ?A))
+         (:proof ((1 (.to ?A (.to ?H ?A)) :axiom (II.1))
+                  (2 (.to ?H ?A) :ir (MP 1 :line)))))
   (:case MP ((wff? ?H) (wff? ?A) (wff? ?B))
-         (((@vdash ?H (.to ?A ?B)) (@vdash ?H ?A)) nil :=> (@vdash ?H ?B)))
+         (((@vdash ?H (.to ?A ?B)) (@vdash ?H ?A)) nil :=> (@vdash ?H ?B))
+         (:proof ((1 (.to (.to ?H (.to ?A ?B)) (.to (.to ?H ?A) (.to ?H ?B))) :axiom (II.2))
+                  (2 (.to (.to ?H ?A) (.to ?H ?B)) :ir (MP 1 :premise-0))
+                  (3 (.to ?H ?B) :ir (MP 2 :premise-1)))))
   (:case Gen ((wff? ?H) (var? ?x) (wff? ?A) (@not-free-in? ?x ?H))
-         (((@vdash ?H ?A)) (?x) :=> (@vdash ?H (.forall ?x ?A))))
+         (((@vdash ?H ?A)) (?x) :=> (@vdash ?H (.forall ?x ?A)))
+         (:proof ((1 (.forall ?x (.to ?H ?A)) :ir (Gen :premise-0 ?x))
+                  (2 (.to (.forall ?x (.to ?H ?A)) (.to ?H (.forall ?x ?A))) :axiom (III.2))
+                  (3 (.to ?H (.forall ?x ?A)) :ir (MP 2 1)))))
   (:case IOTA ((wff? ?H) (var? ?x) (wff? ?A))
          (((@vdash ?H (.exists ?x ?A))
            (@vdash ?H (.forall ?y (.forall ?z (.to (@subst ?x ?y ?A)

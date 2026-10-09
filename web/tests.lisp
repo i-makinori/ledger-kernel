@@ -120,8 +120,8 @@
                 t)
         (expect "deps: MP is among the inference rules used"
                 (and (member "mp" (names (gethash "rules" exists)) :test #'string=) t) t)
-        (expect "deps: a TH-DED step on the way is reported"
-                (eq (gethash "deductionMeta" exists) 'yason:true) t))
+        (expect "deps: no step on the way trusts the Deduction Theorem (every TH-DED was expanded)"
+                (eq (gethash "deductionMeta" exists) 'yason:false) t))
       (let ((used (names (gethash "usedBy" (api-entry "zf" (k-of "th-and-elim-r"))))))
         (expect "deps: th-and-elim-r is used by th-zf-empty-exists (through its step -s1)"
                 (and (member "th-zf-empty-exists" used :test #'string=) t) t)

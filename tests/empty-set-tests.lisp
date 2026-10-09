@@ -90,6 +90,9 @@ command is refused on load."
   "zf-library/01-empty-set.ledger and persistence of function definitions."
   (let* ((ledger (zf-logic-ledger))
          (ledger (test-empty-set-library ledger))
+         (ledger (progn (expect "every TH-DED of the ZF libraries is expanded into a real, checked proof"
+                                (every #'deduction-entry-expanded-p (entries-of-kind 'th-ded ledger)) t)
+                        ledger))
          (ledger (test-definition-persistence ledger)))
     (declare (ignorable ledger))
     (format t "~%Empty-set self-tests complete.~%")))

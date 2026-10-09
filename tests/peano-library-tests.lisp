@@ -92,5 +92,8 @@
 (defun run-peano-library-self-tests ()
   "The generated arithmetic and order libraries load (every proof
 re-verified) and their laws can be cited."
-  (test-peano-laws (peano-library-ledger))
+  (let ((ledger (peano-library-ledger)))
+    (test-peano-laws ledger)
+    (expect "every TH-DED of the arithmetic libraries is expanded into a real, checked proof"
+            (every #'deduction-entry-expanded-p (entries-of-kind 'th-ded ledger)) t))
   (format t "~%Peano library self-tests complete.~%"))

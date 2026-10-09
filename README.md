@@ -27,8 +27,9 @@ The design rests on these core ideas:
   The kinds of symbol (variables, terms, formulas, predicate schemas) are fixed in the
   kernel and not extended by `.system` files. A new symbol (∧, ≤, a defined function) is
   an abbreviation that expands into primitive ones, and a theorem is an abbreviation of
-  a proof figure; expanded, both give back a primitive proof. (The exception is `th-ded`
-  by the deduction theorem, which for now trusts the declared rules.)
+  a proof figure; expanded, both give back a primitive proof. A `th-ded` by the deduction theorem
+  is likewise expanded into a real proof figure through its rules' templates and checked
+  (only a discharge through IOTA, which has no template, trusts the declared rules).
 
 - **Bound variables have no names** (machine B): inside the kernel, bound variables
   are represented by de Bruijn indices. `∀v0 ∀v1 (v0 = v1)` becomes
@@ -91,7 +92,7 @@ ledger. The tools themselves need not be trusted.
   and proof trees, links to symbols and cited entries, display of the axioms an entry
   depends on and of "the theorems that use this theorem", and in-browser proof checking
 
-Tests: all 338 kernel tests and 50 Web tests pass, with zero compiler warnings.
+Tests: all 346 kernel tests and 50 Web tests pass, with zero compiler warnings.
 
 The kernel (`src/`) is about 2000 lines including comments. The logic itself is not
 written in the code; it all lives in `.system` files. Unused features have been moved to
@@ -110,7 +111,7 @@ ASDF. Start SBCL at the root of the repository:
 (require :asdf)
 (asdf:load-asd (merge-pathnames "ledger-kernel.asd"))
 (asdf:load-system :ledger-kernel)
-(asdf:test-system :ledger-kernel)      ; ends with "338/338 self-tests passed."
+(asdf:test-system :ledger-kernel)      ; ends with "346/346 self-tests passed."
 (in-package :ledger-kernel)
 ```
 
@@ -346,9 +347,14 @@ what is trusted unconditionally".
   and side conditions, over `(@vdash ?H ?A)` ("line ?A, depending on ?H, becomes
   Γ ⊢ ?H → ?A"). Gen's, for example, requires ?x not free in ?H. The kernel checks that
   every line of a `th-ded` proof that depends on ?H is covered by one of them, recursing
-  into cited theorems. What is trusted is each declared rule (one textbook induction step)
-  and the final step from a fully covered proof to Γ ⊢ H → Φ. The Web UI's "foundations
-  depended on" shows whether this trust was used.
+  into cited theorems. Each rule may also carry a template (`(:proof ...)`): its induction
+  step written out as a proof in the system. With templates for every rule used, the kernel
+  rewrites the `th-ded` proof through them into a **real proof figure** of Γ ⊢ H → Φ and checks
+  it as an ordinary proof; the deduction theorem is then not trusted at all. Only through a
+  rule without a template (now only IOTA) are the declared rules trusted, and the entry
+  records it. Every `th-ded` in the current libraries (253 in ZF, 322 in arithmetic) is
+  expanded and checked. The Web UI's "foundations depended on" mentions the trust only
+  where it was used.
 - **Definitions**: not trusted. `DEFINE-FUNCTION-BY-DESCRIPTION` adds only an
   abbreviation (the function symbol stands for a ι term); its defining formula `NAME-DEF`
   is an ordinary theorem proved by the IOTA rule.
@@ -412,7 +418,7 @@ deploy/                  Example systemd / nginx configurations for publishing t
 sbcl --non-interactive \
      --eval '(require :asdf)' \
      --eval '(asdf:load-asd (merge-pathnames "ledger-kernel.asd"))' \
-     --eval '(asdf:test-system :ledger-kernel)'        # kernel (338 tests)
+     --eval '(asdf:test-system :ledger-kernel)'        # kernel (346 tests)
 ```
 
 The Web UI tests are run with `(asdf:test-system :ledger-kernel/web)` (50 tests; no HTTP

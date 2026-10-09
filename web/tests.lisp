@@ -75,7 +75,7 @@
               (eq (entry-kind (target "v₀")) 'variable-symbol) t)
       (expect "links: ∉ goes to the formation rule of ∈"
               (eq (entry-kind (target "∉")) 'wff?) t)
-      (expect "links: ∅ goes to its abbreviation, the iota term it stands for"
+      (expect "links: ∅ goes to its abbreviation, the description it stands for"
               (let ((e (target "∅")))
                 (and (eq (entry-kind e) 'abbreviation) (eq (entry-name e) 'empty)))
               t))

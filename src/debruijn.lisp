@@ -135,7 +135,7 @@ entry is shown as written."
                (t x))))
     ;; Abbreviations are expanded first, so the kernel only ever sees a
     ;; system's primitive symbols (abbreviation.lisp).
-    (conv (if expand (expand-abbreviations x ledger) x) nil)))
+    (conv (if expand (expand-descriptions (expand-abbreviations x ledger) ledger) x) nil)))
 
 (defun contains-raw-index-p (x)
   "T iff X contains a (:BV ...) form. Written input must name its bound

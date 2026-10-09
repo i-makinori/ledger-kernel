@@ -1,13 +1,15 @@
 ;;; 00-classical-fol-equality.system
 ;;;
 ;;; Classical first-order logic with equality, as data: term?/wff?
-;;; formation rules, the inference rules MP, Gen and IOTA, and axioms
+;;; formation rules, the inference rules MP and Gen, and axioms
 ;;; II.1-3 (propositional), III.1-2 (quantifiers), IV.1-4 (equality).
 ;;; The existential quantifier is an abbreviation, as in Mendelson:
 ;;; exists x A := not forall x not A. Existential generalization and
 ;;; existential elimination (Rule C) are therefore not primitive: they are
 ;;; the theorems TH-EXISTS-INTRO and TH-EXISTS-ELIM of
-;;; 05-classical-logic.ledger.
+;;; 05-classical-logic.ledger. Descriptions (.iota x A) are not here:
+;;; they are contextual abbreviations (Principia *14), declared in
+;;; 00-connectives.system once conjunction and the biconditional exist.
 ;;; This file is the only place this logic is defined; load it with
 ;;; BOOTSTRAP-KERNEL-FROM-SPEC-FILE. Every entry here is :PRIMITIVE --
 ;;; trusted, never checked -- so loading it is an act of trust in its text.
@@ -23,9 +25,6 @@
 ;;; --- term?/wff? formation ------------------------------------------
 
 (:term-formation var-term ((var? ?x)) (term? ?x))
-;; (.iota x A): "the x such that A" -- a TERM-producing binder. Inert on
-;; its own; all of its meaning comes from the IOTA irule below.
-(:term-formation iota-term ((var? ?x) (wff? ?A)) (term? (.iota ?x ?A)))
 
 (:wff-formation wff_to? ((wff? ?A) (wff? ?B)) (wff? (.to ?A ?B)))
 (:wff-formation wff_neg? ((wff? ?A)) (wff? (.neg ?A)))
@@ -37,18 +36,7 @@
 (:irule MP ((wff? ?A) (wff? ?B)) (((.to ?A ?B) ?A) nil :=> ?B))
 (:irule Gen ((var? ?x) (wff? ?A) (@not-free-in-dependencies? ?x))
         ((?A) (?x) :=> (.forall ?x ?A)))
-;; IOTA: from EXISTENCE (.exists ?x ?A) and UNIQUENESS "any two things
-;; satisfying A are equal", concludes A[(.iota ?x ?A)/?x]. An irule, not
-;; an axiom: existence and uniqueness are facts about a particular A and
-;; must be proved lines of the current proof. Premises are matched left
-;; to right, so ?x/?A are bound by the first before the second's @subst
-;; forms are evaluated.
-(:irule IOTA ((var? ?x) (wff? ?A) (@subst-ok? ?x (.iota ?x ?A) ?A))
-        (((.exists ?x ?A)
-          (.forall ?y (.forall ?z (.to (@subst ?x ?y ?A)
-                                       (.to (@subst ?x ?z ?A) (.eq ?y ?z))))))
-         nil :=>
-         (@subst ?x (.iota ?x ?A) ?A)))
+
 ;;; --- the Deduction Theorem, as a meta-theorem of this system -------------
 ;;;
 ;;; (@vdash ?H ?A): line ?A of a proof, depending on the hypothesis ?H
@@ -57,13 +45,12 @@
 ;;; proof is covered (meta-theorem.lisp, deduction.lisp). Each case is the
 ;;; textbook induction step for that rule; its (:proof ...) template is
 ;;; that step written out as a proof, so a TH-DED is also built as a real
-;;; proof of Gamma |- H -> PHI and checked. Only IOTA has no template (no
-;;; axiom states it), so a discharge through IOTA trusts its case:
+;;; proof of Gamma |- H -> PHI and checked. With MP and Gen the only
+;;; rules, every discharge is expanded this way:
 ;;;   :assumption  H -> H                           from II.1, II.2
 ;;;   :independent A |- H -> A                      from II.1
 ;;;   MP           H -> (A -> B), H -> A |- H -> B  from II.2
 ;;;   Gen          H -> A |- H -> forall x A, x not free in H   from III.2
-;;;   IOTA         H -> each premise |- H -> conclusion
 ;;; Gen needs its variable not free in H; without that condition
 ;;; P(x) |- forall x P(x) would give |- P(x) -> forall x P(x).
 
@@ -88,13 +75,7 @@
          (((@vdash ?H ?A)) (?x) :=> (@vdash ?H (.forall ?x ?A)))
          (:proof ((1 (.forall ?x (.to ?H ?A)) :ir (Gen :premise-0 ?x))
                   (2 (.to (.forall ?x (.to ?H ?A)) (.to ?H (.forall ?x ?A))) :axiom (III.2))
-                  (3 (.to ?H (.forall ?x ?A)) :ir (MP 2 1)))))
-  (:case IOTA ((wff? ?H) (var? ?x) (wff? ?A))
-         (((@vdash ?H (.exists ?x ?A))
-           (@vdash ?H (.forall ?y (.forall ?z (.to (@subst ?x ?y ?A)
-                                                   (.to (@subst ?x ?z ?A) (.eq ?y ?z)))))))
-          nil :=>
-          (@vdash ?H (@subst ?x (.iota ?x ?A) ?A)))))
+                  (3 (.to ?H (.forall ?x ?A)) :ir (MP 2 1))))))
 
 ;;; --- II.1-3: classical propositional logic -----------------------------
 ;;;   II.1  A -> (B -> A)                                     [K]

@@ -62,8 +62,9 @@ admission order (read from LEDGER's own ALL index, up to its BOUND)."
                            (destructuring-bind (name raw-proof) (entry-source-payload e)
                              (list :th name raw-proof))))
                         (th-ded
-                         (destructuring-bind (name hyp-formula raw-proof) (entry-source-payload e)
-                           (list :th-ded name hyp-formula raw-proof)))
+                         (unless (getf (cdddr origin) :by-description)
+                          (destructuring-bind (name hyp-formula raw-proof) (entry-source-payload e)
+                           (list :th-ded name hyp-formula raw-proof))))
                         (t nil)))
         when cmd collect cmd))
 

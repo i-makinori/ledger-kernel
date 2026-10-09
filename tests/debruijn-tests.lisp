@@ -185,11 +185,15 @@ order of first appearance; other pattern variables keep their names."
             (equal (third (entry-payload (rule 'irule 'gen))) '((?a) (?x) :=> (.forall ?x ?a)))
             t)
     (expect "a pattern written with .exists is stored as not forall not, its ?x bound"
-            (equal (third (entry-payload (rule 'irule 'iota)))
-                   '(((.neg (.forall ?bv1 (.neg ?a)))
-                      (.forall ?bv2 (.forall ?bv3 (.to (@subst ?bv1 ?bv2 ?a)
-                                                      (.to (@subst ?bv1 ?bv3 ?a) (.eq ?bv2 ?bv3))))))
-                     nil :=> (@subst ?bv1 (.iota ?bv1 ?a) ?a)))
+            (equal
+             (let ((l (bootstrap-kernel-from-spec
+                      '((:irule EX-TEST ((wff? ?A) (var? ?x) (var? ?y))
+                         (((.exists ?x ?A) (.forall ?y (.eq ?y ?y))) nil :=> (.exists ?x ?A))))
+                      :ledger ledger)))
+              (third (entry-payload (find 'ex-test (entries-of-kind 'irule l)
+                                          :key (lambda (e) (first (entry-payload e)))))))
+             '(((.neg (.forall ?bv1 (.neg ?a))) (.forall ?bv2 (.eq ?bv2 ?bv2)))
+               nil :=> (.neg (.forall ?bv1 (.neg ?a)))))
             t)
     (expect "no rule has a ?BVn outside the scope of its binder"
             (every (lambda (e)

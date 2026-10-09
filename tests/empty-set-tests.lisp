@@ -29,13 +29,19 @@ of (empty). Returns the extended ledger."
                                                                    (.eq v1 v3)))))
                                 :th (th-zf-empty-unique)))
                            ledger) t)
-    (expect "(empty) is a term" (judgement? 'term? '(empty) ledger) t)
+    (expect "(empty) is not a term: it abbreviates a description" (judgement? 'term? '(empty) ledger) nil)
     (expect "(.in v0 (empty)) is a wff" (judgement? 'wff? '(.in v0 (empty)) ledger) t)
-    (expect "EMPTY-DEF, proved by IOTA: forall z not(z in (empty))"
+    (expect "EMPTY-DEF, proved from existence and uniqueness: forall z not(z in (empty))"
             (check-k-proof '((0 (.forall v2 (.neg (.in v2 (empty)))) :th (empty-def))) ledger) t)
-    (expect "(empty) is the description term: the iota x such that nothing is in x"
-            (equal (named->db '(empty) ledger)
-                   (named->db '(.iota v1 (.forall v2 (.neg (.in v2 v1)))) ledger))
+    (expect "(empty) is the description: the x such that nothing is in x"
+            (equal (named->db '(.in v0 (empty)) ledger)
+                   (named->db '(.in v0 (.iota v1 (.forall v2 (.neg (.in v2 v1))))) ledger))
+            t)
+    (expect "... which (.in v0 (empty)) abbreviates in context, as in Principia *14.01"
+            (equal (named->db '(.in v0 (empty)) ledger)
+                   (named->db '(.exists v4 (.and (.forall v1 (.iff (.forall v2 (.neg (.in v2 v1))) (.eq v1 v4)))
+                                                 (.in v0 v4)))
+                              ledger))
             t)
     (expect "th-zf-not-in-empty: not(v0 in (empty))"
             (check-k-proof '((0 (.neg (.in v0 (empty))) :th (th-zf-not-in-empty))) ledger) t)
@@ -88,7 +94,8 @@ command is refused on load."
 
 (defun run-empty-set-self-tests ()
   "zf-library/01-empty-set.ledger and persistence of function definitions."
-  (let* ((ledger (zf-logic-ledger))
+  (let* ((ledger (read-ledger-from-file (library-path "07-quantifier-schemas.ledger")
+                                        :ledger (zf-logic-ledger)))
          (ledger (test-empty-set-library ledger))
          (ledger (progn (expect "every TH-DED of the ZF libraries is expanded into a real, checked proof"
                                 (every #'deduction-entry-expanded-p (entries-of-kind 'th-ded ledger)) t)

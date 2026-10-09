@@ -101,8 +101,10 @@
 ;;; --- Definition ------------------------------------------------------------
 ;;; DEFINE-FUNCTION-BY-DESCRIPTION re-checks that th-zf-empty-exists and
 ;;; th-zf-empty-unique state exactly existence and uniqueness of a y with
-;;; ∀z ¬(z ∈ y), then adds the 0-ary term (empty) and its defining axiom
-;;; EMPTY-DEF: ∀z ¬(z ∈ (empty)).
+;;; ∀z ¬(z ∈ y), then adds the 0-ary term (empty) -- an abbreviation of
+;;; the description ιy ∀z ¬(z ∈ y), eliminated in context as in Principia
+;;; *14 -- and proves from them the theorem EMPTY-DEF: ∀z ¬(z ∈ (empty)).
+;;; No axiom is added.
 
 (:define-function-by-description empty () v1 v3 (.forall v2 (.neg (.in v2 v1)))
  th-zf-empty-exists th-zf-empty-unique)

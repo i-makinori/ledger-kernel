@@ -32,8 +32,10 @@
       "hilbert-library/05-classical-logic.ledger"
       "hilbert-library/06-connectives.ledger"
       "hilbert-library/08-arithmetic.ledger"
-      "hilbert-library/09-order.ledger"
-      "hilbert-library/10-division.ledger")))
+      "hilbert-library/09-order.ledger")))
+  ;; 10-division.ledger is left out until tools/generate-arithmetic-ledger.lisp
+  ;; is regenerated for descriptions as contextual abbreviations: it uses
+  ;; div-s, mod-s and beta as terms, which they no longer are.
   "(ID TITLE FILES) for every world, FILES relative to the repository.")
 
 (defstruct world id title ledger modules symbols deps)

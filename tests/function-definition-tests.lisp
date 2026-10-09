@@ -3,6 +3,16 @@
 
 (in-package :ledger-kernel)
 
+(defun definition-ledger ()
+  "Arithmetic + 00-connectives.system + 01/02/03/05/06/07: what a
+definition by description needs."
+  (reduce (lambda (l f) (read-ledger-from-file (library-path f) :ledger l))
+          '("01-propositional-core.ledger" "02-predicate-core.ledger"
+            "03-equality-core.ledger" "05-classical-logic.ledger"
+            "06-connectives.ledger" "07-quantifier-schemas.ledger")
+          :initial-value (bootstrap-kernel-from-spec-file (library-path "00-connectives.system")
+                                                          :ledger (fol-kernel :arithmetic t))))
+
 (defun test-define-function-by-description (ledger)
   "Worked example: DOUBLE(x) := the y such that y = x+x. Proves EXISTENCE
 (trivially, y:=x+x itself witnesses it, via III.3) and UNIQUENESS
@@ -12,7 +22,8 @@ theorems first -- DEFINE-FUNCTION-BY-DESCRIPTION never sees a single
 IOTA/EXISTS-ELIM step, only their FINAL closed conclusions -- then defines
 DOUBLE and confirms the defining axiom makes it behave exactly as
 specified, plus attack tests for both prerequisite-mismatch failure
-modes."
+modes. DOUBLE-DEF itself is proved from the two theorems through the
+description lemmas of 07-quantifier-schemas.ledger."
   (let* ((exists-proof '((0 (.eq (+ v0 v0) (+ v0 v0)) :axiom (IV.1))
                           (1 (.to (.eq (+ v0 v0) (+ v0 v0)) (.exists v1 (.eq v1 (+ v0 v0)))) :th (th-exists-intro :inst ((p (v1) (.eq v1 (+ v0 v0))) (v1 (+ v0 v0)))))
                           (2 (.exists v1 (.eq v1 (+ v0 v0))) :ir (MP 1 0))
@@ -49,9 +60,11 @@ modes."
       (let ((defined-ledger (define-function-by-description
                               ledger 'double '(v0) 'v1 'v2 '(.eq v1 (+ v0 v0))
                               'th-double-exists 'th-double-uniqueness)))
-        (expect "(double v0) is a term after DEFINE-FUNCTION-BY-DESCRIPTION"
-                (judgement? 'term? '(double v0) defined-ledger) t)
-        (expect "DOUBLE-DEF, proved by IOTA, gives DOUBLE(v0) = v0+v0"
+        (expect "(double v0) is not a term: a description is not one"
+                (judgement? 'term? '(double v0) defined-ledger) nil)
+        (expect "... but (.eq (double v0) (+ v0 v0)) is a wff, written with it"
+                (judgement? 'wff? '(.eq (double v0) (+ v0 v0)) defined-ledger) t)
+        (expect "DOUBLE-DEF, proved from existence and uniqueness, gives DOUBLE(v0) = v0+v0"
                 (check-k-proof '((0 (.eq (double v0) (+ v0 v0)) :th (double-def))) defined-ledger)
                 t)
         (expect "... and at other arguments through :inst"
@@ -59,12 +72,31 @@ modes."
                                     :th (double-def :inst ((v0 (s v3))))))
                                defined-ledger)
                 t)
-        (expect "a definition adds no axiom: (double v0) is the iota term"
+        (expect "a definition adds no axiom and no rule: (double v0) abbreviates the description"
                 (and (= (length (entries-of-kind 'axiom defined-ledger))
                         (length (entries-of-kind 'axiom ledger)))
-                     (equal (named->db '(double v0) defined-ledger)
-                            (named->db '(.iota v1 (.eq v1 (+ v0 v0))) defined-ledger)))
+                     (= (length (entries-of-kind 'irule defined-ledger))
+                        (length (entries-of-kind 'irule ledger)))
+                     (equal (named->db '(.eq (double v0) v3) defined-ledger)
+                            (named->db '(.eq (.iota v1 (.eq v1 (+ v0 v0))) v3) defined-ledger)))
                 t)
+        (expect "its auxiliary DOUBLE-DEF.S1 is a TH-DED expanded into a real proof"
+                (let ((e (find 'double-def.s1 (entries-of-kind 'th-ded defined-ledger)
+                               :key (lambda (e) (first (entry-payload e))))))
+                  (and e (deduction-entry-expanded-p e) t))
+                t)
+        (expect "neither DOUBLE-DEF nor DOUBLE-DEF.S1 is saved on its own: the definition command regenerates them"
+                (let ((cmds (ledger-commands defined-ledger)))
+                  (and (notany (lambda (c) (member (second c) '(double-def double-def.s1))) cmds)
+                       (= 1 (count :define-function-by-description cmds :key #'car))))
+                t)
+        (expect "Attack: a defining formula with y twice in one atomic formula -- must error (first version)"
+                (handler-case (progn (define-function-by-description
+                                       ledger 'double4 '(v0) 'v1 'v2 '(.eq v1 v1)
+                                       'th-double-exists 'th-double-uniqueness)
+                                      :no-error)
+                              (error () :caught-error))
+                :caught-error)
         (expect "Attack: EXISTENCE-NAME argument swapped for UNIQUENESS-NAME -- must error, not silently define"
                 (handler-case (progn (define-function-by-description
                                        ledger 'double2 '(v0) 'v1 'v2 '(.eq v1 (+ v0 v0))
@@ -159,8 +191,8 @@ identity; with v1 a free parameter, or with the name S, it would give
   "Section 22: DEFINE-FUNCTION-BY-DESCRIPTION -- the DOUBLE worked
 example (existence, uniqueness, definition, and using the defined
 function directly) plus two prerequisite-mismatch attack tests."
-  (let* ((ledger (classical-logic-ledger (fol-kernel :arithmetic t)))
+  (let* ((ledger (definition-ledger))
          (ledger (test-define-function-by-description ledger)))
     (declare (ignorable ledger))
-    (test-define-function-shape-attacks (classical-logic-ledger (fol-kernel :arithmetic t)))
+    (test-define-function-shape-attacks (definition-ledger))
     (format t "~%Function-definition self-tests complete.~%")))

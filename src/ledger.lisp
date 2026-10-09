@@ -85,7 +85,7 @@ BY-DERIVED-NAME. Signals an error on a bounded view."
 TERM?/WFF?/VAR? formation rules), as opposed to kinds that justify proof
 steps (AXIOM, IRULE, TH, ...)."
   (member kind '(atomic-wff-symbol variable-symbol predicate-schema-symbol wff? term? var?
-                 abbreviation)
+                 abbreviation contextual-abbreviation)
           :test #'eq))
 
 (defun entries-of-kind (kind ledger)
@@ -163,13 +163,13 @@ ledger and can never be declared as anything else."
 
 (defun binder-heads ()
   "Heads that bind the variable in position 1 over the body in position 2:
-(.forall x A) and the term (.iota x A),
+(.forall x A), the one binder of the kernel,
 \"the x such that A\". The binder machinery (FREE-VARS-WFF, SUBSTITUTE-WFF,
 ...) does not care whether the expression is a wff or a term. Adding a
 binder requires editing this list. Binders such as .EXISTS and .EXISTS1
 are abbreviations (abbreviation.lisp), expanded before the kernel sees
 them."
-  '(.forall .iota))
+  '(.forall))
 
 (defun at-symbol-p (sym)
   "True iff SYM is an @-prefixed meta-tag."

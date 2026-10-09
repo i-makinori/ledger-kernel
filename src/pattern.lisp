@@ -35,7 +35,7 @@ computes a value, like @subst), or NIL."
 (defun instantiate-with-binds (pat binds)
   "Replace bound pattern variables in PAT; unbound ones are left as-is.
 A pattern binder (Q ?x P) whose ?x is bound to a variable v becomes the
-kernel binder (Q (DB-CLOSE P' v)) -- e.g. IOTA's (.iota ?x ?A)."
+kernel binder (Q (DB-CLOSE P' v)) -- e.g. (.forall ?x ?A)."
   (cond
     ((pat-var-p pat)
      (let ((b (lookup-binding pat binds)))
@@ -146,7 +146,29 @@ bound to a fresh variable (TAKE-FRESH) and BODY is opened with that."
   (and (every (lambda (x) (and (symbolp x) (variable-p x ledger))) xs)
        (= (length xs) (length (remove-duplicates xs :test #'eq)))))
 
+(defvar *deferred-schema-matches* nil
+  "While MATCH-SCHEMA-ATOMS runs: a cons whose car collects the (PAT . EXPR)
+pairs put off until the rest is matched.")
+
 (defun match-schema-atoms (pat expr ledger &optional (binds nil))
+  "%MATCH-SCHEMA-ATOMS, with the applications (P t1 ... tn) of a still
+unbound schema whose arguments are not all variables of opened binders
+matched last. P := (lambda (v1) (.eq v1 v1)) and (lambda (x) (.eq x v1))
+both turn (P v1) into (.eq v1 v1) when v1 is free: only an application to
+bound variables fixes P, so those are matched first wherever they stand
+-- in (.to (P v1) (.exists v2 (... (P v2)))) the second one. A put-off
+application is then checked against that binding, or, if P is still
+unbound, binds it as before."
+  (let* ((cell (list nil))
+         (b (let ((*deferred-schema-matches* cell))
+              (%match-schema-atoms pat expr ledger binds))))
+    (if (match-fail-p b)
+        b
+        (let ((*deferred-schema-matches* nil))
+          (dolist (d (reverse (car cell)) b)
+            (setf b (%match-schema-atoms (car d) (cdr d) ledger b)))))))
+
+(defun %match-schema-atoms (pat expr ledger &optional (binds nil))
   "Like MATCH-TEMPLATE, for a derived entry's stored schema: the pattern
 variables are the declared atomic-wff symbols (A, B, ...) and predicate
 schema symbols. Declared object variables are matched literally.
@@ -167,7 +189,7 @@ written with a predicate schema and its argument, P(x)."
     ((db-binder-p pat)
      (if (and (db-binder-p expr) (eq (first pat) (first expr)))
          (multiple-value-bind (f b1) (take-fresh binds pat expr)
-           (match-schema-atoms (db-open (second pat) f) (db-open (second expr) f) ledger b1))
+           (%match-schema-atoms (db-open (second pat) f) (db-open (second expr) f) ledger b1))
          +fail+))
     ;; (P t1 ... tn), P a predicate schema. If P is bound, its beta
     ;; instance must equal EXPR. If unbound, bind P := (lambda (t1..tn)
@@ -184,13 +206,16 @@ written with a predicate schema and its argument, P(x)."
                    (equal (schema-beta (cdr existing) args) expr))
               binds
               +fail+))
+         ((and *deferred-schema-matches* (notevery #'fresh-var-name-p args))
+          (push (cons pat expr) (car *deferred-schema-matches*))
+          binds)
          ((distinct-variables-p args ledger)
           (cons (cons (car pat) (list :lambda args expr)) binds))
          (t +fail+))))
     ((and (consp pat) (consp expr))
-     (let ((b1 (match-schema-atoms (car pat) (car expr) ledger binds)))
+     (let ((b1 (%match-schema-atoms (car pat) (car expr) ledger binds)))
        (if (match-fail-p b1) +fail+
-           (match-schema-atoms (cdr pat) (cdr expr) ledger b1))))
+           (%match-schema-atoms (cdr pat) (cdr expr) ledger b1))))
     ((and (null pat) (null expr)) binds)
     ((equal pat expr) binds)
     (t +fail+)))

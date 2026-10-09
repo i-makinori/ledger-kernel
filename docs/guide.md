@@ -12,7 +12,7 @@ README を読んで全体像を掴んでから、必要な節だけを読む使�
 1. 命題論理の補題: II.1〜II.3 だけから
 2. 検証コストが気になったら: `ENABLE-DERIVED-ENTRY-MEMOIZATION`
 3. 体系そのものをファイルで定義する: `.system` ファイル
-4. 確定記述: `IOTA`
+4. 確定記述: 文脈の中での略記 `.iota`
 5. 存在量化子は略記: `th-exists-intro` と `th-exists-elim`
 6. 略記としての関数定義: `DEFINE-FUNCTION-BY-DESCRIPTION`
 7. 略記としての結合子: `00-connectives.system`
@@ -196,74 +196,55 @@ Lispソースレベルの拡張です）。それでも、命題論理の別の�
 いつでも実際の推論図を取り出せます。
 
 標準の宣言では `:assumption`・`:independent`・MP・Gen に型紙があり、II.1・II.2・III.2
-だけで書かれています。IOTA には型紙がありません（IOTA を述べる公理がないため）。IOTA を
-通る離脱は、宣言を信頼して登録され、項目の ORIGIN に `:not-expanded-because` が残ります。
-現在のライブラリの `th-ded` は、すべて展開して検証済みです。
+だけで書かれています。型紙のない規則を通る離脱があれば、宣言を信頼して登録され、項目の
+ORIGIN に `:not-expanded-because` が残りますが、標準の体系の規則（MP と Gen）にはすべて
+型紙があります。現在のライブラリの `th-ded` は、すべて展開して検証済みです。
 
-標準の宣言は `hilbert-library/00-classical-fol-equality.system` にあり、MP・Gen・IOTA・
-EXISTS-ELIM の4規則を覆っています。各 `:case` は「教科書の帰納法のその1ステップが
+標準の宣言は `hilbert-library/00-classical-fol-equality.system` にあり、MP・Gen の
+2規則を覆っています。各 `:case` は「教科書の帰納法のその1ステップが
 この体系で成り立つ」という主張で、公理と同じく信頼されます。
 
-## 4. 確定記述（definite description）: `IOTA`
+## 4. 確定記述（definite description）: 文脈の中での略記 `.iota`
 
-「Aを満たすxが存在し、しかもそれは一意である」ときに、その唯一のxを直接
-指し示す項 `(.iota x A)`（"the x such that A"）を用意しました。
-
-これがなぜ簡単ではないか、という点から説明します。`.forall` は
-**WFFを作る**束縛子でしたが、`.iota` は**項を作る**束縛子です。
-このカーネルでは束縛子が新しい種類の値（WFFではなくTERM）を作るということ
-自体がここだけで、`BINDER-HEADS`（束縛変数を de Bruijn インデックスに直す
-変換や、束縛子を開く処理が「この頭部は束縛子である」と認識するための
-Lispソース側のリスト。13節）に `.IOTA` を追加するという、`.system` ファイルだけ
-では完結しないLispソースレベルの変更が必要でした（既存の非束縛子な結合子・
-関係はデータ駆動で拡張できるのに対し、束縛子の追加はこの一点だけ例外です）。
-
-`IOTA` は**公理ではなく推論規則（IRULE）**です。MP/Genと同じく、証明中の
-既存の行（プレミス）を引用する必要があるからです：
-
-- **存在**: `(.exists x A)`
-- **一意性**: `(.forall y (.forall z (.to A[y/x] (.to A[z/x] (.eq y z)))))`
-  （カーネルの基本結合子に ∧ はないので、カリー化した形で書く: 「y も z も A を
-  満たすなら y=z」）
-
-この2つを両方引用して初めて、`A[(.iota x A)/x]`（iota項自体がAを満たす）
-が結論できます。存在論のごまかしをしない — **具体的な証人を要求しない**
-（非構成的な存在証明で構わない）一方で、**一意性が示せない限りIOTAは絶対に
-適用できない**（=一意でない場合の「値」を勝手に決める、というような
-junk-valueの規約は一切ない）というのが設計上の要点です。
-
-存在の証明には `th-exists-intro`（5節）を使います。
-
-具体例（`v1=v1` から `exists v0(v0=v1)` を経て `(.iota v0 (v0=v1)) = v1`
-まで）:
+`(.iota x A)`（"the x such that A"、ιx A）は、Principia Mathematica *14 と同じく
+**項ではありません**。それを含む論理式の書き方を与える略記です
+（`00-connectives.system`）：
 
 ```lisp
-;; *L*: 00-classical-fol-equality.system に 01・05 の .ledger を読み込んだ台帳
-;; 存在: exists v0 (v0=v1)
-(setf *L* (check-and-extend *L* 'th 'th-exists-v0-eq-v1
-  '((0 (.eq v1 v1) :axiom (IV.1))
-    (1 (.to (.eq v1 v1) (.exists v0 (.eq v0 v1))) :th (th-exists-intro :inst ((p (v0) (.eq v0 v1)) (v1 v1))))
-    (2 (.exists v0 (.eq v0 v1)) :ir (MP 1 0)))))
-;; 一意性: forall v2 forall v3 (v2=v1 -> (v3=v1 -> v2=v3))  (uniq-full。
-;; 導出は 05-classical-logic.ledger の TH-RAA と同じ多段階の
-;; deduction-theorem-direct 連鎖 -- 詳細は tests/iota-tests.lisp 参照)
-;; ...
-;; IOTA適用: (iota v0 (v0=v1)) = v1
-(check-k-proof '((0 (.exists v0 (.eq v0 v1)) :th (th-exists-v0-eq-v1))
-                  (1 (.forall v2 (.forall v3 (.to (.eq v2 v1) (.to (.eq v3 v1) (.eq v2 v3))))) :th (uniq-full))
-                  (2 (.eq (.iota v0 (.eq v0 v1)) v1) :ir (IOTA 0 1)))
-                *L*)
-;=> T
+(:contextual-abbreviation (.iota ?x ?A) (?psi ?b)
+  (.exists ?b (.and (.forall ?x (.iff ?A (.eq ?x ?b))) (?psi ?b))))
 ```
+
+ιx A を含む**最も狭い原子式** ψ が、∃b (∀x (A ↔ x = b) ∧ ψ(b)) を表します
+（*14.01）。原子式の位置は形成規則（`wff?`）から読み取ります。1つの原子式に記述が
+いくつもあれば、左のものほど外側に展開します。
+
+```lisp
+(named->db '(.eq (.iota v0 (.eq v0 v1)) v1) *L*)
+;; = ∃v2 (∀v0 (v0 = v1 ↔ v0 = v2) ∧ v2 = v1) の de Bruijn 形
+(named->db '(.neg (.eq (.iota v0 (.eq v0 v1)) v1)) *L*)
+;; = ¬∃v2 (...)：否定は記述の外側（最も狭い範囲）
+```
+
+そのため、IOTA のような推論規則はありません。ιx A が何を満たすかは、この展開から
+普通の定理として証明します。`07-quantifier-schemas.ledger` に、そのための補題があります。
+
+- `th-desc-proper`：∃x P(x) と一意性 ⊢ ∃b ∀x (P(x) ↔ x = b)（記述が適切であること、*14.11）
+- `th-desc-atomic`：∀x (P(x) ↔ x = c) ⊢ ψ(ιx P(x)) ↔ ψ(c)（原子式ごとの置き換え）
+- `th-iff-neg`・`th-iff-imp`・`th-iff-forall`：↔ が ¬・→・∀ で保たれること
+
+例えば (ιx (x = v1)) = v1 は、`th-desc-atomic` と IV.1 から証明できます
+（`tests/iota-tests.lisp`）。逆に、存在や一意性のない（不適切な）記述は何も満たしません。
+`(.eq (.iota v0 (.neg (.eq v0 v0))) (.iota v0 (.neg (.eq v0 v0))))` は IV.1 の実例ではなく、
+∀x φ(x) から φ(ιx A) を出すこともできません。値を勝手に決める junk value の規約は
+要りません。
 
 **補足**:
 
-- `.iota x A` を使うたびに存在と一意性を引用し直すのが煩わしい場合は、
-  `DEFINE-FUNCTION-BY-DESCRIPTION`（6節）で名前の付いた関数記号として定義できます。
-- 存在からの除去は定理 `th-exists-elim`（5節）です。
-- 一意性が示せない場合の「値」についての規約（古典的な確定記述理論でよく
-  ある total function 化のための junk value）は用意していません。単に
-  IOTAが適用できないだけです。
+- 確定記述に名前を付けるには `DEFINE-FUNCTION-BY-DESCRIPTION`（6節）を使います。
+  定義式 `名前-DEF` は、上の補題で自動的に証明されます。
+- 記述は略記の本体の中で束縛子として扱います（`(.iota ?y ...)` の `?y` は束縛変数）。
+  カーネルの束縛子の一覧（`BINDER-HEADS`）は `.forall` だけです。
 
 
 ## 5. 存在量化子は略記: `th-exists-intro` と `th-exists-elim`
@@ -296,10 +277,10 @@ Mendelson と同じく、∃ は略記です（`00-classical-fol-equality.system
 
 ## 6. 略記としての関数定義: `DEFINE-FUNCTION-BY-DESCRIPTION`
 
-`IOTA`（4節）は「存在して一意」という性質から `.iota x A` という**項**を作れる
-ようにする規則でしたが、`(.iota v0 (.eq v0 (+ v1 v1)))` のような式は読みにくく、
-名前も付きません。`DEFINE-FUNCTION-BY-DESCRIPTION` は、この ι 項に名前を付ける
-**略記**（3節の `(:abbreviation ...)`）を定義します。
+確定記述（4節）`(.iota v1 (.eq v1 (+ v0 v0)))` のような式は読みにくく、名前も
+付きません。`DEFINE-FUNCTION-BY-DESCRIPTION` は、この記述に名前を付ける
+**略記**（3節の `(:abbreviation ...)`）を定義し、定義式を定理として証明します。
+証明には `07-quantifier-schemas.ledger` の補題を使うので、先に読み込んでおきます。
 
 ```lisp
 ;; 前提: 「すべてのxについて、y=x+xとなるyが存在する」(existence) と
@@ -311,7 +292,8 @@ Mendelson と同じく、∃ は略記です（`00-classical-fol-equality.system
     '(.eq v1 (+ v0 v0))                      ; 定義性質 A(x,y) := y=x+x
     'th-double-existence 'th-double-uniqueness))
 
-;; (double v0) は (.iota v1 (.eq v1 (+ v0 v0))) の略記。定義式は定理 DOUBLE-DEF
+;; (double v0) は (.iota v1 (.eq v1 (+ v0 v0))) の略記。定義式は定理 DOUBLE-DEF。
+;; (double v0) は項ではなく、それを含む原子式が4節の形に展開される
 (check-k-proof '((0 (.eq (double v0) (+ v0 v0)) :th (double-def))) *L*)
 ;=> T
 ;; 別の引数では :inst で引数変数を付け替える
@@ -322,15 +304,26 @@ Mendelson と同じく、∃ は略記です（`00-classical-fol-equality.system
 追加されるのは次の2つで、どちらも信頼を必要としません。
 
 - **略記** `(double ?X1)` := `(.iota ?Y (.eq ?Y (+ ?X1 ?X1)))`。カーネルは
-  `(double v0)` を ι 項に展開してから検査するので、新しい公理は増えません。
-- **定理** `DOUBLE-DEF`：A(x, NAME(x))。existence と uniqueness の定理から ∀ を外し、
-  IOTA 規則で導く証明を自動で作り、普通の定理として検証して登録します。
+  `(double v0)` を記述に、記述をそれを含む原子式ごとに展開してから検査するので、
+  新しい公理も規則も増えません。
+- **定理** `DOUBLE-DEF`：A(x, NAME(x))。証明は Principia *14 の流れで自動で作ります。
+  Φ(c) = ∀y (A ↔ y = c) と置くと、
+  1. existence と uniqueness の定理から ∀ を外し、`th-desc-proper` で ∃c Φ(c)。
+  2. Φ(c) ⊢ A(c)（III.1 で c を入れ、c = c から）。
+  3. Φ(c) ⊢ A(c) ↔ A(NAME(x))。A の構造に沿って、原子式では `th-desc-atomic`、
+     ¬・→・∀ では `th-iff-neg`・`th-iff-imp`・`th-iff-forall` で組み立てる。
+  4. 2と3から Φ(c) → A(NAME(x))（補助の `th-ded` `DOUBLE-DEF.S1`。これも実際の
+     推論図に展開して検証されます）。∀c を付けて `th-exists-elim` で閉じる。
+
+  どちらも普通の定理として検証して登録します。今の版では、A の各原子式に y が
+  高々1回しか現れず、A 自身が記述を含まない場合を扱います。
 
 定義の前に、名前が台帳で未使用であること、A の自由変数が引数と出力変数だけで
 あることなども確かめます。
 
 **`.ledger` ファイルへの保存**: 定義は、次のコマンドとして `.ledger` ファイルに
-書けます（`write-ledger-to-file` もこの形で書き出し、`NAME-DEF` は書き出しません）。
+書けます（`write-ledger-to-file` もこの形で書き出し、`NAME-DEF` と `NAME-DEF.S1` は
+書き出しません）。
 読み込むときは `DEFINE-FUNCTION-BY-DESCRIPTION` そのものを呼び直すので、
 existence／uniqueness の再チェックと `NAME-DEF` の証明も毎回行われます。
 
@@ -473,7 +466,7 @@ ZF の上に作った最初の定理ライブラリです。読み込み順は�
 |---|---|
 | `th-zf-empty-exists` | ∃y ∀z ¬(z ∈ y)　（分出公理を φ := ¬(z = z) で使う） |
 | `th-zf-empty-unique` | ∀y ∀y′ ( ∀z ¬(z ∈ y) → (∀z ¬(z ∈ y′) → y = y′) )　（外延性公理） |
-| `empty` / `EMPTY-DEF` | 定数 ∅ を `(empty)` と書く（ι 項の略記）。定理 ∀z ¬(z ∈ ∅) |
+| `empty` / `EMPTY-DEF` | 定数 ∅ を `(empty)` と書く（確定記述の略記）。定理 ∀z ¬(z ∈ ∅) |
 | `th-zf-not-in-empty` | ¬(x ∈ ∅) |
 
 `(empty)` は `DEFINE-FUNCTION-BY-DESCRIPTION` で定義した0引数の関数記号です。

@@ -67,14 +67,14 @@ set: automatic and explicit instantiation, later vocabulary, attacks."
          (ledger (read-ledger-from-file (zf-library-path "01-empty-set.ledger") :ledger ledger)))
     (expect "th-forall-elim, P found automatically: forall v0 (v0 in v3) -> v1 in v3"
             (check-k-proof '((0 (.to (.forall v0 (.in v0 v3)) (.in v1 v3)) :th (th-forall-elim))) ledger) t)
-    (expect "th-forall-elim at the term (empty), via :inst ((v1 (empty)))"
+    (expect "Attack: th-forall-elim at (empty) via :inst ((v1 (empty))) -- a description is not a term, must reject"
             (check-k-proof '((0 (.to (.forall v0 (.in v0 v3)) (.in (empty) v3))
                                 :th (th-forall-elim :inst ((v1 (empty))))))
-                           ledger) t)
+                           ledger) nil)
     (expect "Attack: th-forall-elim at (empty) WITHOUT :inst -- no such instance, must reject"
             (check-k-proof '((0 (.to (.forall v0 (.in v0 v3)) (.in (empty) v3)) :th (th-forall-elim))) ledger)
             nil)
-    (expect "th-exists-intro instantiated with (empty), defined AFTER the lemma"
+    (expect "th-exists-intro with P(y) := y = (empty), the description inside P, defined AFTER the lemma"
             (check-k-proof '((0 (.to (.eq v1 (empty)) (.exists v0 (.eq v0 (empty)))) :th (th-exists-intro)))
                            ledger) t)
     (expect "th-exists-mono with set-theoretic P and Q"
@@ -93,10 +93,10 @@ set: automatic and explicit instantiation, later vocabulary, attacks."
                                           (.to (.forall v3 (.neg (.in v3 v2))) (.eq v1 v2))))
                                 :th-ded (th-exists1-unique)))
                            ledger) t)
-    (expect "Attack: th-exists1-exists at P(y) := y = v4 (captures the lemma's witness v4) -- must reject"
+    (expect "th-exists1-exists at P(y) := y = v4, the lemma's own witness variable, renamed apart"
             (check-k-proof '((0 (.to (.exists1 v0 (.eq v0 v4)) (.exists v0 (.eq v0 v4))) :th-ded (th-exists1-exists)))
-                           ledger) nil)
-    (expect "... and accepted once the witness is moved out of the way: :inst ((v4 v3))"
+                           ledger) t)
+    (expect "... and as before with the witness moved by hand: :inst ((v4 v3))"
             (check-k-proof '((0 (.to (.exists1 v0 (.eq v0 v4)) (.exists v0 (.eq v0 v4)))
                                 :th-ded (th-exists1-exists :inst ((v4 v3)))))
                            ledger) t)
@@ -116,8 +116,9 @@ set: automatic and explicit instantiation, later vocabulary, attacks."
             (check-k-proof '((0 (.to (.forall v0 (.in v0 v3)) (.in v1 v3)) :th (th-forall-elim :inst)))
                            ledger) nil)
     (let ((early (entries-upto (entry-k (first (entries-of-kind 'predicate-schema-symbol ledger))) ledger)))
-      (expect "vocabulary: (empty), defined later, is still a term in an earlier ENTRIES-UPTO view"
-              (judgement? 'term? '(empty) early) t)
+      (expect "vocabulary: (.in v0 (empty)) is a wff, but not in an ENTRIES-UPTO view before EMPTY's definition"
+              (and (judgement? 'wff? '(.in v0 (empty)) ledger) (not (judgement? 'wff? '(.in v0 (empty)) early)))
+              t)
       (expect "... but a later THEOREM is not citable from that earlier view"
               (check-k-proof '((0 (.neg (.in v0 (empty))) :th (th-zf-not-in-empty))) early) nil)
       (expect "... nor the definition's later EMPTY-DEF"
@@ -126,9 +127,12 @@ set: automatic and explicit instantiation, later vocabulary, attacks."
       (unwind-protect
            (expect "a ledger with predicate schema declarations round-trips through a file"
                    (progn (write-ledger-to-file ledger path)
-                          (check-k-proof '((0 (.to (.forall v0 (.in v0 v3)) (.in (empty) v3))
-                                              :th (th-forall-elim :inst ((v1 (empty))))))
-                                         (read-ledger-from-file path :ledger (zf-ledger))))
+                          (let ((reloaded (read-ledger-from-file path :ledger (zf-ledger))))
+                            (and (check-k-proof '((0 (.to (.forall v0 (.in v0 v3)) (.in v2 v3))
+                                                     :th (th-forall-elim :inst ((v1 v2)))))
+                                                reloaded)
+                                 (check-k-proof '((0 (.neg (.in v0 (empty))) :th (th-zf-not-in-empty)))
+                                                reloaded))))
                    t)
         (ignore-errors (delete-file path))))
     ledger))

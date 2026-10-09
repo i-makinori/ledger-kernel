@@ -1,42 +1,68 @@
-;;;; iota-tests.lisp -- Section 19: IOTA and III.3 tests
+;;;; iota-tests.lisp -- Section 19: descriptions and existential introduction
 ;;;; Part of the ledger-kernel system (see ledger-kernel.asd).
 
 (in-package :ledger-kernel)
 
 ;;; ---------------------------------------------------------------------
-;;; 19. IOTA (definite description): formation, III.3 (existential
-;;;     generalization), a worked uniqueness derivation, and the IOTA
-;;;     irule itself -- plus attack tests.
-;;;
-;;; What this gives you: given (a) a proof of (.exists ?x ?A) and (b) a
-;;; proof that "any two things satisfying A are equal" (curried, since
-;;; there is no AND connective: (.forall ?y (.forall ?z (.to A[y/x] (.to
-;;; A[z/x] (.eq ?y ?z)))))), the IOTA irule concludes A[(.iota ?x ?A)/?x]
-;;; -- the iota-term itself satisfies A. Concretely worked below: from
-;;; exists v0(v0=v1) and "any two things equal to v1 are equal to each
-;;; other", conclude (.iota v0 (.eq v0 v1)) = v1 -- i.e. "the x such that
-;;; x=v1" behaves exactly as v1 itself does, without ever requiring v1 be
-;;; produced as a syntactically distinguished witness.
-;;;
-;;; What this deliberately still does NOT give you (see Section 7's own
-;;; commentary on III.3/IOTA for the reasoning): no general definitional
-;;; mechanism that lets you write "let y := the x such that A(x)" and
-;;; have y become a fresh, reusable name -- every use of (.iota ?x ?A)
-;;; must independently re-cite BOTH an existence and a uniqueness proof
-;;; for that exact A; no total/junk-value convention for when uniqueness
-;;; fails (this kernel simply never lets you apply IOTA without proving
-;;; it first, sidestepping the question rather than answering it); and
-;;; still no full existential ELIMINATION/instantiation rule (III.3 only
-;;; ever INTRODUCES .EXISTS from a witness, it never lets you extract one
-;;; back out of an already-proven .EXISTS).
+;;; 19. Descriptions (.iota x A), "the x such that A", as a contextual
+;;;     abbreviation (00-connectives.system, Principia *14.01): not a
+;;;     term, but a way of writing the formula it stands in. At the
+;;;     narrowest atomic formula psi holding it,
+;;;       psi[(.iota x A)]  :=  exists b (forall x (A <-> x = b) and psi[b]).
+;;;     There is no IOTA rule: what a description satisfies is proved from
+;;;     that expansion (07-quantifier-schemas.ledger's th-desc-proper and
+;;;     th-desc-atomic), and an improper description satisfies nothing.
+;;; ---------------------------------------------------------------------
 
-(defun test-iota-formation (ledger)
-  "(.iota x A) forms as a TERM (via ITOA-TERM) but never as a WFF -- it is
-a description of AN OBJECT ('the x such that A'), not a proposition."
-  (expect "(.iota v0 (.eq v0 v1)) is a term" (judgement? 'term? '(.iota v0 (.eq v0 v1)) ledger) t)
-  (expect "(.iota v0 (.eq v0 v1)) is NOT a wff" (judgement? 'wff? '(.iota v0 (.eq v0 v1)) ledger) nil)
-  (expect "(.eq (.iota v0 (.eq v0 v1)) v1) IS a wff (iota-term used as an ordinary term argument)"
+(defun description-ledger ()
+  "Base logic + 00-connectives.system + 01/02/03/05/06/07."
+  (reduce (lambda (l f) (read-ledger-from-file (library-path f) :ledger l))
+          '("06-connectives.ledger" "07-quantifier-schemas.ledger")
+          :initial-value (connectives-library-ledger)))
+
+(defun test-description-expansion (ledger)
+  (expect "(.iota v0 (.eq v0 v1)) alone is not a term"
+          (judgement? 'term? '(.iota v0 (.eq v0 v1)) ledger) nil)
+  (expect "(.iota v0 (.eq v0 v1)) alone is not a wff"
+          (judgement? 'wff? '(.iota v0 (.eq v0 v1)) ledger) nil)
+  (expect "(.eq (.iota v0 (.eq v0 v1)) v1) is a wff"
           (judgement? 'wff? '(.eq (.iota v0 (.eq v0 v1)) v1) ledger) t)
+  (expect "... and it is the formula exists b (forall v0 (v0=v1 <-> v0=b) and b=v1)"
+          (equal (named->db '(.eq (.iota v0 (.eq v0 v1)) v1) ledger)
+                 (named->db '(.exists v2 (.and (.forall v0 (.iff (.eq v0 v1) (.eq v0 v2))) (.eq v2 v1))) ledger))
+          t)
+  (expect "narrowest scope: not (iota = v1) is not-exists, not exists-not"
+          (equal (named->db '(.neg (.eq (.iota v0 (.eq v0 v1)) v1)) ledger)
+                 (named->db '(.neg (.exists v2 (.and (.forall v0 (.iff (.eq v0 v1) (.eq v0 v2))) (.eq v2 v1))))
+                            ledger))
+          t)
+  (expect "two descriptions in one atomic formula: the left one outermost"
+          (equal (named->db '(.eq (.iota v0 (.eq v0 v1)) (.iota v0 (.eq v0 v3))) ledger)
+                 (named->db '(.exists v4 (.and (.forall v0 (.iff (.eq v0 v1) (.eq v0 v4)))
+                                               (.exists v5 (.and (.forall v0 (.iff (.eq v0 v3) (.eq v0 v5)))
+                                                                 (.eq v4 v5)))))
+                            ledger))
+          t)
+  (expect "a description under a binder of its own free variable keeps it bound there"
+          (equal (named->db '(.forall v1 (.eq (.iota v0 (.eq v0 v1)) v1)) ledger)
+                 (named->db '(.forall v1 (.exists v2 (.and (.forall v0 (.iff (.eq v0 v1) (.eq v0 v2)))
+                                                           (.eq v2 v1))))
+                            ledger))
+          t)
+  (expect "an abbreviation's body may bind its variable by a description"
+          (handler-case
+              (progn (bootstrap-kernel-from-spec '((:abbreviation (the-eq ?x) (.iota ?y (.eq ?y ?x))))
+                                                 :ledger ledger)
+                     t)
+            (error () nil))
+          t)
+  (expect "Attack: a body variable neither a parameter nor bound by the description -- must error"
+          (handler-case
+              (progn (bootstrap-kernel-from-spec '((:abbreviation (the-eq ?x) (.iota ?y (.eq ?z ?x))))
+                                                 :ledger ledger)
+                     :admitted)
+            (error () :refused))
+          :refused)
   ledger)
 
 (defun test-axiom-iii3 (ledger)
@@ -62,102 +88,58 @@ structurally the way III.1's own (.forall ?x ?A) antecedent does)."
             nil)
     ledger))
 
-(defun test-iota-irule (ledger)
-  "The full worked example: derive UNIQ-FULL (any two things equal to v1
-are equal to each other, i.e. |- forall v2 forall v3 (v2=v1 -> (v3=v1 ->
-v2=v3))) via the same multi-step deduction-theorem-direct chaining
-pattern 05-classical-logic.ledger already uses for TH-RAA, then cite it
-alongside TH-EXISTS-V0-EQ-V1 as IOTA's two premises to conclude
-(.iota v0 (.eq v0 v1)) = v1."
-  (let* ((inner '((0 (.eq v2 v1) :hyp nil)
-                  (1 (.eq v3 v1) :hyp nil)
-                  (2 (.to (.eq v3 v1) (.eq v1 v3)) :axiom (IV.3))
-                  (3 (.eq v1 v3) :ir (MP 2 1))
-                  (4 (.to (.eq v2 v1) (.to (.eq v1 v3) (.eq v2 v3))) :axiom (IV.4))
-                  (5 (.to (.eq v1 v3) (.eq v2 v3)) :ir (MP 4 0))
-                  (6 (.eq v2 v3) :ir (MP 5 3))))
-         (ledger (check-and-extend-by-deduction-direct ledger 'uniq-step1 '(.eq v3 v1) inner (silent-log)))
-         (step2 '((0 (.eq v2 v1) :hyp nil)
-                  (1 (.to (.eq v3 v1) (.eq v2 v3)) :th-ded (uniq-step1 0))))
-         (ledger (check-and-extend-by-deduction-direct ledger 'uniq-step2 '(.eq v2 v1) step2 (silent-log)))
-         (ledger (check-and-extend ledger 'th 'uniq-gen-v3
-                                    '((0 (.to (.eq v2 v1) (.to (.eq v3 v1) (.eq v2 v3))) :th-ded (uniq-step2))
-                                      (1 (.forall v3 (.to (.eq v2 v1) (.to (.eq v3 v1) (.eq v2 v3)))) :ir (Gen 0 v3)))
-                                    (silent-log)))
-         (ledger (check-and-extend ledger 'th 'uniq-full
-                                    '((0 (.forall v3 (.to (.eq v2 v1) (.to (.eq v3 v1) (.eq v2 v3)))) :th (uniq-gen-v3))
-                                      (1 (.forall v2 (.forall v3 (.to (.eq v2 v1) (.to (.eq v3 v1) (.eq v2 v3))))) :ir (Gen 0 v2)))
-                                    (silent-log))))
-    (expect "UNIQ-FULL is a real, re-citable ledger theorem (any two things =v1 are equal)"
-            (check-k-proof '((0 (.forall v2 (.forall v3 (.to (.eq v2 v1) (.to (.eq v3 v1) (.eq v2 v3))))) :th (uniq-full))) ledger)
-            t)
-    (expect "IOTA: from exists v0(v0=v1) and uniq-full, conclude (iota v0 (v0=v1)) = v1"
-            (check-k-proof '((0 (.exists v0 (.eq v0 v1)) :th (th-exists-v0-eq-v1))
-                              (1 (.forall v2 (.forall v3 (.to (.eq v2 v1) (.to (.eq v3 v1) (.eq v2 v3))))) :th (uniq-full))
-                              (2 (.eq (.iota v0 (.eq v0 v1)) v1) :ir (IOTA 0 1)))
-                            ledger)
-            t)
-    (expect "a discharge through IOTA, whose case has no proof template, is admitted but not expanded"
-            (let ((l (check-and-extend-by-deduction-direct
-                      ledger 'th-iota-ded-flag '(.exists v0 (.eq v0 v1))
-                      '((0 (.exists v0 (.eq v0 v1)) :hyp nil)
-                        (1 (.forall v2 (.forall v3 (.to (.eq v2 v1) (.to (.eq v3 v1) (.eq v2 v3))))) :th (uniq-full))
-                        (2 (.eq (.iota v0 (.eq v0 v1)) v1) :ir (IOTA 0 1))))))
-              (let ((e (first (last (entries-of-kind 'th-ded l)))))
-                (and (not (deduction-entry-expanded-p e))
-                     (equal (getf (cdddr (entry-origin e)) :not-expanded-because) '(:no-template iota)))))
-            t)
-    (expect "Deduction Theorem through IOTA: |- exists v0 (v0=v1) -> (iota v0 (v0=v1)) = v1"
-            (handler-case
-                (check-k-proof
-                 '((0 (.to (.exists v0 (.eq v0 v1)) (.eq (.iota v0 (.eq v0 v1)) v1)) :th-ded (th-iota-ded)))
-                 (check-and-extend-by-deduction-direct
-                  ledger 'th-iota-ded '(.exists v0 (.eq v0 v1))
-                  '((0 (.exists v0 (.eq v0 v1)) :hyp nil)
-                    (1 (.forall v2 (.forall v3 (.to (.eq v2 v1) (.to (.eq v3 v1) (.eq v2 v3))))) :th (uniq-full))
-                    (2 (.eq (.iota v0 (.eq v0 v1)) v1) :ir (IOTA 0 1)))))
-              (error () nil))
-            t)
-    (expect "Attack: IOTA citing the SAME line twice (existence as both premises) -- must reject"
-            (check-k-proof '((0 (.exists v0 (.eq v0 v1)) :th (th-exists-v0-eq-v1))
-                              (1 (.eq (.iota v0 (.eq v0 v1)) v1) :ir (IOTA 0 0)))
-                            ledger)
-            nil)
-    (expect "Attack: IOTA with existence/uniqueness premises SWAPPED -- must reject"
-            (check-k-proof '((0 (.exists v0 (.eq v0 v1)) :th (th-exists-v0-eq-v1))
-                              (1 (.forall v2 (.forall v3 (.to (.eq v2 v1) (.to (.eq v3 v1) (.eq v2 v3))))) :th (uniq-full))
-                              (2 (.eq (.iota v0 (.eq v0 v1)) v1) :ir (IOTA 1 0)))
-                            ledger)
-            nil)
-    (expect "Attack: IOTA citing a uniqueness formula about a DIFFERENT A than the existence line -- must reject"
-            (check-k-proof '((0 (.exists v0 (.eq v0 v5)) :hyp nil)
-                              (1 (.forall v2 (.forall v3 (.to (.eq v2 v1) (.to (.eq v3 v1) (.eq v2 v3))))) :th (uniq-full))
-                              (2 (.eq (.iota v0 (.eq v0 v5)) v1) :ir (IOTA 0 1)))
-                            ledger)
-            nil)
-    (let* ((A '(.to (.eq v0 v4) (.forall v4 (.eq v0 v4))))
-           (existence (list '.exists 'v0 A))
-           (uniqueness '(.forall v2 (.forall v3
-                         (.to (.to (.eq v2 v4) (.forall v4 (.eq v2 v4)))
-                              (.to (.to (.eq v3 v4) (.forall v4 (.eq v3 v4)))
-                                   (.eq v2 v3)))))))
-      (expect "Attack (capture-avoidance): IOTA where substituting the iota-term would capture a
-free variable under a nested same-named binder inside A -- @subst-ok? must block it"
-              (check-k-proof (list (list 0 existence :hyp nil)
-                                    (list 1 uniqueness :hyp nil)
-                                    (list 2 (list '.to (list '.eq (list '.iota 'v0 A) 'v4)
-                                                  (list '.forall 'v4 (list '.eq (list '.iota 'v0 A) 'v4)))
-                                          :ir '(IOTA 0 1)))
-                              ledger)
-              nil))
-    ledger))
+(defun test-description-proofs (ledger)
+  "What a description satisfies is proved, not postulated."
+  (let ((x '(.eq (.iota v0 (.eq v0 v1)) v1)))
+    (expect "|- (the v0 such that v0 = v1) = v1, by th-desc-atomic"
+            (check-k-proof `((0 (.iff (.eq v0 v1) (.eq v0 v1)) :th (th-iff-refl))
+                             (1 (.forall v0 (.iff (.eq v0 v1) (.eq v0 v1))) :ir (gen 0 v0))
+                             (2 (.iff ,x (.eq v1 v1))
+                                :th (th-desc-atomic 1 :inst ((p (v0) (.eq v0 v1)) (q (v0) (.eq v0 v1)))))
+                             (3 (.to (.iff ,x (.eq v1 v1)) (.to (.eq v1 v1) ,x)) :th (th-iff-mpr))
+                             (4 (.to (.eq v1 v1) ,x) :ir (mp 3 2))
+                             (5 (.eq v1 v1) :axiom (iv.1))
+                             (6 ,x :ir (mp 4 5)))
+                           ledger)
+            t))
+  (expect "Attack: x = x at an improper description -- IV.1 does not apply, must reject"
+          (check-k-proof '((0 (.eq (.iota v0 (.neg (.eq v0 v0))) (.iota v0 (.neg (.eq v0 v0)))) :axiom (iv.1)))
+                         ledger)
+          nil)
+  (expect "Attack: :inst renaming a variable to a description -- not a term, must reject"
+          (check-k-proof '((0 (.to (.forall v0 (.eq v0 v0)) (.eq (.iota v1 (.eq v1 v2)) (.iota v1 (.eq v1 v2))))
+                              :th (th-forall-elim :inst ((v1 (.iota v1 (.eq v1 v2)))))))
+                         ledger)
+          nil)
+  ;; Citing an entry renames its own internal variables apart from what
+  ;; the citation brings in, and hands a renaming down to the citations
+  ;; inside it (k-proof.lisp, PREPARE-CITED-PROOF).
+  (expect "a binding mentioning v3, which th-desc-atomic generalizes inside, is renamed apart"
+          (check-k-proof '((0 (.forall v0 (.iff (.eq v0 v3) (.eq v0 v1))) :hyp nil)
+                           (1 (.iff (.exists v2 (.and (.forall v0 (.iff (.eq v0 v3) (.eq v0 v2))) (q v2))) (q v1))
+                              :th (th-desc-atomic 0 :inst ((p (v0) (.eq v0 v3))))))
+                         ledger)
+          t)
+  (expect ":inst ((v1 v4)) reaches the lemmas th-desc-atomic cites"
+          (check-k-proof '((0 (.forall v0 (.iff (p v0) (.eq v0 v4))) :hyp nil)
+                           (1 (.iff (.exists v2 (.and (.forall v0 (.iff (p v0) (.eq v0 v2))) (q v2))) (q v4))
+                              :th (th-desc-atomic 0 :inst ((v1 v4)))))
+                         ledger)
+          t)
+  (expect "Attack: the same renaming with the conclusion left at v1 -- must reject"
+          (check-k-proof '((0 (.forall v0 (.iff (p v0) (.eq v0 v4))) :hyp nil)
+                           (1 (.iff (.exists v2 (.and (.forall v0 (.iff (p v0) (.eq v0 v2))) (q v2))) (q v1))
+                              :th (th-desc-atomic 0 :inst ((v1 v4)))))
+                         ledger)
+          nil)
+  ledger)
 
 (defun run-iota-self-tests ()
-  "Section 19: IOTA formation, III.3, the worked uniqueness-chain example,
-and attack tests."
-  (let* ((ledger (classical-logic-ledger (fol-kernel)))
-         (ledger (test-iota-formation ledger))
+  "Section 19: descriptions as contextual abbreviations, existential
+introduction, and attack tests."
+  (let* ((ledger (description-ledger))
+         (ledger (test-description-expansion ledger))
          (ledger (test-axiom-iii3 ledger))
-         (ledger (test-iota-irule ledger)))
+         (ledger (test-description-proofs ledger)))
     (declare (ignorable ledger))
-    (format t "~%IOTA self-tests complete.~%")))
+    (format t "~%Description self-tests complete.~%")))

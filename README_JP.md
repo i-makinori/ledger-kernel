@@ -24,7 +24,8 @@ Common Lisp で書かれた、 Hilbert 流の証明検証系（proof checker）�
   カーネルで固定し、`.system` からは増やしません。新しい記号（∧ や ≤、定義した関数）は
   原始的な記号へ展開される略記で、定理は推論図の略記です。展開すれば原始的な
   証明図に戻ります。演繹定理による `th-ded` も、規則の型紙を使って実際の推論図に
-  展開して検証します（型紙のない IOTA を通る場合だけは、宣言された規則を信頼します）。
+  展開して検証します。確定記述 ιx A も、文脈の中での略記です（Principia *14）。
+  IOTA 規則はなく、基本の体系の推論規則は MP と Gen だけです。
 
 - **束縛変数には名前がない**（マシン B）: カーネルの内部では、束縛変数を
   de Bruijn インデックスで表します。`∀v0 ∀v1 (v0 = v1)` は
@@ -49,13 +50,16 @@ Web UI も付いています。
 - ペアノ算術（P1〜P10）と、その上の順序 ≤ ・ <（`00-peano-order.system`）
 - ZF 集合論（外延性・対・和集合・冪集合・無限・正則性・分出図式・置換図式。
   選択公理なし）
-- 確定記述 `(.iota x A)`（「A を満たすただ1つの x」）
+- 確定記述 `(.iota x A)`（「A を満たす x」）。Principia *14 と同じく項ではなく、文脈の中での
+  略記です。それを含む最も狭い原子式 ψ が ∃b (∀x (A ↔ x = b) ∧ ψ(b)) を表すので、
+  不適切な記述は何も満たしません
 
 **定義の仕組み**
 - `(:abbreviation 頭部 本体)`: 新しい記号を、それ以前の記号で書いた式の略記として
   定義する。カーネルは入力を展開してから検査するので、公理は増えない
 - `DEFINE-FUNCTION-BY-DESCRIPTION`: 存在と一意性を証明済みの性質から、新しい
-  関数記号を ι 項の略記として定義し、その定義式を IOTA で定理として導く（例: 空集合 ∅）
+  関数記号を確定記述の略記として定義し、その定義式を、2つの定理から Principia *14 の
+  流れで（`07-quantifier-schemas.ledger` の補題を使って）証明する（例: 空集合 ∅）
 - 述語スキーマ変数「A(x)」: `(p v0)` を「x を含む任意の論理式」として定理に書き、
   引用時に具体的な式を代入する（自動、または `:inst` で明示）
 
@@ -224,7 +228,7 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
 | `(.to A B)` | A → B | `(.forall x A)` | ∀x A |
 | `(.neg A)` | ¬A | `(.exists x A)` | ∃x A |
 | `(.and A B)` | A ∧ B | `(.exists1 x A)` | ∃!x A |
-| `(.or A B)` | A ∨ B | `(.iota x A)` | ιx A（A を満たすただ1つの x） |
+| `(.or A B)` | A ∨ B | `(.iota x A)` | ιx A（A を満たす x。原子式の中で使う） |
 | `(.iff A B)` | A ↔ B | `(.eq s t)` | s = t |
 | `(.in s t)` | s ∈ t（ZF） | `(empty)` | ∅（ZF） |
 | `zero`, `(S t)`, `(+ s t)`, `(* s t)` | 0, S(t), s+t, s·t（ペアノ算術） | `(p t)` | 述語スキーマ P(t) |
@@ -245,7 +249,7 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
 |---|---|
 | `check-and-extend` | 閉じた証明を、定理（`th`）として登録する |
 | `check-and-extend-by-deduction-direct` | 仮定 H を含む証明 Γ, H ⊢ Φ を、演繹定理により Γ ⊢ H → Φ として登録する（`th-ded`） |
-| `define-function-by-description` | 存在・一意性の定理から、関数記号（ι 項の略記）と、その定義式の定理 `名前-DEF` を追加する |
+| `define-function-by-description` | 存在・一意性の定理から、関数記号（確定記述の略記）と、その定義式の定理 `名前-DEF` を追加する |
 | `declare-atomic-wff-symbol`, `declare-variable-symbol`, `declare-predicate-schema-symbol` | 新しい記号を宣言する |
 
 台帳は `write-ledger-to-file` でコマンド列として保存でき、`read-ledger-from-file`
@@ -257,8 +261,8 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
 
 | ファイル | 内容 |
 |---|---|
-| `hilbert-library/00-classical-fol-equality.system` | 一階述語論理と等号の体系（形成規則、MP・Gen・IOTA、II.1〜3、III.1〜2、IV.1〜4、∃ の略記） |
-| `hilbert-library/00-connectives.system` | ∧ ∨ ↔ ∃! の略記（公理なし） |
+| `hilbert-library/00-classical-fol-equality.system` | 一階述語論理と等号の体系（形成規則、MP・Gen、II.1〜3、III.1〜2、IV.1〜4、∃ の略記） |
+| `hilbert-library/00-connectives.system` | ∧ ∨ ↔ ∃! の略記と、文脈の中での確定記述 ι（公理なし） |
 | `hilbert-library/00-peano-arithmetic.system` | ペアノ算術の語彙と公理 P1〜P10 |
 | `hilbert-library/00-peano-order.system` | 順序 ≤ ・ < の略記（s ≤ t :⇔ ∃z s + z = t、s < t :⇔ S s ≤ t。公理なし） |
 | `hilbert-library/01-propositional-core.ledger` | 恒等律、仮言三段論法、前件の入れ替え |
@@ -270,7 +274,7 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
 | `hilbert-library/07-quantifier-schemas.ledger` | P(x) についての量化子の補題（∀除去、∃導入、単調性、∃! → ∃、∃! の一意性） |
 | `hilbert-library/08-arithmetic.ledger` | 加法・乗法の交換律・結合律・分配律・簡約律、0 と 1 の性質（`tools/generate-arithmetic-ledger.lisp` で生成） |
 | `hilbert-library/09-order.ledger` | ≤ の反射律・推移律・反対称律・全順序性、x ≤ Sx、0 か後者か、x + y = 0 → y = 0（同上） |
-| `hilbert-library/10-division.ledger` | S b による割り算の存在と一意性、商 `div-s(a,b)`・余り `mod-s(a,b)`・β 関数 `beta(c,d,i)` = c mod (1+(i+1)d) の定義（同上） |
+| `hilbert-library/10-division.ledger` | S b による割り算の存在と一意性、商 `div-s(a,b)`・余り `mod-s(a,b)`・β 関数 `beta(c,d,i)` = c mod (1+(i+1)d) の定義（同上。これらを項として使っているので、生成器を直すまで今は読み込んでいません） |
 | `zf-library/00-zf.system` | ZF の公理系 |
 | `zf-library/01-empty-set.ledger` | 空集合の存在・一意性、∅ の定義、¬(x ∈ ∅) |
 
@@ -304,7 +308,7 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
 **無条件に信頼しているもの**
 - **カーネルのコード**: 照合、自由変数や代入可能性の判定（メタ述語）、再検証の
   ロジック、そして書かれた式を de Bruijn 形式に直す変換（`src/debruijn.lisp`）。
-  束縛子の一覧（`.forall` `.iota`）と、略記の展開（`src/abbreviation.lisp`）も
+  束縛子の一覧（`.forall`）と、確定記述を含む略記の展開（`src/abbreviation.lisp`）も
   カーネルの一部です。代入は束縛変数を捕獲しようがない形で行いますが、`@subst-ok?` は
   残してあり、変換や束縛子の展開に誤りがあれば、そこで検出して拒否します。
 - **`.system` ファイルの内容**: 公理・推論規則・形成規則は、読み込めばそのまま
@@ -320,12 +324,13 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
   定理の中まで再帰的に調べます。さらに各規則には、その帰納法の1ステップを体系の中の
   証明として書いた型紙（`(:proof ...)`）を添えられます。型紙が揃っていれば、カーネルは
   `th-ded` の証明を型紙で置き換えて Γ ⊢ H → Φ の**実際の推論図**を組み立て、普通の証明
-  として検証します。このとき演繹定理は信頼されません。型紙のない規則（今は IOTA だけ）を
+  として検証します。このとき演繹定理は信頼されません。型紙のない規則（今の基本の体系にはありません）を
   通る場合に限り、宣言された規則を信頼して登録し、その旨を記録します。現在のライブラリの
   `th-ded`（ZF 253件、算術 322件）は、すべて実際の推論図に展開して検証済みです。Web UI の
   「依存している基礎」には、信頼を使った場合だけ表示されます。
 - **定義**: 信頼していません。`DEFINE-FUNCTION-BY-DESCRIPTION` が加えるのは略記
-  （関数記号 = ι 項）だけで、定義式 `名前-DEF` は IOTA 規則による普通の定理です。
+  （関数記号 = 確定記述）だけで、定義式 `名前-DEF` は、存在・一意性の定理から MP と Gen で
+  証明した普通の定理です（補助の `名前-DEF.S1` も、実際の推論図に展開して検証します）。
 
 **保証していないこと**
 - 同じ Lisp イメージの中での保護はありません。`ledger-append` は公開されていて、
@@ -355,7 +360,7 @@ src/                     カーネル本体
   meta-theorem.lisp      .system が宣言するメタ定理（演繹定理の @vdash 規則）
   deduction.lisp         演繹定理による登録（th-ded）
   system-spec.lisp       .system ファイルの読み込み
-  function-definition.lisp  DEFINE-FUNCTION-BY-DESCRIPTION（ι 項の略記と 名前-DEF）
+  function-definition.lisp  DEFINE-FUNCTION-BY-DESCRIPTION（確定記述の略記と 名前-DEF）
 tests/                   カーネルのテスト（ledger-kernel/tests）
 hilbert-library/         論理とペアノ算術の体系・ライブラリ
 zf-library/              ZF 集合論の体系・ライブラリ
@@ -411,13 +416,17 @@ Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（50 件�
 - **体系毎に矛盾を定義でき、矛盾を検出できる様にすること**
 - **ライブラリが小さい**: ZF は空集合まで。対・和集合・順序対・自然数などはこれから
   です。集合論を書きやすくするクラス記法（`{x ∣ φ}`）もまだありません。
-- **証明を書く手間**: 生の Hilbert 証明は長くなります。変数が衝突したときは
-  `:inst` で手で付け替えます。
+- **証明を書く手間**: 生の Hilbert 証明は長くなります。引用した定理の内部の変数との
+  衝突は自動で付け替えますが、それ以外の衝突は `:inst` で手で付け替えます。
   存在除去（`th-exists-elim`）の証人変数も手で選びます。高水準の証明の書き方や、中置記法での
   入力は、これからの課題です。
 - **自動化**: 恒真式の自動証明は `backup/` にあり、カーネルでは使っていません。
   命題論理の補題も手で（または道具で生成して）書いた証明として台帳に置きます。
-- **確定記述**: 一意でない場合の `.iota` の値の規約（junk value）はありません。
+- **確定記述**: 確定記述は項ではないので、∀x φ(x) → φ(ιx A) には存在と一意性が要ります
+  （Principia と同じ）。`DEFINE-FUNCTION-BY-DESCRIPTION` が今扱えるのは、定義する変数が
+  各原子式に高々1回現れ、それ自体は確定記述を含まない定義式です（∅ にはこれで足ります）。
+  div-s・mod-s・beta を項として使う `10-division.ledger` は、生成器を直すまで算術の
+  ワールドから外しています。
 - **原子記号は束縛変数に依存できない**: 定理の中の原子記号 A は、周りで束縛された
   変数を含まない式しか表せません（束縛変数に名前がないので、捕獲が起こりえない）。
   束縛変数に依存する式は、述語スキーマ `(p x)` で書きます。現在のライブラリは

@@ -13,6 +13,8 @@
 ;;;   (:irule NAME CONDITIONS (PREMISE-PATTERNS EXTRA-PARAM-PATTERNS
 ;;;                            :=> CONCLUSION-PATTERN))
 ;;;   (:abbreviation (HEAD ?PARAMETER...) BODY)  -- see abbreviation.lisp
+;;;   (:contextual-abbreviation (HEAD ?PARAMETER...) (?PSI ?B) BODY)
+;;;                                       -- a description; abbreviation.lisp
 ;;;   (:meta-theorem deduction CLAUSE...)   -- see meta-theorem.lisp
 ;;; CONDITIONS and patterns may use only the kernel's fixed catalog of
 ;;; meta-predicates and meta-constructors; a new one needs new Lisp code.
@@ -160,6 +162,12 @@ may use .EXISTS, itself an abbreviation). The ORIGIN keeps it as written."
                           (admit-rule ledger 'irule name conditions form)))
                 (:abbreviation (destructuring-bind (head-pattern body) (cdr cmd)
                                  (admit-abbreviation ledger head-pattern body)))
+                (:contextual-abbreviation
+                 (destructuring-bind (head-pattern placeholder body) (cdr cmd)
+                   (let ((expanded (expand-abbreviations body ledger :pattern t)))
+                     (check-contextual-abbreviation head-pattern placeholder expanded ledger)
+                     (admit ledger 'contextual-abbreviation (list head-pattern placeholder expanded)
+                            nil (list head-pattern placeholder body)))))
                 (:meta-theorem (admit-meta-theorem ledger (cdr cmd) #'admit #'admit-rule))
                 (t (error "BOOTSTRAP-KERNEL-FROM-SPEC: unknown system-spec command ~S" cmd))))))))
 

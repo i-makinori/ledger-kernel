@@ -366,6 +366,73 @@ read as an application of P)."
   (let ((fs (mapcar (lambda (n) (find-proven n proven-alist)) nums)))
     (if (some #'null fs) :missing fs)))
 
+;;; Steps 1 and 3 work on names, so before them the cited proof's own
+;;; internal variables -- those absent from its hypotheses and conclusion,
+;;; such as an eigenvariable it generalizes -- are renamed apart from every
+;;; variable the citation brings in (its :INST renaming and the matched
+;;; bindings): instantiating P := lambda (x). (.in x v3) into a proof that
+;;; generalizes its own v3 would otherwise capture. A renaming of the
+;;; cited proof is also handed down to the citations inside it, as :INST
+;;; items, since matching never renames a variable. Both only propose: an
+;;; unlucky choice can reject a good citation, never accept a bad one
+;;; (step 5 still re-checks the result).
+
+(defvar *internal-variables-cache* (make-hash-table :test #'eq)
+  "Entry -> the variables of its stored proof absent from its statement.")
+
+(defun tree-variables (x ledger)
+  "The variables (VARIABLE-P) occurring as symbols anywhere in X."
+  (let ((acc nil))
+    (labels ((walk (y)
+               (cond ((consp y) (walk (car y)) (walk (cdr y)))
+                     ((and y (symbolp y) (not (keywordp y)) (variable-p y ledger))
+                      (pushnew y acc :test #'eq)))))
+      (walk x))
+    acc))
+
+(defun entry-internal-variables (e stored-proof ledger)
+  (multiple-value-bind (vars found) (gethash e *internal-variables-cache*)
+    (if found
+        vars
+        (setf (gethash e *internal-variables-cache*)
+              (set-difference (tree-variables stored-proof ledger)
+                              (tree-variables (cons (proof-conclusion stored-proof)
+                                                    (proof-hypotheses stored-proof))
+                                              ledger)
+                              :test #'eq)))))
+
+(defun propagate-renaming (proof renaming)
+  "PROOF with, in each derived citation, an :INST item (v t) for every
+(v . t) of RENAMING whose v the citation's :INST does not already name."
+  (mapcar (lambda (line)
+            (destructuring-bind (num formula role by) line
+              (if (and (member role '(:th :th-ded)) (consp by))
+                  (multiple-value-bind (cited inst ok) (split-citation-inst (cdr by))
+                    (let ((new (loop for (v . term) in renaming
+                                     unless (and ok (assoc v inst :test #'eq))
+                                       collect (list v term))))
+                      (if (and ok new)
+                          (list num formula role
+                                (append (list (car by)) cited (list :inst (append inst new))))
+                          line)))
+                  line)))
+          proof))
+
+(defun prepare-cited-proof (e stored-proof renaming binds ledger)
+  "E's STORED-PROOF ready for step 3: internal variables renamed apart
+from RENAMING and BINDS, then RENAMING applied (see above)."
+  (let* ((internal (entry-internal-variables e stored-proof ledger))
+         (clash (and internal
+                     (intersection internal (tree-variables (list renaming binds) ledger) :test #'eq)))
+         (proof stored-proof))
+    (when clash
+      (let* ((n (next-fresh-index stored-proof renaming binds))
+             (apart (loop for v in clash for i from n collect (cons v (fresh-var i)))))
+        (setf proof (propagate-renaming (instantiate-raw-proof proof apart) apart))))
+    (if renaming
+        (propagate-renaming (instantiate-raw-proof proof renaming) renaming)
+        proof)))
+
 (defun try-derived-entry (e cited line proven-alist ledger &optional (log (silent-log)) (inst nil))
   "T iff TH entry E, cited from lines CITED with :INST list INST, justifies
 LINE (steps 1-5 above). LEDGER is used exactly as received: it may be a
@@ -391,7 +458,9 @@ restricted view, and widening it would let a proof reach later entries."
                (and (not (match-fail-p b1))
                     (let ((b2 (match-schema-atoms schema-concl (k-line-formula line) ledger b1)))
                       (and (not (match-fail-p b2))
-                           (let ((instantiated (instantiate-raw-proof raw-proof b2)))
+                           (let ((instantiated (instantiate-raw-proof
+                                                (prepare-cited-proof e stored-proof renaming b2 ledger)
+                                                b2)))
                              (and (equal (proof-hypotheses instantiated) actual-hyps)
                                   (equal (proof-conclusion instantiated) (k-line-formula line))
                                   ;; Second value: the checked instance, for the
@@ -430,7 +499,9 @@ A, (.to A B) |- B into the non-tautology (.to (.to A B) B).)"
                                    (match-schema-atoms schema-concl (k-line-formula line) ledger b1)
                                    +fail+)))
                       (and (not (match-fail-p b2))
-                           (let ((instantiated (instantiate-raw-proof raw-proof b2))
+                           (let ((instantiated (instantiate-raw-proof
+                                                (prepare-cited-proof e stored-proof renaming b2 ledger)
+                                                b2))
                                  (inst-hyp (instantiate-schema-atoms hyp-formula b2)))
                              (and (member inst-hyp (proof-hypotheses instantiated) :test #'equal)
                                   (equal (mapcar (lambda (g) (instantiate-schema-atoms g b2)) gamma)

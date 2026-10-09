@@ -28,8 +28,9 @@ The design rests on these core ideas:
   kernel and not extended by `.system` files. A new symbol (∧, ≤, a defined function) is
   an abbreviation that expands into primitive ones, and a theorem is an abbreviation of
   a proof figure; expanded, both give back a primitive proof. A `th-ded` by the deduction theorem
-  is likewise expanded into a real proof figure through its rules' templates and checked
-  (only a discharge through IOTA, which has no template, trusts the declared rules).
+  is likewise expanded into a real proof figure through its rules' templates and checked.
+  A description ιx A is an abbreviation too, in context (Principia *14): there is no
+  IOTA rule, and the base system's inference rules are MP and Gen alone.
 
 - **Bound variables have no names** (machine B): inside the kernel, bound variables
   are represented by de Bruijn indices. `∀v0 ∀v1 (v0 = v1)` becomes
@@ -58,14 +59,17 @@ proof trees, and verifying proofs you write on the spot.
 - Peano arithmetic (P1–P10) and the orders ≤ and < on top of it (`00-peano-order.system`)
 - ZF set theory (extensionality, pairing, union, power set, infinity, regularity,
   separation schema, replacement schema; without the axiom of choice)
-- Definite descriptions `(.iota x A)` ("the unique x satisfying A")
+- Definite descriptions `(.iota x A)` ("the x satisfying A"), as in Principia *14: not a
+  term, but an abbreviation in context. The narrowest atomic formula ψ holding it stands for
+  ∃b (∀x (A ↔ x = b) ∧ ψ(b)), so an improper description satisfies nothing
 
 **Definition mechanisms**
 - `(:abbreviation HEAD BODY)`: defines a new symbol as an abbreviation of an expression
   in earlier symbols. The kernel expands input before checking it, so no axiom is added
 - `DEFINE-FUNCTION-BY-DESCRIPTION`: defines a new function symbol, from a property whose
-  existence and uniqueness have been proved, as an abbreviation of a ι term, and derives
-  its defining formula as a theorem by IOTA (e.g. the empty set ∅)
+  existence and uniqueness have been proved, as an abbreviation of a description, and
+  proves its defining formula from those two theorems, as Principia *14 does, through the
+  lemmas of `07-quantifier-schemas.ledger` (e.g. the empty set ∅)
 - Predicate schema variables "A(x)": write `(p v0)` in a theorem to mean "any formula
   containing x", and substitute a concrete formula when citing it (automatically, or
   explicitly with `:inst`)
@@ -246,7 +250,7 @@ the same.
 | `(.to A B)` | A → B | `(.forall x A)` | ∀x A |
 | `(.neg A)` | ¬A | `(.exists x A)` | ∃x A |
 | `(.and A B)` | A ∧ B | `(.exists1 x A)` | ∃!x A |
-| `(.or A B)` | A ∨ B | `(.iota x A)` | ιx A (the unique x satisfying A) |
+| `(.or A B)` | A ∨ B | `(.iota x A)` | ιx A (the x satisfying A; inside an atomic formula) |
 | `(.iff A B)` | A ↔ B | `(.eq s t)` | s = t |
 | `(.in s t)` | s ∈ t (ZF) | `(empty)` | ∅ (ZF) |
 | `zero`, `(S t)`, `(+ s t)`, `(* s t)` | 0, S(t), s+t, s·t (Peano arithmetic) | `(p t)` | predicate schema P(t) |
@@ -268,7 +272,7 @@ between them.
 |---|---|
 | `check-and-extend` | A closed proof, as a theorem (`th`) |
 | `check-and-extend-by-deduction-direct` | A proof Γ, H ⊢ Φ containing hypothesis H, registered as Γ ⊢ H → Φ via the deduction theorem (`th-ded`) |
-| `define-function-by-description` | A function symbol (an abbreviation of a ι term) and the theorem `NAME-DEF` stating its defining formula, from existence and uniqueness theorems |
+| `define-function-by-description` | A function symbol (an abbreviation of a description) and the theorem `NAME-DEF` stating its defining formula, from existence and uniqueness theorems |
 | `declare-atomic-wff-symbol`, `declare-variable-symbol`, `declare-predicate-schema-symbol` | Declarations of new symbols |
 
 A ledger can be saved as a sequence of commands with `write-ledger-to-file` and read back
@@ -281,8 +285,8 @@ and is re-verified.
 
 | File | Contents |
 |---|---|
-| `hilbert-library/00-classical-fol-equality.system` | The system of first-order predicate logic with equality (formation rules, MP, Gen, IOTA, II.1–3, III.1–2, IV.1–4, ∃ as an abbreviation) |
-| `hilbert-library/00-connectives.system` | Abbreviations ∧ ∨ ↔ ∃! (no axioms) |
+| `hilbert-library/00-classical-fol-equality.system` | The system of first-order predicate logic with equality (formation rules, MP, Gen, II.1–3, III.1–2, IV.1–4, ∃ as an abbreviation) |
+| `hilbert-library/00-connectives.system` | Abbreviations ∧ ∨ ↔ ∃!, and the description ι in context (no axioms) |
 | `hilbert-library/00-peano-arithmetic.system` | The vocabulary and axioms P1–P10 of Peano arithmetic |
 | `hilbert-library/00-peano-order.system` | The orders ≤ and < as abbreviations (s ≤ t :⇔ ∃z s + z = t, s < t :⇔ S s ≤ t; no axioms) |
 | `hilbert-library/01-propositional-core.ledger` | Identity, hypothetical syllogism, exchange of antecedents |
@@ -294,7 +298,7 @@ and is re-verified.
 | `hilbert-library/07-quantifier-schemas.ledger` | Quantifier lemmas about P(x) (∀-elimination, ∃-introduction, monotonicity, ∃! → ∃, uniqueness for ∃!) |
 | `hilbert-library/08-arithmetic.ledger` | Commutativity, associativity, distributivity and cancellation for addition and multiplication; properties of 0 and 1 (generated by `tools/generate-arithmetic-ledger.lisp`) |
 | `hilbert-library/09-order.ledger` | Reflexivity, transitivity, antisymmetry and totality of ≤; x ≤ Sx; zero or a successor; x + y = 0 → y = 0 (same as above) |
-| `hilbert-library/10-division.ledger` | Existence and uniqueness of division by S b; definitions of the quotient `div-s(a,b)`, the remainder `mod-s(a,b)` and the β function `beta(c,d,i)` = c mod (1+(i+1)d) (same as above) |
+| `hilbert-library/10-division.ledger` | Existence and uniqueness of division by S b; definitions of the quotient `div-s(a,b)`, the remainder `mod-s(a,b)` and the β function `beta(c,d,i)` = c mod (1+(i+1)d) (same as above; not loaded at present: it uses these as terms, which descriptions no longer are, until the generator is redone) |
 | `zf-library/00-zf.system` | The axioms of ZF |
 | `zf-library/01-empty-set.ledger` | Existence and uniqueness of the empty set, the definition of ∅, ¬(x ∈ ∅) |
 
@@ -331,9 +335,9 @@ what is trusted unconditionally".
 **What is trusted unconditionally**
 - **The kernel code**: matching, the judgements of free variables and substitutability
   (meta-predicates), the re-verification logic, and the conversion of written formulas
-  into de Bruijn form (`src/debruijn.lisp`). The list of binders (`.forall`
-  `.iota`) and the expansion of abbreviations (`src/abbreviation.lisp`) are also part of
-  the kernel. Substitution is performed in a way that
+  into de Bruijn form (`src/debruijn.lisp`). The list of binders (`.forall`) and the
+  expansion of abbreviations, descriptions included (`src/abbreviation.lisp`), are also
+  part of the kernel. Substitution is performed in a way that
   cannot capture bound variables, but `@subst-ok?` is kept, so that any error in the
   conversion or in unfolding binders is detected and rejected there.
 - **The contents of `.system` files**: axioms, inference rules and formation rules are
@@ -351,13 +355,14 @@ what is trusted unconditionally".
   step written out as a proof in the system. With templates for every rule used, the kernel
   rewrites the `th-ded` proof through them into a **real proof figure** of Γ ⊢ H → Φ and checks
   it as an ordinary proof; the deduction theorem is then not trusted at all. Only through a
-  rule without a template (now only IOTA) are the declared rules trusted, and the entry
-  records it. Every `th-ded` in the current libraries (253 in ZF, 322 in arithmetic) is
+  rule without a template (none in the current base system) would the declared rules be
+  trusted, and the entry would record it. Every `th-ded` in the current libraries (253 in ZF, 322 in arithmetic) is
   expanded and checked. The Web UI's "foundations depended on" mentions the trust only
   where it was used.
 - **Definitions**: not trusted. `DEFINE-FUNCTION-BY-DESCRIPTION` adds only an
-  abbreviation (the function symbol stands for a ι term); its defining formula `NAME-DEF`
-  is an ordinary theorem proved by the IOTA rule.
+  abbreviation (the function symbol stands for a description); its defining formula
+  `NAME-DEF` is an ordinary theorem, proved from the existence and uniqueness theorems
+  with MP and Gen (through an auxiliary `NAME-DEF.S1`, itself expanded into a real proof).
 
 **What is not guaranteed**
 - There is no protection within the same Lisp image. `ledger-append` is public, and
@@ -388,7 +393,7 @@ src/                     The kernel
   meta-theorem.lisp      Meta-theorems declared by a .system file (the deduction theorem's @vdash rules)
   deduction.lisp         Registration via the deduction theorem (th-ded)
   system-spec.lisp       Loading .system files
-  function-definition.lisp  DEFINE-FUNCTION-BY-DESCRIPTION (a ι-term abbreviation and NAME-DEF)
+  function-definition.lisp  DEFINE-FUNCTION-BY-DESCRIPTION (a description abbreviation and NAME-DEF)
 tests/                   Kernel tests (ledger-kernel/tests)
 hilbert-library/         Systems and libraries for logic and Peano arithmetic
 zf-library/              Systems and libraries for ZF set theory
@@ -449,13 +454,17 @@ with the reasons, include for example:
 - **The library is small**: ZF only goes as far as the empty set. Pairs, unions, ordered
   pairs, natural numbers and so on are still to come. There is also no class notation
   (`{x ∣ φ}`) to make set theory easier to write.
-- **The effort of writing proofs**: raw Hilbert proofs get long. Variable clashes must be
-  renamed by hand with `:inst`. The witness variable for existential elimination (`th-exists-elim`) is also chosen by hand.
+- **The effort of writing proofs**: raw Hilbert proofs get long. A cited theorem's own
+  internal variables are renamed apart automatically, but other clashes must be renamed
+  by hand with `:inst`. The witness variable for existential elimination (`th-exists-elim`) is also chosen by hand.
   A higher-level proof language and infix input are future work.
 - **Automation**: automatic proof of tautologies is kept in `backup/` and not used by the
   kernel; propositional lemmas are written (or generated by a tool) as ordinary proofs.
-- **Definite descriptions**: there is no convention (junk value) for the value of `.iota`
-  when the description is not unique.
+- **Definite descriptions**: a description is not a term, so ∀x φ(x) → φ(ιx A) needs
+  existence and uniqueness, as in Principia. `DEFINE-FUNCTION-BY-DESCRIPTION` supports, for
+  now, defining formulas with at most one occurrence of the defined variable per atomic
+  formula and no description of their own (enough for ∅). `10-division.ledger`, which uses
+  div-s, mod-s and beta as terms, is out of the arithmetic world until its generator is redone.
 - **Atomic symbols cannot depend on bound variables**: an atomic symbol A in a theorem can
   only stand for formulas that do not contain variables bound around it (since bound
   variables have no names, capture cannot occur). Formulas that depend on bound variables

@@ -53,10 +53,12 @@
           (entries-of-kind 'abbreviation ledger)))
 
 (defun abbreviation-head-p (sym ledger)
-  "T iff SYM is the head of one of LEDGER's abbreviations."
+  "T iff SYM is the head of one of LEDGER's abbreviations (contextual ones
+included)."
   (and (symbolp sym) sym
        (some (lambda (e) (eq (car (first (entry-payload e))) sym))
-             (entries-of-kind 'abbreviation ledger))))
+             (append (entries-of-kind 'abbreviation ledger)
+                     (entries-of-kind 'contextual-abbreviation ledger)))))
 
 (defun next-abbrev-index (&rest trees)
   "1 + the largest n such that ?ABBREVn occurs in TREES (0 if none)."
@@ -71,19 +73,37 @@
       (walk trees))
     (1+ best)))
 
-(defun rename-body-binders (body parameters fresh)
+(defun rename-body-binders (body parameters fresh &optional descriptions)
   "BODY with the variable of every binder that is not one of PARAMETERS
-renamed to (FUNCALL FRESH), within its scope."
-  (cond
-    ((and (named-binder-p body) (not (member (second body) parameters :test #'eq)))
-     (let ((new (funcall fresh)))
-       (list (first body) new
-             (rename-body-binders (substitute-named (second body) new (third body)) parameters fresh))))
-    ((named-binder-p body)
-     (list (first body) (second body) (rename-body-binders (third body) parameters fresh)))
-    ((consp body) (cons (rename-body-binders (car body) parameters fresh)
-                        (rename-body-binders (cdr body) parameters fresh)))
-    (t body)))
+renamed to (FUNCALL FRESH), within its scope. DESCRIPTIONS, a
+CONTEXTUAL-TABLE, makes a description (.iota v A) count as a binder of v
+over A too."
+  (flet ((binder-p (x) (or (named-binder-p x) (description-binder-p x descriptions))))
+    (cond
+      ((and (binder-p body) (not (member (second body) parameters :test #'eq)))
+       (let ((new (funcall fresh)))
+         (list* (first body) new
+                (rename-body-binders (substitute-named (second body) new (cddr body))
+                                     parameters fresh descriptions))))
+      ((binder-p body)
+       (list* (first body) (second body)
+              (rename-body-binders (cddr body) parameters fresh descriptions)))
+      ((consp body) (cons (rename-body-binders (car body) parameters fresh descriptions)
+                          (rename-body-binders (cdr body) parameters fresh descriptions)))
+      (t body))))
+
+(defun description-binder-p (x table)
+  "T iff X is a description (HEAD v ...) of contextual TABLE whose first
+argument, a symbol, is a variable its definition binds (as .iota binds
+its v)."
+  (let ((def (and table (description-p x table))))
+    (and def (second x) (symbolp (second x))
+         (let ((param (first (second def))) (bound nil))
+           (labels ((walk (y) (when (consp y)
+                                (when (named-binder-p y) (push (second y) bound))
+                                (walk (car y)) (walk (cdr y)))))
+             (walk (cddr def)))
+           (and (member param bound :test #'eq) t)))))
 
 (defun compute-substitutions (x)
   "X with each (@subst v t A) whose arguments hold no pattern variable
@@ -101,7 +121,8 @@ replaced by A with t for the free occurrences of v (innermost first)."
   "X, written with named binders, with every abbreviation expanded (see
 above). PATTERN true means X is a rule's pattern: fresh variables are
 then pattern variables ?ABBREVn."
-  (let ((table (abbreviation-table ledger)))
+  (let ((table (abbreviation-table ledger))
+        (descriptions (contextual-table ledger)))
     (if (null table)
         x
         ;; Fresh means above every name of that kind in X and in every
@@ -123,7 +144,7 @@ then pattern variables ?ABBREVn."
                          ((and def (proper-list-p (cdr x)) (= (length (cdr x)) (length (second def))))
                           (destructuring-bind (parameters . body) (cdr def)
                             (let* ((args (mapcar #'expand (cdr x)))
-                                   (body (rename-body-binders body parameters #'fresh))
+                                   (body (rename-body-binders body parameters #'fresh descriptions))
                                    (body (sublis (mapcar #'cons parameters args) body)))
                               (expand (compute-substitutions body)))))
                          ((consp x) (cons (expand (car x)) (expand (cdr x))))
@@ -141,7 +162,7 @@ abbreviation it uses declared before it."
       (fail "the head must be (SYMBOL ?PARAMETER...)."))
     (let ((head (car head-pattern)) (parameters (cdr head-pattern)))
       (unless (and (fresh-symbol-name-p head ledger)
-                   (not (member head '(.to .eq .neg .forall .iota) :test #'eq))
+                   (not (member head '(.to .eq .neg .forall) :test #'eq))
                    (not (symbol-used-in-ledger-p head ledger)))
         (fail "~S is not a fresh symbol." head))
       (unless (and (every #'pat-var-p parameters)
@@ -149,7 +170,9 @@ abbreviation it uses declared before it."
         (fail "the parameters must be distinct pattern variables."))
       (let ((bound (let ((acc nil))
                      (labels ((walk (x) (when (consp x)
-                                          (when (named-binder-p x) (push (second x) acc))
+                                          (when (or (named-binder-p x)
+                                                    (description-binder-p x (contextual-table ledger)))
+                                            (push (second x) acc))
                                           (walk (car x)) (walk (cdr x)))))
                        (walk body))
                      acc)))
@@ -161,3 +184,167 @@ abbreviation it uses declared before it."
                               (fail "the body uses ~S itself." head))
                             (heads (car x)) (heads (cdr x)))))
         (heads body)))))
+
+;;; --- Contextual abbreviations: descriptions, as in Principia *14 -----------
+;;;
+;;; A description (.iota x A), "the x such that A", is an incomplete
+;;; symbol: it is not a term of the system, and means something only in
+;;; the formula around it. *14.01, with the narrowest scope:
+;;;
+;;;   (:contextual-abbreviation (.iota ?x ?A) (?psi ?b)
+;;;     (.exists ?b (.and (.forall ?x (.iff ?A (.eq ?x ?b))) (?psi ?b))))
+;;;
+;;; An atomic formula psi(T) holding a description T becomes the body,
+;;; with ?x and ?A from T, ?b a fresh variable, and (?psi ?b) the atomic
+;;; formula with that occurrence of T replaced by b. Which formulas are
+;;; atomic is read off the system's formation rules: a head whose wff?
+;;; formation rule asks (wff? ...) of an argument is a connective, and that
+;;; argument is a formula position; anything else in a formula position
+;;; is atomic. Descriptions are found outermost first, left to right; one
+;;; nested in another's A is expanded inside A, where its own narrowest
+;;; scope is. A function defined by description, NAME(x) := (.iota y A),
+;;; is first expanded to the description, then eliminated the same way.
+;;; With existence and uniqueness proved, the scope does not matter
+;;; (*14.3); without them, the expansion just says what it says.
+
+(defun contextual-table (ledger)
+  "Alist head -> (PARAMETERS PLACEHOLDER . BODY) for LEDGER's contextual
+abbreviations."
+  (mapcar (lambda (e)
+            (destructuring-bind (head-pattern placeholder body) (entry-payload e)
+              (list* (car head-pattern) (cdr head-pattern) placeholder body)))
+          (entries-of-kind 'contextual-abbreviation ledger)))
+
+(defun formula-argument-positions (head ledger)
+  "The 1-based argument positions of HEAD that hold formulas, according to
+LEDGER's wff? formation rules, or NIL if HEAD forms an atomic formula."
+  (dolist (e (entries-of-kind 'wff? ledger) nil)
+    (destructuring-bind (name conditions result) (entry-payload e)
+      (declare (ignore name))
+      (let ((form (second result)))
+        (when (and (consp form) (eq (car form) head))
+          (let ((wff-vars (loop for c in conditions
+                                when (and (consp c) (eq (car c) 'wff?)) collect (second c))))
+            (return (loop for arg in (cdr form) for i from 1
+                          when (member arg wff-vars :test #'eq) collect i))))))))
+
+(defun description-p (x table)
+  "The table entry if X is a description (HEAD arg...) of TABLE, else NIL."
+  (and (consp x) (symbolp (car x))
+       (let ((def (assoc (car x) table :test #'eq)))
+         (and def (proper-list-p (cdr x)) (= (length (cdr x)) (length (second def))) def))))
+
+(defun first-description-path (x table)
+  "The path (list of argument indices) to the first outermost description
+among the arguments of atomic formula X, or NIL."
+  (labels ((search-in (y path)
+             (cond ((description-p y table) (reverse path))
+                   ((and (consp y) (proper-list-p y))
+                    (loop for arg in (cdr y) for i from 1
+                          do (let ((p (search-in arg (cons i path))))
+                               (when p (return p)))))
+                   (t nil))))
+    (and (consp x) (proper-list-p x)
+         (loop for arg in (cdr x) for i from 1
+               do (let ((p (search-in arg (list i))))
+                    (when p (return p)))))))
+
+(defun subtree-at (x path)
+  (if (null path) x (subtree-at (nth (car path) x) (cdr path))))
+
+(defun replace-at (x path new)
+  "X with the subtree at PATH replaced by NEW (a copy along the path only)."
+  (if (null path)
+      new
+      (loop for item in x for i from 0
+            collect (if (= i (car path)) (replace-at item (cdr path) new) item))))
+
+(defun mentions-any-head-p (x heads)
+  (cond ((consp x) (or (and (symbolp (car x)) (member (car x) heads :test #'eq))
+                       (mentions-any-head-p (car x) heads)
+                       (mentions-any-head-p (cdr x) heads)))
+        (t nil)))
+
+(defun expand-descriptions-in-formula (formula ledger table counter-cell)
+  "FORMULA (written, named binders, ordinary abbreviations expanded) with
+every description eliminated (see above). COUNTER-CELL is a cons whose
+car is the next fresh %n."
+  (labels ((fresh () (prog1 (fresh-var (car counter-cell)) (incf (car counter-cell))))
+           (walk (f)
+             (let ((positions (and (consp f) (symbolp (car f))
+                                   (formula-argument-positions (car f) ledger))))
+               (cond
+                 ((not (consp f)) f)
+                 (positions
+                  (loop for item in f for i from 0
+                        collect (if (member i positions) (walk item) item)))
+                 (t (atomic f)))))
+           (atomic (psi)
+             (let ((path (first-description-path psi table)))
+               (if (null path)
+                   psi
+                   (let* ((desc (subtree-at psi path))
+                          (def (description-p desc table)))
+                     (destructuring-bind (parameters placeholder . body) (cdr def)
+                       (let* ((b (fresh))
+                              (body (rename-body-binders body (append parameters (list (second placeholder)))
+                                                         #'fresh))
+                              (body (sublis (list (cons (second placeholder) b)) body))
+                              (psi-b (replace-at psi path b))
+                              (body (subst psi-b (list (first placeholder) b) body :test #'equal))
+                              (body (sublis (mapcar #'cons parameters (cdr desc)) body)))
+                         (walk (compute-substitutions body)))))))))
+    (walk formula)))
+
+(defun expand-descriptions (x ledger)
+  "X with descriptions eliminated wherever a formula stands: in each line
+of a proof (its formula, and the formulas of a citation's :INST), or in X
+itself when it is a formula. A description standing alone, as a term,
+is left as it is -- it is not a term."
+  (let ((table (contextual-table ledger)))
+    (if (or (null table) (not (mentions-any-head-p x (mapcar #'car table))))
+        x
+        (let ((counter (list (next-fresh-index x table))))
+          (labels ((formula (f) (expand-descriptions-in-formula f ledger table counter))
+                   (line-p (l) (and (consp l) (proper-list-p l) (= (length l) 4)
+                                    (member (third l) '(:hyp :axiom :ir :th :th-ded))))
+                   (inst-items (items)
+                     (mapcar (lambda (item)
+                               (cond ((and (consp item) (= (length item) 3)) ; (P (x) body)
+                                      (list (first item) (second item) (formula (third item))))
+                                     ((and (consp item) (= (length item) 2)
+                                           (atomic-wff-symbol-p (first item) ledger))
+                                      (list (first item) (formula (second item))))
+                                     (t item)))
+                             items))
+                   (line (l)
+                     (destructuring-bind (num f role by) l
+                       (list num (formula f) role
+                             (if (and (consp by) (member :inst by))
+                                 (let ((after nil))
+                                   (mapcar (lambda (a) (prog1 (if (and after (listp a)) (inst-items a) a)
+                                                         (setf after (eq a :inst))))
+                                           by))
+                                 by)))))
+            (cond
+              ((line-p x) (line x))
+              ((and (proper-list-p x) x (every #'line-p x)) (mapcar #'line x))
+              ((description-p x table) x)
+              (t (formula x))))))))
+
+(defun check-contextual-abbreviation (head-pattern placeholder body ledger)
+  "Signal an error unless (:contextual-abbreviation HEAD-PATTERN
+PLACEHOLDER BODY) is admissible: a fresh head over distinct pattern
+variables, a placeholder (?psi ?b) of two other pattern variables, used
+in BODY, whose ?b BODY binds."
+  (flet ((fail (fmt &rest args)
+           (error "(:contextual-abbreviation ~S ...): ~?" head-pattern fmt args)))
+    (check-abbreviation-declaration head-pattern
+                                    (subst (second placeholder) placeholder body :test #'equal)
+                                    ledger)
+    (unless (and (consp placeholder) (= (length placeholder) 2)
+                 (every #'pat-var-p placeholder)
+                 (not (intersection placeholder (cdr head-pattern))))
+      (fail "the placeholder must be (?PSI ?B), two pattern variables not in the head."))
+    (unless (occurs-symbol-p (first placeholder) body)
+      (fail "the body does not use ~S." placeholder))))

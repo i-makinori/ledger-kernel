@@ -24,9 +24,19 @@
 ;;; In .exists1, ?x is the variable written after .exists1 and binds as
 ;;; the body says; ?u is renamed to a fresh variable at each expansion, so
 ;;; it can neither clash with x nor capture anything in A.
+;;;
+;;; The description (.iota x A), "the x such that A", is an incomplete
+;;; symbol as in Principia *14.01: not a term, but a way of writing a
+;;; formula. An atomic formula psi holding it, at the narrowest scope,
+;;; stands for
+;;;   exists b ((forall x (A <-> x = b)) and psi[b/(.iota x A)])
+;;; (src/abbreviation.lisp). With existence and uniqueness proved, which
+;;; formula the scope is taken in does not matter (*14.3).
 
 (:abbreviation (.and ?A ?B) (.neg (.to ?A (.neg ?B))))
 (:abbreviation (.or ?A ?B) (.to (.neg ?A) ?B))
 (:abbreviation (.iff ?A ?B) (.and (.to ?A ?B) (.to ?B ?A)))
 (:abbreviation (.exists1 ?x ?A)
                (.exists ?x (.and ?A (.forall ?u (.to (@subst ?x ?u ?A) (.eq ?u ?x))))))
+(:contextual-abbreviation (.iota ?x ?A) (?psi ?b)
+  (.exists ?b (.and (.forall ?x (.iff ?A (.eq ?x ?b))) (?psi ?b))))

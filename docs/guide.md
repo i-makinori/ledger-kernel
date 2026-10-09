@@ -144,6 +144,41 @@ Lispソースレベルの拡張です）。それでも、命題論理の別の�
 仕組みだけで十分表現できるはずです。
 
 
+### メタ定理の宣言: `(:meta-theorem deduction ...)`
+
+演繹定理（Γ, H ⊢ Φ なら Γ ⊢ H → Φ）が成り立つかどうかは、体系の推論規則しだいです。
+例えば、開いた仮定を見ない Gen があると、P(x) ⊢ ∀x P(x) から ⊢ P(x) → ∀x P(x) が
+出てしまいます。そこでカーネルは演繹定理を前提にせず、`.system` ファイルに宣言させます。
+宣言のない体系では `th-ded` を登録できません（他の機能は普通に使えます）。
+
+```lisp
+(:meta-theorem deduction
+  (:discharge (@vdash ?H ?A) (.to ?H ?A))          ; Γ ⊢ H → A の書き方
+  (:case :assumption ((wff? ?H)) (nil nil :=> (@vdash ?H ?H)))
+  (:case :independent ((wff? ?H) (wff? ?A)) (nil nil :=> (@vdash ?H ?A)))
+  (:case MP ((wff? ?H) (wff? ?A) (wff? ?B))
+         (((@vdash ?H (.to ?A ?B)) (@vdash ?H ?A)) nil :=> (@vdash ?H ?B)))
+  (:case Gen ((wff? ?H) (var? ?x) (wff? ?A) (@not-free-in? ?x ?H))
+         (((@vdash ?H ?A)) (?x) :=> (@vdash ?H (.forall ?x ?A))))
+  ...)
+```
+
+`(@vdash ?H ?A)` は「消去する仮定 ?H に依存する行 ?A が、Γ ⊢ ?H → ?A になる」という
+メタレベルの言明です。各 `:case` は推論規則と同じ形のマッチング規則で、型条件と付帯条件を
+持てます。名前が推論規則名ならその規則で作られた行、`:assumption` は ?H そのものの
+仮定行、`:independent` は ?H に依存しない行に使われます。
+
+`th-ded` を登録するとき、カーネルは証明の各行について、?H に依存するかどうかを追跡し、
+依存する行はその規則の `:case`（前提はすべて `(@vdash ?H 前提)`）に、依存しない行は
+`:independent` に当てはまることを確かめます。定理を引用した行が ?H に依存するときは、
+引用先の検証済みの実例が、依存している前提について同じ検査を通ることを再帰的に確かめます。
+`:case` のない推論規則は、普通の証明では使えますが、その規則で ?H から作った行は
+離脱できません。
+
+標準の宣言は `hilbert-library/00-classical-fol-equality.system` にあり、MP・Gen・IOTA・
+EXISTS-ELIM の4規則を覆っています。各 `:case` は「教科書の帰納法のその1ステップが
+この体系で成り立つ」という主張で、公理と同じく信頼されます。
+
 ## 4. 確定記述（definite description）: `III.3` と `IOTA`
 
 「Aを満たすxが存在し、しかもそれは一意である」ときに、その唯一のxを直接
@@ -587,7 +622,8 @@ REPL からなら:
 - **エントリの種類**: `atomic-wff-symbol` / `variable-symbol` /
   `predicate-schema-symbol`（語彙）、`term?` /
   `wff?`（形成規則）、`irule`（推論規則, MP/Gen）、`axiom`、`th`（定理、
-  閉じた証明）、`th-ded`（演繹定理を信頼して直接離脱で作った定理）。
+  閉じた証明）、`th-ded`（演繹定理で仮定を離脱して作った定理）、
+  `deduction-discharge` / `deduction-case`（`.system` が宣言した演繹定理）。
 - **`th-ded` の健全性**: `A ⊢ B` から `A → B` を作るとき、証明中に残っている
   他の未放棄の仮定（Γ）は、引用時にちゃんと citable な前提として要求されます
   （これを落とすと `(C→D)→D` のような偽の「定理」を認めてしまいます）。

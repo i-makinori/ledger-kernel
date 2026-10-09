@@ -377,13 +377,17 @@ restricted view, and widening it would let a proof reach later entries."
                            (let ((instantiated (instantiate-raw-proof raw-proof b2)))
                              (and (equal (proof-hypotheses instantiated) actual-hyps)
                                   (equal (proof-conclusion instantiated) (k-line-formula line))
-                                  (verify-derived-instantiation e (cons renaming b2) instantiated
-                                                                ledger log))))))))))))
+                                  ;; Second value: the checked instance, for the
+                                  ;; deduction meta-theorem (meta-theorem.lisp).
+                                  (values (verify-derived-instantiation e (cons renaming b2) instantiated
+                                                                        ledger log)
+                                          instantiated))))))))))))
 
 (defun try-deduction-entry (e cited line proven-alist ledger &optional (log (silent-log)) (inst nil))
   "As TRY-DERIVED-ENTRY, for a TH-DED entry E with payload (NAME H PROOF)
 admitted by CHECK-AND-EXTEND-BY-DEDUCTION-DIRECT, whose conclusion is
-(.to H PHI). Only H is discharged: PROOF's other hypotheses (Gamma) remain
+H -> PHI, written as the system's :DISCHARGE declaration says
+(meta-theorem.lisp); a system without one cannot cite it. Only H is discharged: PROOF's other hypotheses (Gamma) remain
 premises that must be cited, since the Deduction Theorem gives
 Gamma |- H -> PHI, not |- H -> PHI. (Dropping Gamma would turn
 A, (.to A B) |- B into the non-tautology (.to (.to A B) B).)"
@@ -404,18 +408,23 @@ A, (.to A B) |- B into the non-tautology (.to (.to A B) B).)"
                         gamma cited proven-alist ledger
                         (seed-fresh seed hyp-formula raw-proof actual-hyps (k-line-formula line)))))
                (and (not (match-fail-p b1))
-                    (let* ((schema-concl (list '.to hyp-formula (proof-conclusion raw-proof)))
-                           (b2 (match-schema-atoms schema-concl (k-line-formula line) ledger b1)))
+                    (let* ((schema-concl (discharge-formula hyp-formula (proof-conclusion raw-proof) ledger))
+                           (b2 (if schema-concl
+                                   (match-schema-atoms schema-concl (k-line-formula line) ledger b1)
+                                   +fail+)))
                       (and (not (match-fail-p b2))
                            (let ((instantiated (instantiate-raw-proof raw-proof b2))
                                  (inst-hyp (instantiate-schema-atoms hyp-formula b2)))
                              (and (member inst-hyp (proof-hypotheses instantiated) :test #'equal)
                                   (equal (mapcar (lambda (g) (instantiate-schema-atoms g b2)) gamma)
                                          actual-hyps)
-                                  (equal (list '.to inst-hyp (proof-conclusion instantiated))
+                                  (equal (discharge-formula inst-hyp (proof-conclusion instantiated) ledger)
                                          (k-line-formula line))
-                                  (verify-derived-instantiation e (cons renaming b2) instantiated
-                                                                ledger log))))))))))))
+                                  ;; Second value: the checked instance, for the
+                                  ;; deduction meta-theorem (meta-theorem.lisp).
+                                  (values (verify-derived-instantiation e (cons renaming b2) instantiated
+                                                                        ledger log)
+                                          instantiated))))))))))))
 
 (defun check-k-derived-line (line proven-alist ledger &optional (log (silent-log)))
   "Check a derived citation: BY = (name cited-line... [:inst binds]).
@@ -428,11 +437,32 @@ instead of a scan of the whole ledger."
       (and ok
            (let ((candidates (treap-values-below (alist-get (ledger-by-derived-name ledger) rule-name)
                                                   (ledger-bound ledger))))
-             (some (lambda (e)
-                     (if (eq (entry-kind e) 'th-ded)
-                         (try-deduction-entry e cited line proven-alist ledger log inst)
-                         (try-derived-entry e cited line proven-alist ledger log inst)))
-                   candidates))))))
+             (nth-value 0 (derived-citation-instance candidates cited line proven-alist
+                                                     ledger log inst)))))))
+
+(defun derived-citation-instance (candidates cited line proven-alist ledger log inst)
+  "The first of CANDIDATES (TH / TH-DED entries) that justifies LINE, as
+(VALUES T INSTANTIATED-PROOF ENTRY), or NIL."
+  (dolist (e candidates nil)
+    (multiple-value-bind (ok instantiated)
+        (if (eq (entry-kind e) 'th-ded)
+            (try-deduction-entry e cited line proven-alist ledger log inst)
+            (try-derived-entry e cited line proven-alist ledger log inst))
+      (when ok (return (values t instantiated e))))))
+
+(defun derived-line-instance (line proven-alist ledger)
+  "For a derived citation LINE already accepted by CHECK-K-PROOF:
+(VALUES INSTANTIATED-PROOF ENTRY CITED-LINE-NUMBERS), the checked
+instance of the cited entry that justifies it."
+  (destructuring-bind (rule-name . args) (k-line-by line)
+    (multiple-value-bind (cited inst ok) (split-citation-inst args)
+      (when ok
+        (multiple-value-bind (found instantiated e)
+            (derived-citation-instance
+             (treap-values-below (alist-get (ledger-by-derived-name ledger) rule-name)
+                                 (ledger-bound ledger))
+             cited line proven-alist ledger (silent-log) inst)
+          (and found (values instantiated e cited)))))))
 
 (defun derived-rule-name-taken-p (name ledger)
   "T iff NAME already labels a TH or TH-DED entry. Both kinds are cited

@@ -163,7 +163,7 @@ rule's own ?BVn names."
   "The hypothesis a TH-DED entry discharges, for display."
   (db->bv-named (second (entry-payload e))))
 
-(defun entry-statement (e)
+(defun entry-statement (e &optional ledger)
   "(VALUES PREMISES CONCLUSION) -- what the entry asserts. PREMISES are
 the formulas it needs cited (hypotheses of a derived entry, premises of
 an inference rule); CONCLUSION is what it yields. Axiom and rule schemas
@@ -178,9 +178,14 @@ DISPLAY-PROOF)."
        (destructuring-bind (name hyp raw) p
          (declare (ignore name))
          (values (mapcar #'db->bv-named (remove hyp (proof-hypotheses raw) :test #'equal))
-                 (db->bv-named (list '.to hyp (proof-conclusion raw))))))
+                 ;; H -> PHI as the system's :DISCHARGE declaration writes it.
+                 (db->bv-named (or (and ledger (discharge-formula hyp (proof-conclusion raw) ledger))
+                                   (list '.to hyp (proof-conclusion raw)))))))
       (axiom (values nil (display-pattern (second (third p)) p)))
-      (irule (let ((form (third p)))
+      ;; A Deduction Theorem case reads like an irule over (@vdash H A);
+      ;; the discharge declaration as (@vdash ?H ?A) => its formula.
+      (deduction-discharge (values (list (first p)) (second p)))
+      ((irule deduction-case) (let ((form (third p)))
                (values (mapcar (lambda (f) (display-pattern f p)) (first form))
                        (display-pattern (car (last form)) p))))
       ((wff? term? var?) (values nil (display-pattern (third p) p)))
@@ -191,7 +196,7 @@ DISPLAY-PROOF)."
 
 (defun entry-conditions (e)
   "Side conditions of an axiom / rule / formation schema."
-  (and (member (entry-kind e) '(axiom irule wff? term? var?))
+  (and (member (entry-kind e) '(axiom irule deduction-case wff? term? var?))
        (second (entry-payload e))))
 
 (defun auxiliary-name-p (name)

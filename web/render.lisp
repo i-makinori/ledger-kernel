@@ -23,7 +23,8 @@
 
 (defparameter *binary-connectives*
   ;; head  symbol  precedence  left-min  right-min   (higher binds tighter)
-  '((.iff "↔" 1 2 2)
+  '((@vdash "⊢" 0 1 1)               ; a Deduction Theorem case, H ⊢ A
+    (.iff "↔" 1 2 2)
     (.to  "→" 2 3 2)
     (.or  "∨" 3 3 4)
     (.and "∧" 4 4 5)))

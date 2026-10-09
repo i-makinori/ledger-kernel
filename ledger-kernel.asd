@@ -16,6 +16,7 @@
                (:file "meta")
                (:file "judgement")
                (:file "k-proof")
+               (:file "meta-theorem")
                (:file "persistence")
                (:file "deduction")
                (:file "system-spec")

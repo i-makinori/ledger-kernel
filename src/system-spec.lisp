@@ -12,6 +12,7 @@
 ;;;   (:axiom NAME CONDITIONS (EXTRA-PARAM-PATTERNS CONCLUSION-PATTERN))
 ;;;   (:irule NAME CONDITIONS (PREMISE-PATTERNS EXTRA-PARAM-PATTERNS
 ;;;                            :=> CONCLUSION-PATTERN))
+;;;   (:meta-theorem deduction CLAUSE...)   -- see meta-theorem.lisp
 ;;; CONDITIONS and patterns may use only the kernel's fixed catalog of
 ;;; meta-predicates and meta-constructors; a new one needs new Lisp code.
 ;;;
@@ -136,6 +137,7 @@ LEDGER-COMMANDS reads it, to recognize function definitions."
                           (admit-rule ledger 'axiom name conditions form)))
                 (:irule (destructuring-bind (name conditions form) (cdr cmd)
                           (admit-rule ledger 'irule name conditions form)))
+                (:meta-theorem (admit-meta-theorem ledger (cdr cmd) #'admit #'admit-rule))
                 (t (error "BOOTSTRAP-KERNEL-FROM-SPEC: unknown system-spec command ~S" cmd))))))))
 
 (defun read-system-spec-from-file (path)
@@ -148,3 +150,42 @@ LEDGER-COMMANDS reads it, to recognize function definitions."
   "Read the .system file PATH and admit it with BOOTSTRAP-KERNEL-FROM-SPEC."
   (bootstrap-kernel-from-spec (read-system-spec-from-file path)
                                :atomic-symbols atomic-symbols :variables variables :ledger ledger))
+
+;;; --- (:meta-theorem deduction ...) ------------------------------------
+
+(defun vdash-pattern-p (x)
+  "T iff X has the shape (@VDASH H A)."
+  (and (consp x) (eq (car x) '@vdash) (= (length x) 3)))
+
+(defun admit-meta-theorem (ledger args admit admit-rule)
+  "Admit the clauses of (:meta-theorem NAME CLAUSE...) with the ADMIT and
+ADMIT-RULE closures of BOOTSTRAP-KERNEL-FROM-SPEC. Only DEDUCTION is
+known; its clauses are (:discharge (@vdash ?H ?A) FORMULA) and
+(:case NAME CONDITIONS (PREMISES EXTRAS :=> (@vdash ?H ?C))), every
+premise a (@vdash ...) pattern too. Several directives may add cases;
+the discharge form is declared once."
+  (destructuring-bind (name . clauses) args
+    (unless (eq name 'deduction)
+      (error "BOOTSTRAP-KERNEL-FROM-SPEC: unknown meta-theorem ~S (known: DEDUCTION)." name))
+    (dolist (clause clauses ledger)
+      (setf ledger
+            (case (car clause)
+              (:discharge
+               (destructuring-bind (vdash formula) (cdr clause)
+                 (unless (and (vdash-pattern-p vdash)
+                              (pat-var-p (second vdash)) (pat-var-p (third vdash)))
+                   (error "BOOTSTRAP-KERNEL-FROM-SPEC: :DISCHARGE needs (@vdash ?H ?A), got ~S." vdash))
+                 (when (deduction-discharge-entry ledger)
+                   (error "BOOTSTRAP-KERNEL-FROM-SPEC: the Deduction Theorem's :DISCHARGE ~
+                           is already declared."))
+                 (funcall admit ledger 'deduction-discharge (list vdash formula))))
+              (:case
+               (destructuring-bind (case-name conditions form) (cdr clause)
+                 (unless (and (= (length form) 4) (eq (third form) :=>)
+                              (listp (first form)) (every #'vdash-pattern-p (first form))
+                              (listp (second form))
+                              (vdash-pattern-p (fourth form)))
+                   (error "BOOTSTRAP-KERNEL-FROM-SPEC: deduction case ~S must have the form ~
+                           ((@vdash ...)... EXTRAS :=> (@vdash ...)), got ~S." case-name form))
+                 (funcall admit-rule ledger 'deduction-case case-name conditions form)))
+              (t (error "BOOTSTRAP-KERNEL-FROM-SPEC: unknown meta-theorem clause ~S." clause)))))))

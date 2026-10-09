@@ -48,7 +48,7 @@ each symbol/operator linked to the entry that introduced it -- when
 (defun entry-summary-json (world e)
   (let ((ledger (world-ledger world))
         (*render-link* nil))            ; summaries are plain text
-    (multiple-value-bind (premises conclusion) (entry-statement e)
+    (multiple-value-bind (premises conclusion) (entry-statement e ledger)
       (json-obj "k" (entry-k e)
                 "kind" (kind-string (entry-kind e))
                 "name" (render-sexp (entry-name e))
@@ -98,7 +98,7 @@ each symbol/operator linked to the entry that introduced it -- when
 (defun api-entry-1 (w world-id k)
   (let* ((ledger (world-ledger w))
          (e (or (find-entry-by-k w k) (error "No entry ~D in world ~S." k world-id))))
-    (multiple-value-bind (premises conclusion) (entry-statement e)
+    (multiple-value-bind (premises conclusion) (entry-statement e ledger)
       (let ((h (entry-summary-json w e))
             (proof (entry-proof e)))
         (setf (gethash "conclusion" h) (formula-json conclusion ledger)
@@ -119,7 +119,7 @@ each symbol/operator linked to the entry that introduced it -- when
   "A short reference to entry K, for lists of links."
   (let* ((e (find-entry-by-k world k))
          (*render-link* nil))
-    (multiple-value-bind (premises conclusion) (entry-statement e)
+    (multiple-value-bind (premises conclusion) (entry-statement e (world-ledger world))
       (json-obj "k" k
                 "name" (render-sexp (entry-name e))
                 "kind" (kind-string (entry-kind e))

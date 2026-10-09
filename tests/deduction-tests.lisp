@@ -60,3 +60,92 @@ ledger by two entries."
                                 ledger)
                 t)
         ledger))))
+
+;;; --- The Deduction Theorem as a declared meta-theorem -------------------
+
+(defun fol-spec-variant (&key (drop-meta-theorem nil) (unrestricted-gen nil) (extra nil))
+  "A ledger from 00-classical-fol-equality.system's directives, changed:
+DROP-META-THEOREM removes the (:meta-theorem deduction ...) directive,
+UNRESTRICTED-GEN replaces Gen by one without its open-hypothesis
+restriction, and EXTRA directives are appended."
+  (let ((spec (read-system-spec-from-file (library-path "00-classical-fol-equality.system"))))
+    (when drop-meta-theorem
+      (setf spec (remove :meta-theorem spec :key #'car)))
+    (when unrestricted-gen
+      (setf spec (mapcar (lambda (cmd)
+                           (if (and (eq (car cmd) :irule) (eq (second cmd) 'gen))
+                               '(:irule Gen ((var? ?x) (wff? ?A)) ((?A) (?x) :=> (.forall ?x ?A)))
+                               cmd))
+                         spec)))
+    (bootstrap-kernel-from-spec (append spec extra))))
+
+(defun test-deduction-meta-theorem ()
+  "TH-DED is admitted only when the system declares the Deduction Theorem
+and every line of the proof is covered by one of its cases."
+  (flet ((admitted-p (thunk)
+           (handler-case (progn (funcall thunk) t) (error () nil))))
+    (let ((no-dt (fol-spec-variant :drop-meta-theorem t)))
+      (expect "Attack: a system that declares no Deduction Theorem cannot admit TH-DED"
+              (admitted-p (lambda ()
+                            (check-and-extend-by-deduction-direct no-dt 'th-id-no-dt 'a '((0 a :hyp nil)))))
+              nil)
+      (expect "... while ordinary theorems are still admitted there"
+              (admitted-p (lambda ()
+                            (check-and-extend no-dt 'th 'th-k-no-dt
+                                              '((0 (.to A (.to B A)) :axiom (II.1))))))
+              t))
+    (let ((loose (fol-spec-variant :unrestricted-gen t))
+          (proof '((0 (.eq v0 v1) :hyp nil)
+                   (1 (.forall v0 (.eq v0 v1)) :ir (Gen 0 v0)))))
+      (expect "with an unrestricted Gen, v0 = v1 |- forall v0 (v0 = v1) is a valid proof line by line"
+              (check-k-proof proof loose) t)
+      (expect "Attack: ... but its discharge, v0 = v1 -> forall v0 (v0 = v1), is refused by the Gen case"
+              (admitted-p (lambda ()
+                            (check-and-extend-by-deduction-direct loose 'th-bad-gen '(.eq v0 v1) proof)))
+              nil)
+      (expect "Gen of a line that does not depend on H is covered by :independent, even with v1 free in H"
+              (admitted-p (lambda ()
+                            (check-and-extend-by-deduction-direct
+                             loose 'th-gen-indep '(.eq v1 v2)
+                             '((0 (.eq v1 v1) :axiom (IV.1))
+                               (1 (.forall v1 (.eq v1 v1)) :ir (Gen 0 v1))
+                               (2 (.eq v1 v2) :hyp nil)
+                               (3 (.to (.forall v1 (.eq v1 v1)) (.to (.eq v1 v2) (.forall v1 (.eq v1 v1)))) :axiom (II.1))
+                               (4 (.to (.eq v1 v2) (.forall v1 (.eq v1 v1))) :ir (MP 3 1))
+                               (5 (.forall v1 (.eq v1 v1)) :ir (MP 4 2))))))
+              t))
+    ;; An irule with no Deduction Theorem case: usable in proofs, but no
+    ;; line made by it from H can be discharged -- directly or through a
+    ;; cited theorem.
+    (let* ((l (fol-spec-variant :extra '((:irule DUP ((wff? ?A)) ((?A) nil :=> ?A)))))
+           (l (check-and-extend l 'th 'th-dup '((0 A :hyp nil) (1 A :ir (DUP 0))))))
+      (expect "an irule without a case is usable in an ordinary proof"
+              (check-k-proof '((0 B :hyp nil) (1 B :ir (DUP 0))) l) t)
+      (expect "Attack: discharging H through an irule with no case -- refused"
+              (admitted-p (lambda ()
+                            (check-and-extend-by-deduction-direct
+                             l 'th-dup-direct 'b '((0 B :hyp nil) (1 B :ir (DUP 0))))))
+              nil)
+      (expect "Attack: ... and through a theorem whose proof uses it -- refused"
+              (admitted-p (lambda ()
+                            (check-and-extend-by-deduction-direct
+                             l 'th-dup-cited 'b '((0 B :hyp nil) (1 B :th (th-dup 0))))))
+              nil)
+      (expect "the same theorem cited from a line that does not depend on H is fine"
+              (admitted-p (lambda ()
+                            (check-and-extend-by-deduction-direct
+                             l 'th-dup-indep 'b '((0 A :hyp nil) (1 A :th (th-dup 0)) (2 B :hyp nil)))))
+              t))
+    (let ((l (fol-kernel)))
+      (expect "the declared :DISCHARGE writes H -> PHI as (.to H PHI)"
+              (discharge-formula 'a 'b l) '(.to a b))
+      (expect "Attack: a second :DISCHARGE declaration -- must error"
+              (admitted-p (lambda ()
+                            (bootstrap-kernel-from-spec
+                             '((:meta-theorem deduction (:discharge (@vdash ?H ?A) (.to ?A ?H))))
+                             :ledger l)))
+              nil)
+      (expect "Attack: an unknown meta-theorem -- must error"
+              (admitted-p (lambda ()
+                            (bootstrap-kernel-from-spec '((:meta-theorem cut-elimination)) :ledger l)))
+              nil))))

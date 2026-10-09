@@ -143,10 +143,14 @@ already bound -- no unification needed. Tries every axiom of that name."
     (format t "~&[~:[REJECT~;accept~]] admission of ~S.~%" ok name)))
 
 (defun check-k-proof (raw-proof ledger &optional (log (silent-log)))
-  "Check RAW-PROOF (surface or kernel form) against LEDGER; see
-%CHECK-K-PROOF. The proof is first put in kernel form (NAMED->DB-PROOF),
-so bound variables are compared up to renaming."
-  (%check-k-proof (named->db-proof raw-proof ledger) ledger log))
+  "Check RAW-PROOF, as written, against LEDGER; see %CHECK-K-PROOF. The
+proof is first put in kernel form (NAMED->DB-PROOF), so bound variables
+are compared up to renaming. A line holding a raw (:BV n) is rejected
+(CONTAINS-RAW-INDEX-P)."
+  (let ((raw-line (find-if #'contains-raw-index-p raw-proof)))
+    (if raw-line
+        (values nil (and (consp raw-line) (car raw-line)))
+        (%check-k-proof (named->db-proof raw-proof ledger) ledger log))))
 
 (defun %check-k-proof (raw-proof ledger &optional (log (silent-log)))
   "Check kernel-form RAW-PROOF against LEDGER, which the caller must already restrict
@@ -204,15 +208,37 @@ proven at the same-position line number in NUMS, threading BINDS.
 ;;; citations re-verify the same instances over and over, which can blow
 ;;; up exponentially. Off by default.
 
+;;; The verdict also depends on vocabulary admitted AFTER E: ENTRIES-UPTO
+;;; leaves the vocabulary kinds unbounded, so whether a cited instance is
+;;; a wff can depend on a symbol declared later. Two ledgers can share E
+;;; and differ only there (one declares kk a variable, another an atomic
+;;; wff), so the key also holds LATEST-VOCABULARY-ENTRY: an entry is made
+;;; by appending to one particular ledger, so that entry object fixes
+;;; every entry before it, and none of the vocabulary kinds has a later one.
+
 (defvar *derived-verify-cache* nil
   "NIL (no memoization, the default) or an EQUAL hash table mapping
-(ENTRY . BINDS) to its CHECK-K-PROOF verdict.")
+(ENTRY LATEST-VOCABULARY-ENTRY . BINDS) to its CHECK-K-PROOF verdict.
+The one piece of mutable global state in the system; it can only change
+how fast a verdict is reached, never the verdict.")
+
+(defun latest-vocabulary-entry (ledger)
+  "The most recently admitted entry of a VOCABULARY-KIND-P kind in
+LEDGER, ignoring its BOUND as ENTRIES-OF-KIND does for those kinds."
+  (let ((best nil))
+    (dolist (pair (ledger-by-kind ledger) best)
+      (when (vocabulary-kind-p (car pair))
+        (let ((node (cdr pair)))
+          (loop while (and node (treap-node-right node))
+                do (setf node (treap-node-right node)))
+          (when (and node (or (null best) (> (entry-k (treap-node-value node)) (entry-k best))))
+            (setf best (treap-node-value node))))))))
 
 (defun verify-derived-instantiation (e binds instantiated ledger log)
   "Check INSTANTIATED (E's stored proof under BINDS) against the entries
-before E, memoized on (E . BINDS) when *DERIVED-VERIFY-CACHE* is set."
+before E, memoized when *DERIVED-VERIFY-CACHE* is set."
   (if *derived-verify-cache*
-      (let ((key (cons e binds)))
+      (let ((key (list* e (latest-vocabulary-entry ledger) binds)))
         (multiple-value-bind (cached found) (gethash key *derived-verify-cache*)
           (if found
               cached
@@ -330,9 +356,11 @@ restricted view, and widening it would let a proof reach later entries."
   (destructuring-bind (name stored) (entry-payload e)
     (declare (ignore name))
     (multiple-value-bind (renaming seed ok) (parse-citation-inst inst ledger)
-      ;; The gates store kernel form already; converting again is a no-op
-      ;; for them and makes a hand-built payload safe to cite as well.
-      (let* ((stored-proof (named->db-proof stored ledger))
+      ;; The gates store kernel form, converted once against the ledger
+      ;; the entry was admitted to. It is NOT converted again here: a
+      ;; binder over a symbol that was not a variable then, but is in the
+      ;; citing ledger, would change meaning.
+      (let* ((stored-proof stored)
              (raw-proof (if renaming (instantiate-raw-proof stored-proof renaming) stored-proof))
              (schema-hyps (proof-hypotheses raw-proof))
              (schema-concl (proof-conclusion raw-proof))
@@ -362,8 +390,9 @@ A, (.to A B) |- B into the non-tautology (.to (.to A B) B).)"
   (destructuring-bind (name stored-hyp-0 stored-proof-0) (entry-payload e)
     (declare (ignore name))
     (multiple-value-bind (renaming seed ok) (parse-citation-inst inst ledger)
-      (let* ((stored-hyp (named->db stored-hyp-0 ledger))
-             (stored-proof (named->db-proof stored-proof-0 ledger))
+      ;; Kernel form as stored, not re-converted (see TRY-DERIVED-ENTRY).
+      (let* ((stored-hyp stored-hyp-0)
+             (stored-proof stored-proof-0)
              (hyp-formula (if renaming (instantiate-schema-atoms stored-hyp renaming) stored-hyp))
              (raw-proof (if renaming (instantiate-raw-proof stored-proof renaming) stored-proof))
              (gamma (remove hyp-formula (proof-hypotheses raw-proof) :test #'equal))
@@ -428,6 +457,10 @@ and the overall verdict."
   ;; "entries strictly before" view. The payload, which citations read,
   ;; is the kernel form; the ORIGIN keeps the proof as written, for
   ;; display and saving (ENTRY-SOURCE-PAYLOAD).
+  (when (contains-raw-index-p raw-proof)
+    (log-admission-result log name nil)
+    (error "CHECK-AND-EXTEND: proof of ~S contains a raw (:bv n); write ~
+            bound variables by name." name))
   (let ((db-proof (named->db-proof raw-proof ledger)))
     (unless (%check-k-proof db-proof ledger log)
       (log-admission-result log name nil)

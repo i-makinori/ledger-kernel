@@ -52,8 +52,10 @@ OPEN-HYPS are as in JUDGEMENT-BIND; top-level callers omit them."
   (nth-value 1 (judgement-bind kind (list expr) nil ledger seen open-hyps)))
 
 (defun judgement? (kind expr ledger &optional (seen nil) (open-hyps nil))
-  "As %JUDGEMENT?, for EXPR in surface or kernel form."
-  (%judgement? kind (named->db expr ledger) ledger seen open-hyps))
+  "As %JUDGEMENT?, for EXPR as written (bound variables by name; a raw
+(:BV n) is refused, see CONTAINS-RAW-INDEX-P)."
+  (and (not (contains-raw-index-p expr))
+       (%judgement? kind (named->db expr ledger) ledger seen open-hyps)))
 
 ;;; Declared symbols are base cases read off Sigma, not formation rules:
 ;;; a generic rule such as (wff? ?A) would match any expression, including

@@ -189,6 +189,8 @@ nor a fresh variable %n."
        ;; ...) are the kernel's own markers; a declared NIL would make
        ;; the schema matcher treat the end of every list as an atom.
        sym
+       (not (eq sym t))
+       (not (eq sym +fail+))            ; the matcher's failure sentinel
        (not (keywordp sym))
        (not (pat-var-p sym))
        (not (at-symbol-p sym))

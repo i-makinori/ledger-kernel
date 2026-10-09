@@ -207,7 +207,8 @@ fails by construction (the ENTRIES-UPTO boundary)."
                                  (list 'dup '((0 A :hyp nil) (1 A :ir (Gen 0 v0))))
                                  (list :derived '((0 A :hyp nil) (1 A :ir (Gen 0 v0))))))
          (ledger (ledger-append ledger 'th
-                                 (list 'dup '((0 A :hyp nil) (1 (.forall v0 A) :ir (Gen 0 v0))))
+                                 ;; A payload is kernel form, as the gates store it.
+                                 (list 'dup '((0 A :hyp nil) (1 (.forall A) :ir (Gen 0 v0))))
                                  (list :derived '((0 A :hyp nil) (1 (.forall v0 A) :ir (Gen 0 v0)))))))
     (expect "Backtracking: citing 'dup' finds the SECOND, working entry after the first fails"
             (check-k-proof '((X B :hyp nil) (Y (.forall v0 B) :th (dup X))) ledger)
@@ -269,6 +270,8 @@ checks; extended, for one that also grows Sigma or the ledger itself)."
          (ledger (test-persistence-round-trip ledger))
          (ledger (test-chained-module-loading ledger))
          (ledger (test-file-reader-safety ledger))
+         (ledger (test-hostile-file-shapes ledger))
+         (ledger (test-review-regressions ledger))
          (ledger (test-backtracking-and-self-ref ledger))
          (ledger (test-failed-line-report ledger)))
     (declare (ignorable ledger))

@@ -76,10 +76,28 @@ entirely infeasible without it, to demonstrate the actual point."
       (expect "memoization ON: a depth utterly infeasible without it still checks out (T)" verdict-deep t))
     (disable-derived-entry-memoization)))
 
+(defun test-memoization-across-vocabulary-branches ()
+  "Two ledgers share TH-IDENTITY but declare KK differently afterwards:
+as a variable, (.eq kk kk) is a wff; as an atomic wff, it is not. A
+verdict cached in one branch must not be reused in the other."
+  (let* ((base (check-and-extend-by-deduction-direct (fol-kernel) 'th-identity 'a '((0 a :hyp nil))))
+         (as-var (declare-variable-symbol base 'kk))
+         (as-atom (declare-atomic-wff-symbol base 'kk))
+         (line '((0 (.to (.eq kk kk) (.eq kk kk)) :th-ded (th-identity)))))
+    (enable-derived-entry-memoization)
+    (unwind-protect
+         (progn
+           (expect "memoized: the citation holds where kk is a variable"
+                   (check-k-proof line as-var) t)
+           (expect "Attack: ... and that cached verdict is not reused where kk is an atomic wff"
+                   (check-k-proof line as-atom) nil))
+      (disable-derived-entry-memoization))))
+
 (defun run-derived-entry-memoization-self-tests ()
   "As RUN-SELF-TESTS, but exercising the optional memoization layer --
 Section 17. Leaves memoization OFF when done, so it never silently
 changes behaviour for anything that runs after it (including every other
 RUN-*-SELF-TESTS call in this same trailing auto-run form)."
   (test-derived-entry-memoization)
+  (test-memoization-across-vocabulary-branches)
   (format t "~%Derived-entry memoization self-tests complete.~%"))

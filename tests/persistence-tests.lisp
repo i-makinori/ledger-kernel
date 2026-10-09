@@ -110,6 +110,78 @@ ledger (writes/reads two temp files as a side effect, then removes them)."
 (defvar *reader-attack-ran* nil
   "Set by the #.(...) payload in TEST-FILE-READER-SAFETY if it ever runs.")
 
+(defun test-hostile-file-shapes (ledger)
+  "A file whose data is circular, shared or absurdly deep must fail to
+load with an ordinary error, never exhaust the stack or hang."
+  (let ((path "/tmp/ledger-kernel-self-test-hostile-shape.ledger"))
+    (flet ((load-text (text)
+             (with-open-file (out path :direction :output :if-exists :supersede)
+               (write-string text out))
+             (handler-case (progn (read-ledger-from-file path :ledger ledger) :loaded)
+               (error () :refused))))
+      (unwind-protect
+           (progn
+             (expect "Attack: a circular proof (#1=(... . #1#)) in a .ledger file -- must be refused"
+                     (load-text "(:th th-loop #1=((0 (.to A (.to B A)) :axiom (II.1)) . #1#))")
+                     :refused)
+             (expect "Attack: shared structure (#1= / #1#) in a .ledger file -- must be refused"
+                     (load-text "(:th th-shared ((0 #1=(.to A (.to B A)) :axiom (II.1)) (1 #1# :axiom (II.1))))")
+                     :refused)
+             (expect "Attack: nesting 100000 deep in a .ledger file -- must be refused, not crash"
+                     (load-text (concatenate 'string
+                                             (make-string 100000 :initial-element #\()
+                                             (make-string 100000 :initial-element #\))))
+                     :refused)
+             (expect "an ordinary .ledger file still loads"
+                     (load-text "(:th th-shape-ok ((0 (.to A (.to B A)) :axiom (II.1))))")
+                     :loaded))
+        (ignore-errors (delete-file path))))
+    ledger))
+
+(defun test-review-regressions (ledger)
+  "Raw indices in written input, reserved symbols, and payloads that are
+not re-converted when cited."
+  (expect "Attack: a raw (:bv 0) captured by a written binder -- CHECK-K-PROOF must reject"
+          (check-k-proof '((0 (.eq v0 v0) :axiom (IV.1))
+                           (1 (.forall v0 (.eq v0 (:bv 0))) :ir (Gen 0 v0)))
+                         ledger)
+          nil)
+  (expect "... and CHECK-AND-EXTEND must refuse to admit it"
+          (handler-case (progn (check-and-extend ledger 'th 'th-raw-bv
+                                                 '((0 (.eq v0 v0) :axiom (IV.1))
+                                                   (1 (.forall v0 (.eq v0 (:bv 0))) :ir (Gen 0 v0))))
+                               :admitted)
+            (error () :refused))
+          :refused)
+  (expect "... and JUDGEMENT? says it is not a wff"
+          (judgement? 'wff? '(.forall v0 (.eq v0 (:bv 0))) ledger) nil)
+  (expect "the same proof with the bound variable named is accepted"
+          (check-k-proof '((0 (.eq v0 v0) :axiom (IV.1))
+                           (1 (.forall v0 (.eq v0 v0)) :ir (Gen 0 v0)))
+                         ledger)
+          t)
+  (expect "Attack: declaring T as a variable -- must error"
+          (handler-case (progn (declare-variable-symbol ledger t) :declared)
+            (error () :refused))
+          :refused)
+  (expect "Attack: declaring the matcher's +FAIL+ as an atomic wff -- must error"
+          (handler-case (progn (declare-atomic-wff-symbol ledger '+fail+) :declared)
+            (error () :refused))
+          :refused)
+  ;; A hand-built TH entry (never through the gates) whose binder is over
+  ;; KK, not a variable when it was appended, so the binder stays
+  ;; unconverted. Declaring KK later must not change what the stored
+  ;; proof says when it is cited: it is not converted again.
+  (let* ((l (ledger-append ledger 'th
+                           (list 'th-kk-later
+                                 '((0 (.to (.forall kk A) (.to B (.forall kk A))) :axiom (II.1))))
+                           (list :primitive)))
+         (l (declare-variable-symbol l 'kk)))
+    (expect "a stored payload is not re-converted against later vocabulary when cited"
+            (check-k-proof '((0 (.to (.forall kk A) (.to B (.forall kk A))) :th (th-kk-later))) l)
+            nil))
+  ledger)
+
 (defun test-file-reader-safety (ledger)
   "A .ledger or .system file is read as data only: #.(...) in it must not
 run code while loading (it is a reader error instead), and the load must

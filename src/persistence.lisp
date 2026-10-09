@@ -100,17 +100,48 @@ is bound to LEDGER-KERNEL so symbols read back as the same symbols."
   "Write LEDGER's command stream (LEDGER-COMMANDS) to PATH."
   (write-commands-to-file (ledger-commands ledger) path))
 
+(defparameter *max-form-depth* 10000
+  "Deepest car/cdr nesting accepted in a form read from a file. The
+kernel walks forms recursively, so deeper data would exhaust the stack.
+The libraries stay below 100.")
+
+(defun check-plain-tree (form path)
+  "Signal an error unless FORM is a finite tree: no cons reachable twice
+(the reader shares conses only for #n= / #n#, which also make cycles)
+and no nesting deeper than *MAX-FORM-DEPTH*. Iterative, so a hostile
+form cannot exhaust the stack here; linear in FORM's size."
+  (let ((seen (make-hash-table :test #'eq))
+        (stack (list (cons form 0))))
+    (loop while stack
+          do (destructuring-bind (x . depth) (pop stack)
+               (when (consp x)
+                 (when (gethash x seen)
+                   (error "READ-FORMS-FROM-FILE: ~A contains shared or circular ~
+                           structure (#n= / #n#), which is not allowed." path))
+                 (when (> depth *max-form-depth*)
+                   (error "READ-FORMS-FROM-FILE: ~A nests deeper than ~D." path *max-form-depth*))
+                 (setf (gethash x seen) t)
+                 (push (cons (car x) (1+ depth)) stack)
+                 (push (cons (cdr x) (1+ depth)) stack))))
+    form))
+
 (defun read-forms-from-file (path)
   "Every top-level form in PATH, read as data only: standard readtable,
-*READ-EVAL* NIL (so #. cannot run code), symbols in LEDGER-KERNEL. A
-hostile .ledger or .system file can fail to load but cannot execute."
+*READ-EVAL* NIL (so #. cannot run code), symbols in LEDGER-KERNEL, and
+each form a plain finite tree (CHECK-PLAIN-TREE). A hostile .ledger or
+.system file can fail to load but cannot execute or hang the checker."
   (with-open-file (in path :direction :input)
     (with-standard-io-syntax
       (let ((*read-eval* nil)
             (*package* (find-package :ledger-kernel)))
-        (loop for form = (read in nil in)   ; the stream itself as EOF marker
-              until (eq form in)
-              collect form)))))
+        (handler-case
+            (loop for form = (read in nil in)   ; the stream itself as EOF marker
+                  until (eq form in)
+                  collect (check-plain-tree form path))
+          ;; The reader itself recurses on nesting; turn a stack overflow
+          ;; into an ordinary error instead of killing the process.
+          (storage-condition ()
+            (error "READ-FORMS-FROM-FILE: ~A nests too deeply to read." path)))))))
 
 (defun read-ledger-from-file (path &key (log (silent-log))
                                          (ledger (error "READ-LEDGER-FROM-FILE: :LEDGER is required (e.g. one built by BOOTSTRAP-KERNEL-FROM-SPEC-FILE).")))

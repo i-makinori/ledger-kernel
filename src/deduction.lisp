@@ -38,6 +38,10 @@ must be supplied when the entry is cited. Returns the new ledger."
     (error "CHECK-AND-EXTEND-BY-DEDUCTION-DIRECT: the name ~S is already ~
             used by an existing TH/TH-DED entry -- refused ~
             to avoid an ambiguous or shadowing citation." name))
+  (when (contains-raw-index-p (list hyp-formula raw-proof))
+    (log-admission-result log name nil)
+    (error "CHECK-AND-EXTEND-BY-DEDUCTION-DIRECT: ~S contains a raw ~
+            (:bv n); write bound variables by name." name))
   (unless (judgement? 'wff? hyp-formula ledger)
     (log-admission-result log name nil)
     (error "CHECK-AND-EXTEND-BY-DEDUCTION-DIRECT: HYP-FORMULA ~S is not a ~

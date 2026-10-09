@@ -6,8 +6,10 @@
 ;;;; a .system spec), :DECLARED (a fresh vocabulary symbol) or :DERIVED
 ;;;; (carries a K-proof re-checked against entries strictly before K).
 ;;;; Sigma (vocabulary) and Gamma (open hypotheses) are projections of,
-;;;; or arguments alongside, the ledger -- never global state: the code
-;;;; uses no special variables and no mutation.
+;;;; or arguments alongside, the ledger -- never global state. The one
+;;;; special variable is the optional verdict cache *DERIVED-VERIFY-CACHE*
+;;;; (k-proof.lisp, off by default), which changes only speed, never a
+;;;; verdict; apart from it the code uses no mutable global state.
 ;;;;
 ;;;; Layers:
 ;;;;   kernel -- pattern, treap, ledger, debruijn, side-conditions, meta, judgement,

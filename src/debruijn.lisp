@@ -133,6 +133,19 @@ rules later as it always did."
                (t x))))
     (conv x nil)))
 
+(defun contains-raw-index-p (x)
+  "T iff X contains a (:BV ...) form. Written input must name its bound
+variables: NAMED->DB passes a raw index through unchanged, where an
+enclosing binder captures it, so the kernel would check something other
+than the text stored and shown -- (.forall v0 (.eq v0 (:bv 0))) would be
+admitted as forall x. x = x. The entry points for written input (CHECK-K-PROOF,
+CHECK-AND-EXTEND, CHECK-AND-EXTEND-BY-DEDUCTION-DIRECT, JUDGEMENT?) refuse
+it; data already in kernel form never goes back through them."
+  (and (consp x)
+       (or (eq (car x) :bv)
+           (contains-raw-index-p (car x))
+           (contains-raw-index-p (cdr x)))))
+
 (defun named->db-proof (raw-proof ledger)
   "NAMED->DB applied to every line of RAW-PROOF (formula and BY)."
   (named->db raw-proof ledger))

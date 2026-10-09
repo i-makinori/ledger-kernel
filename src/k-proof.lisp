@@ -327,22 +327,39 @@ format. OK is NIL if any item is malformed."
 
 (defun instantiate-raw-proof (raw-proof binds)
   "Apply BINDS to every formula and BY argument of RAW-PROOF, leaving rule
-names and references to RAW-PROOF's own line numbers alone (steps 1, 3)."
+names and references to RAW-PROOF's own line numbers alone (steps 1, 3).
+In a citation's :INST list, each item's head -- (A formula), (P (x) body),
+(v term) -- names a symbol of the CITED entry, not of this proof, so only
+the rest of the item is instantiated: re-instantiating the head would
+re-target the citation (P := lambda (x). P x, with P bound outside, would
+read as an application of P)."
   (let ((numbers (mapcar #'first raw-proof)))
-    (mapcar (lambda (raw)
-              (destructuring-bind (num formula role by) raw
-                (list num
-                      (instantiate-schema-atoms formula binds)
-                      role
-                      (if (consp by)
-                          (cons (car by)
-                                (mapcar (lambda (arg)
-                                          (if (member arg numbers :test #'equal)
-                                              arg
-                                              (instantiate-schema-atoms arg binds)))
-                                        (cdr by)))
-                          by))))
-            raw-proof)))
+    (flet ((inst-args (args)
+             (let ((after-inst nil))
+               (mapcar (lambda (arg)
+                         (prog1
+                             (cond
+                               ((member arg numbers :test #'equal) arg)
+                               ((eq arg :inst) arg)
+                               ;; The list right after :INST: keep each head.
+                               ((and after-inst (listp arg))
+                                (mapcar (lambda (item)
+                                          (if (consp item)
+                                              (cons (car item) (instantiate-schema-atoms (cdr item) binds))
+                                              item))
+                                        arg))
+                               (t (instantiate-schema-atoms arg binds)))
+                           (setf after-inst (eq arg :inst))))
+                       args))))
+      (mapcar (lambda (raw)
+                (destructuring-bind (num formula role by) raw
+                  (list num
+                        (instantiate-schema-atoms formula binds)
+                        role
+                        (if (consp by)
+                            (cons (car by) (inst-args (cdr by)))
+                            by))))
+              raw-proof))))
 
 (defun cited-formulas (nums proven-alist)
   "The formulas proven at line numbers NUMS, or :MISSING if one is absent."

@@ -12,8 +12,8 @@ README を読んで全体像を掴んでから、必要な節だけを読む使�
 1. 命題論理の補題: II.1〜II.3 だけから
 2. 検証コストが気になったら: `ENABLE-DERIVED-ENTRY-MEMOIZATION`
 3. 体系そのものをファイルで定義する: `.system` ファイル
-4. 確定記述: `III.3` と `IOTA`
-5. 存在除去規則: `EXISTS-ELIM`
+4. 確定記述: `IOTA`
+5. 存在量化子は略記: `th-exists-intro` と `th-exists-elim`
 6. 略記としての関数定義: `DEFINE-FUNCTION-BY-DESCRIPTION`
 7. 略記としての結合子: `00-connectives.system`
 8. ZF 集合論: `zf-library/00-zf.system`
@@ -181,13 +181,13 @@ Lispソースレベルの拡張です）。それでも、命題論理の別の�
 EXISTS-ELIM の4規則を覆っています。各 `:case` は「教科書の帰納法のその1ステップが
 この体系で成り立つ」という主張で、公理と同じく信頼されます。
 
-## 4. 確定記述（definite description）: `III.3` と `IOTA`
+## 4. 確定記述（definite description）: `IOTA`
 
 「Aを満たすxが存在し、しかもそれは一意である」ときに、その唯一のxを直接
 指し示す項 `(.iota x A)`（"the x such that A"）を用意しました。
 
-これがなぜ簡単ではないか、という点から説明します。既存の `.forall`/
-`.exists` は**WFFを作る**束縛子でしたが、`.iota` は**項を作る**束縛子です。
+これがなぜ簡単ではないか、という点から説明します。`.forall` は
+**WFFを作る**束縛子でしたが、`.iota` は**項を作る**束縛子です。
 このカーネルでは束縛子が新しい種類の値（WFFではなくTERM）を作るということ
 自体がここだけで、`BINDER-HEADS`（束縛変数を de Bruijn インデックスに直す
 変換や、束縛子を開く処理が「この頭部は束縛子である」と認識するための
@@ -209,28 +209,17 @@ Lispソース側のリスト。13節）に `.IOTA` を追加するという、`.
 適用できない**（=一意でない場合の「値」を勝手に決める、というような
 junk-valueの規約は一切ない）というのが設計上の要点です。
 
-存在証明を可能にするために、`III.3`（存在汎化、`A[t/x] -> exists x. A`）
-があります。III.1（全称除去）の双対で、Gen（全称汎化）と違って自由変数
-条件は不要（「特定の証人tがAを満たす」から「Aを満たす何かが存在する」への
-移行は無条件に健全）です。ただし III.3 の引数は `(III.3 x A t)` の3つで、
-III.1 の `(III.1 t)` と違って `x` と `A` も明示的に渡す必要があります。これ
-は `MATCH-TEMPLATE` がパターンを左から右に処理する制約から来ています:
-III.1 は `(.forall x A) -> A[t/x]` で、前件の `.forall` 構造から `x`/`A`
-が先に構造的に確定してから後件の `@subst` が評価されますが、III.3 は
-`A[t/x] -> exists x. A` で前件・後件が逆転しており、前件の `@subst` に
-到達した時点では `x`/`A` がまだ未確定（後件の `.exists x A` でしか構造的
-に確定しない）ため、Genの `x` 引数と同様に外から明示的に渡す設計にして
-います。
+存在の証明には `th-exists-intro`（5節）を使います。
 
 具体例（`v1=v1` から `exists v0(v0=v1)` を経て `(.iota v0 (v0=v1)) = v1`
 まで）:
 
 ```lisp
-(defparameter *L* (bootstrap-kernel-from-spec-file "hilbert-library/00-classical-fol-equality.system"))
+;; *L*: 00-classical-fol-equality.system に 01・05 の .ledger を読み込んだ台帳
 ;; 存在: exists v0 (v0=v1)
 (setf *L* (check-and-extend *L* 'th 'th-exists-v0-eq-v1
   '((0 (.eq v1 v1) :axiom (IV.1))
-    (1 (.to (.eq v1 v1) (.exists v0 (.eq v0 v1))) :axiom (III.3 v0 (.eq v0 v1) v1))
+    (1 (.to (.eq v1 v1) (.exists v0 (.eq v0 v1))) :th (th-exists-intro :inst ((p (v0) (.eq v0 v1)) (v1 v1))))
     (2 (.exists v0 (.eq v0 v1)) :ir (MP 1 0)))))
 ;; 一意性: forall v2 forall v3 (v2=v1 -> (v3=v1 -> v2=v3))  (uniq-full。
 ;; 導出は 05-classical-logic.ledger の TH-RAA と同じ多段階の
@@ -248,42 +237,39 @@ III.1 は `(.forall x A) -> A[t/x]` で、前件の `.forall` 構造から `x`/`
 
 - `.iota x A` を使うたびに存在と一意性を引用し直すのが煩わしい場合は、
   `DEFINE-FUNCTION-BY-DESCRIPTION`（6節）で名前の付いた関数記号として定義できます。
-- 存在からの除去方向の規則は `EXISTS-ELIM`（5節）です。
+- 存在からの除去は定理 `th-exists-elim`（5節）です。
 - 一意性が示せない場合の「値」についての規約（古典的な確定記述理論でよく
   ある total function 化のための junk value）は用意していません。単に
   IOTAが適用できないだけです。
 
 
-## 5. 存在除去規則: `EXISTS-ELIM`
+## 5. 存在量化子は略記: `th-exists-intro` と `th-exists-elim`
 
-III.3（存在汎化）は `A[t/x] → ∃x.A` という**導入**方向の規則です。
-`EXISTS-ELIM` はその逆——`∃x.A` という証明済みの事実から、実際に「その証人を仮に
-名付けて」議論を進める**除去**方向の規則で、Mendelson の Rule C 相当の genuine な
-存在除去規則です。
+Mendelson と同じく、∃ は略記です（`00-classical-fol-equality.system`）。
 
 ```lisp
-;; ∃x.A と (A[w/x] -> C) の両方から C を結論する。w は:
-;;   - A にも C にも自由に出現していない（除去した瞬間に消える「仮の名前」）
-;;   - 現在開いている仮定（Γ）のどれにも自由に出現していない
-;; という新鮮さ（freshness）条件を満たす必要があり、これらはすべて機械的に
-;; 検査されます。
-(check-k-proof '((0 (.exists v0 (.eq v0 v1)) :hyp nil)
-                  (1 (.to (.eq v2 v1) (.eq v1 v1)) :hyp nil)   ; A[w/x] -> C, w=v2
-                  (2 (.eq v1 v1) :ir (EXISTS-ELIM 0 1 v2)))
-                *L*)
+(:abbreviation (.exists ?x ?A) (.neg (.forall ?x (.neg ?A))))
 ```
 
-`.to ?Ac ?C` という2番目の前提パターンで `?Ac` を構造的にだけ束縛し、それが
-本当に `A[w/x]` と等しいことを、束縛が全部揃った後の副条件 `@substitutes?` で
-別途検査する、という2段構えになっています（内部のマッチングエンジンは「前提
-パターンをすべて先に処理してから追加パラメータを処理する」という順序なので、
-`w` がまだ未確定の段階で `A[w/x]` を前提パターンの中に埋め込むことはできない
-——この制約を回避するための設計です）。
+そのため、存在の導入（存在汎化）も除去（Mendelson の Rule C）も原始的な公理・規則では
+なく、`05-classical-logic.ledger` で III.1・III.2・Gen と命題論理の補題から導いた定理です。
 
-**注意点**: `w` として使える変数は呼び出し側が選ぶため、新鮮さの検査を通過する
-変数を選ぶ責任は引用側にあります（これは Gen の `@not-free-in-dependencies?`
-と全く同じ立て付けです）。
-
+- `th-exists-intro`：P(t) → ∃x P(x)。P と t は `:inst` で与えます。
+  ```lisp
+  (1 (.to (.eq v1 v1) (.exists v0 (.eq v0 v1)))
+     :th (th-exists-intro :inst ((p (v0) (.eq v0 v1)) (v1 v1))))
+  ```
+- `th-exists-elim`：∃x P(x)、∀w (P(w) → C) ⊢ C（w は C に自由に現れない）。
+  証人 w について Gen した行を引用します。w は `:inst ((v1 w))` で指定します。
+  ```lisp
+  ((0 (.exists v0 (.eq v0 v1)) :hyp nil)
+   (1 (.to (.eq v2 v1) (.eq v1 v1)) :hyp nil)              ; A[w/x] -> C, w = v2
+   (2 (.forall v2 (.to (.eq v2 v1) (.eq v1 v1))) :ir (gen 1 v2))
+   (3 (.eq v1 v1) :th (th-exists-elim 0 2 :inst ((v1 v2)))))
+  ```
+  以前の規則 EXISTS-ELIM の条件は、すべてこの形で検査されます。w が開いた仮定に自由に
+  現れれば Gen が、C に自由に現れれば定理の中の III.2 が、A に自由に現れたり A[w/x] が
+  一致しなかったりすれば再検証の照合が拒否します。
 
 ## 6. 略記としての関数定義: `DEFINE-FUNCTION-BY-DESCRIPTION`
 

@@ -1,8 +1,13 @@
 ;;; 00-classical-fol-equality.system
 ;;;
 ;;; Classical first-order logic with equality, as data: term?/wff?
-;;; formation rules, the inference rules MP, Gen, IOTA and EXISTS-ELIM, and
-;;; axioms II.1-3 (propositional), III.1-3 (quantifiers), IV.1-4 (equality).
+;;; formation rules, the inference rules MP, Gen and IOTA, and axioms
+;;; II.1-3 (propositional), III.1-2 (quantifiers), IV.1-4 (equality).
+;;; The existential quantifier is an abbreviation, as in Mendelson:
+;;; exists x A := not forall x not A. Existential generalization and
+;;; existential elimination (Rule C) are therefore not primitive: they are
+;;; the theorems TH-EXISTS-INTRO and TH-EXISTS-ELIM of
+;;; 05-classical-logic.ledger.
 ;;; This file is the only place this logic is defined; load it with
 ;;; BOOTSTRAP-KERNEL-FROM-SPEC-FILE. Every entry here is :PRIMITIVE --
 ;;; trusted, never checked -- so loading it is an act of trust in its text.
@@ -10,6 +15,10 @@
 ;;; There is no generic "(wff? ?A)" or "(var? ?x)" rule: it would accept
 ;;; any symbol. Declared atomic symbols and variables are recognized by
 ;;; the kernel directly (DECLARED-SYMBOL-JUDGEMENT-P in judgement.lisp).
+
+;;; --- abbreviations -------------------------------------------------
+
+(:abbreviation (.exists ?x ?A) (.neg (.forall ?x (.neg ?A))))
 
 ;;; --- term?/wff? formation ------------------------------------------
 
@@ -21,8 +30,6 @@
 (:wff-formation wff_to? ((wff? ?A) (wff? ?B)) (wff? (.to ?A ?B)))
 (:wff-formation wff_neg? ((wff? ?A)) (wff? (.neg ?A)))
 (:wff-formation wff_forall? ((var? ?x) (wff? ?A)) (wff? (.forall ?x ?A)))
-;; .EXISTS's syntax; III.3 and EXISTS-ELIM below give it its meaning.
-(:wff-formation wff_exists? ((var? ?x) (wff? ?A)) (wff? (.exists ?x ?A)))
 (:wff-formation wff_eq? ((term? ?s) (term? ?t)) (wff? (.eq ?s ?t)))
 
 ;;; --- inference rules --------------------------------------------------
@@ -42,22 +49,6 @@
                                        (.to (@subst ?x ?z ?A) (.eq ?y ?z))))))
          nil :=>
          (@subst ?x (.iota ?x ?A) ?A)))
-;; EXISTS-ELIM: genuine existential elimination (Mendelson's Rule C).
-;; ?Ac is bound PURELY STRUCTURALLY (not via an embedded @subst -- ?w
-;; isn't ground yet at premise-matching time) and then verified, as a
-;; side condition, to equal A[w/x] via @substitutes?. Named ?w, not ?c:
-;; a pattern variable ?c and ?C would be THE SAME SYMBOL once read (the
-;; reader case-normalizes to upper case).
-(:irule EXISTS-ELIM ((var? ?x) (var? ?w) (wff? ?A) (wff? ?Ac) (wff? ?C)
-                      (@substitutes? ?x ?w ?A ?Ac)
-                      (@subst-ok? ?x ?w ?A)
-                      (@not-free-in? ?w ?A)
-                      (@not-free-in? ?w ?C)
-                      (@not-free-in-dependencies? ?w))
-        (((.exists ?x ?A) (.to ?Ac ?C))
-         (?w) :=>
-         ?C))
-
 ;;; --- the Deduction Theorem, as a meta-theorem of this system -------------
 ;;;
 ;;; (@vdash ?H ?A): line ?A of a proof, depending on the hypothesis ?H
@@ -70,10 +61,8 @@
 ;;;   MP           H -> (A -> B), H -> A |- H -> B  from II.2
 ;;;   Gen          H -> A |- H -> forall x A, x not free in H   from III.2
 ;;;   IOTA         H -> each premise |- H -> conclusion
-;;;   EXISTS-ELIM  H -> exists x A, H -> (A[w/x] -> C) |- H -> C,
-;;;                w not free in H (it already is not free in A, C, Gamma)
-;;; Gen and EXISTS-ELIM need their variable not free in H; without those
-;;; conditions P(x) |- forall x P(x) would give |- P(x) -> forall x P(x).
+;;; Gen needs its variable not free in H; without that condition
+;;; P(x) |- forall x P(x) would give |- P(x) -> forall x P(x).
 
 (:meta-theorem deduction
   (:discharge (@vdash ?H ?A) (.to ?H ?A))
@@ -88,12 +77,7 @@
            (@vdash ?H (.forall ?y (.forall ?z (.to (@subst ?x ?y ?A)
                                                    (.to (@subst ?x ?z ?A) (.eq ?y ?z)))))))
           nil :=>
-          (@vdash ?H (@subst ?x (.iota ?x ?A) ?A))))
-  (:case EXISTS-ELIM ((wff? ?H) (var? ?x) (var? ?w) (wff? ?A) (wff? ?Ac) (wff? ?C)
-                      (@not-free-in? ?w ?H))
-         (((@vdash ?H (.exists ?x ?A)) (@vdash ?H (.to ?Ac ?C)))
-          (?w) :=>
-          (@vdash ?H ?C))))
+          (@vdash ?H (@subst ?x (.iota ?x ?A) ?A)))))
 
 ;;; --- II.1-3: classical propositional logic -----------------------------
 ;;;   II.1  A -> (B -> A)                                     [K]
@@ -111,18 +95,12 @@
 (:axiom II.3 ((wff? ?A) (wff? ?B)) (nil (.to (.to (.neg ?B) (.neg ?A)) (.to ?A ?B))))
 
 ;;; --- III.1-2: predicate logic -------------------------------------------
+;;; (III.3, existential generalization, is the theorem TH-EXISTS-INTRO.)
 
 (:axiom III.1 ((var? ?x) (wff? ?A) (term? ?t) (@subst-ok? ?x ?t ?A))
         ((?t) (.to (.forall ?x ?A) (@subst ?x ?t ?A))))
 (:axiom III.2 ((var? ?x) (wff? ?A) (wff? ?B) (@not-free-in? ?x ?A))
         (nil (.to (.forall ?x (.to ?A ?B)) (.to ?A (.forall ?x ?B)))))
-;; III.3: existential generalization, A[t/x] -> exists x. A. Extra
-;; params are (?x ?A ?t), NOT just (?t) like III.1 -- the binder here
-;; sits in the CONSEQUENT while @subst sits in the ANTECEDENT, so ?x/?A
-;; cannot be left to bind structurally before @subst is reached (matching
-;; is left to right).
-(:axiom III.3 ((var? ?x) (wff? ?A) (term? ?t) (@subst-ok? ?x ?t ?A))
-        ((?x ?A ?t) (.to (@subst ?x ?t ?A) (.exists ?x ?A))))
 
 ;;; --- IV.1-4: first-order equality ---------------------------------------
 

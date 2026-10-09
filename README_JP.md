@@ -43,8 +43,8 @@ Web UI も付いています。
 ## できること
 
 **論理と体系**
-- 命題論理（Łukasiewicz の3公理 II.1〜II.3。場合分けは定理 `th-case-split` として導出）、一階述語論理（∀・∃、Gen、
-  存在汎化 III.3、存在除去 `EXISTS-ELIM`）、等号（IV.1〜IV.4）
+- 命題論理（Łukasiewicz の3公理 II.1〜II.3。場合分けは定理 `th-case-split` として導出）、一階述語論理（∀、Gen、III.1〜2。
+  ∃ は ¬∀¬ の略記で、存在汎化・存在除去は定理として導出）、等号（IV.1〜IV.4）
 - 略記として定義された結合子 ∧ ∨ ↔ ∃!（`00-connectives.system`）
 - ペアノ算術（P1〜P10）と、その上の順序 ≤ ・ <（`00-peano-order.system`）
 - ZF 集合論（外延性・対・和集合・冪集合・無限・正則性・分出図式・置換図式。
@@ -79,7 +79,7 @@ Web UI も付いています。
   リンク、依存している公理と「この定理を使っている定理」の表示、ブラウザ上での
   証明の検証
 
-テスト: カーネル 333 件、Web 50 件がすべて通り、コンパイル警告 0 の状態です。
+テスト: カーネル 338 件、Web 50 件がすべて通り、コンパイル警告 0 の状態です。
 
 カーネル（`src/`）はコメント込みで約 2000 行です。論理そのものはコードに書かず、
 すべて `.system` ファイルに置いています。使われていない機能は `backup/` に、元の
@@ -97,7 +97,7 @@ Web UI も付いています。
 (require :asdf)
 (asdf:load-asd (merge-pathnames "ledger-kernel.asd"))
 (asdf:load-system :ledger-kernel)
-(asdf:test-system :ledger-kernel)      ; 最後に "333/333 self-tests passed." と出る
+(asdf:test-system :ledger-kernel)      ; 最後に "338/338 self-tests passed." と出る
 (in-package :ledger-kernel)
 ```
 
@@ -201,8 +201,8 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
 | 役割 | 根拠の形 | 意味 |
 |---|---|---|
 | `:hyp` | `nil` | 仮定を置く |
-| `:axiom` | `(公理名 追加引数...)` | 公理のインスタンス。例: `(III.1 t)`、`(III.3 x A t)` |
-| `:ir` | `(規則名 行番号... 追加引数...)` | 推論規則の適用。例: `(mp 1 0)`、`(gen 3 v0)`、`(exists-elim 2 7 v3)` |
+| `:axiom` | `(公理名 追加引数...)` | 公理のインスタンス。例: `(III.1 t)` |
+| `:ir` | `(規則名 行番号... 追加引数...)` | 推論規則の適用。例: `(mp 1 0)`、`(gen 3 v0)` |
 | `:th`, `:th-ded` | `(定理名 行番号... [:inst 束縛])` | 定理の引用。行番号は、その定理が要求する前提を証明した行 |
 
 `(mp 1 0)` は「1行目の `A → B` と0行目の `A` から `B`」です。定理の引用では、
@@ -257,7 +257,7 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
 
 | ファイル | 内容 |
 |---|---|
-| `hilbert-library/00-classical-fol-equality.system` | 一階述語論理と等号の体系（形成規則、MP・Gen・IOTA・EXISTS-ELIM、II.1〜3、III.1〜3、IV.1〜4） |
+| `hilbert-library/00-classical-fol-equality.system` | 一階述語論理と等号の体系（形成規則、MP・Gen・IOTA、II.1〜3、III.1〜2、IV.1〜4、∃ の略記） |
 | `hilbert-library/00-connectives.system` | ∧ ∨ ↔ ∃! の略記（公理なし） |
 | `hilbert-library/00-peano-arithmetic.system` | ペアノ算術の語彙と公理 P1〜P10 |
 | `hilbert-library/00-peano-order.system` | 順序 ≤ ・ < の略記（s ≤ t :⇔ ∃z s + z = t、s < t :⇔ S s ≤ t。公理なし） |
@@ -304,7 +304,7 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
 **無条件に信頼しているもの**
 - **カーネルのコード**: 照合、自由変数や代入可能性の判定（メタ述語）、再検証の
   ロジック、そして書かれた式を de Bruijn 形式に直す変換（`src/debruijn.lisp`）。
-  束縛子の一覧（`.forall` `.exists` `.iota`）と、略記の展開（`src/abbreviation.lisp`）も
+  束縛子の一覧（`.forall` `.iota`）と、略記の展開（`src/abbreviation.lisp`）も
   カーネルの一部です。代入は束縛変数を捕獲しようがない形で行いますが、`@subst-ok?` は
   残してあり、変換や束縛子の展開に誤りがあれば、そこで検出して拒否します。
 - **`.system` ファイルの内容**: 公理・推論規則・形成規則は、読み込めばそのまま
@@ -380,7 +380,7 @@ deploy/                  サーバー版を公開するための systemd / nginx
 sbcl --non-interactive \
      --eval '(require :asdf)' \
      --eval '(asdf:load-asd (merge-pathnames "ledger-kernel.asd"))' \
-     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（333 件）
+     --eval '(asdf:test-system :ledger-kernel)'        # カーネル（338 件）
 ```
 
 Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（50 件。HTTP は使いません）。
@@ -409,7 +409,7 @@ Web UI のテストは `(asdf:test-system :ledger-kernel/web)` です（50 件�
   です。集合論を書きやすくするクラス記法（`{x ∣ φ}`）もまだありません。
 - **証明を書く手間**: 生の Hilbert 証明は長くなります。変数が衝突したときは
   `:inst` で手で付け替えます。
-  `EXISTS-ELIM` の証人変数も手で選びます。高水準の証明の書き方や、中置記法での
+  存在除去（`th-exists-elim`）の証人変数も手で選びます。高水準の証明の書き方や、中置記法での
   入力は、これからの課題です。
 - **自動化**: 恒真式の自動証明は `backup/` にあり、カーネルでは使っていません。
   命題論理の補題も手で（または道具で生成して）書いた証明として台帳に置きます。

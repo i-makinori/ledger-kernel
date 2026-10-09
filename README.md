@@ -51,8 +51,8 @@ proof trees, and verifying proofs you write on the spot.
 **Logic and systems**
 - Propositional logic (Łukasiewicz's three axioms II.1–II.3; proof by cases is derived as
   the theorem `th-case-split`), first-order
-  predicate logic (∀, ∃, Gen, existential generalization III.3, existential elimination
-  `EXISTS-ELIM`), equality (IV.1–IV.4)
+  predicate logic (∀, Gen, III.1–2; ∃ abbreviates ¬∀¬, and existential generalization and
+  elimination are derived theorems), equality (IV.1–IV.4)
 - Connectives ∧ ∨ ↔ ∃! defined as abbreviations (`00-connectives.system`)
 - Peano arithmetic (P1–P10) and the orders ≤ and < on top of it (`00-peano-order.system`)
 - ZF set theory (extensionality, pairing, union, power set, infinity, regularity,
@@ -91,7 +91,7 @@ ledger. The tools themselves need not be trusted.
   and proof trees, links to symbols and cited entries, display of the axioms an entry
   depends on and of "the theorems that use this theorem", and in-browser proof checking
 
-Tests: all 333 kernel tests and 50 Web tests pass, with zero compiler warnings.
+Tests: all 338 kernel tests and 50 Web tests pass, with zero compiler warnings.
 
 The kernel (`src/`) is about 2000 lines including comments. The logic itself is not
 written in the code; it all lives in `.system` files. Unused features have been moved to
@@ -110,7 +110,7 @@ ASDF. Start SBCL at the root of the repository:
 (require :asdf)
 (asdf:load-asd (merge-pathnames "ledger-kernel.asd"))
 (asdf:load-system :ledger-kernel)
-(asdf:test-system :ledger-kernel)      ; ends with "333/333 self-tests passed."
+(asdf:test-system :ledger-kernel)      ; ends with "338/338 self-tests passed."
 (in-package :ledger-kernel)
 ```
 
@@ -220,8 +220,8 @@ A proof is a list of lines. Each line is a 4-tuple `(number formula role justifi
 | Role | Form of justification | Meaning |
 |---|---|---|
 | `:hyp` | `nil` | Introduce a hypothesis |
-| `:axiom` | `(axiom-name extra-args...)` | An instance of an axiom. e.g. `(III.1 t)`, `(III.3 x A t)` |
-| `:ir` | `(rule-name line-numbers... extra-args...)` | Application of an inference rule. e.g. `(mp 1 0)`, `(gen 3 v0)`, `(exists-elim 2 7 v3)` |
+| `:axiom` | `(axiom-name extra-args...)` | An instance of an axiom. e.g. `(III.1 t)` |
+| `:ir` | `(rule-name line-numbers... extra-args...)` | Application of an inference rule. e.g. `(mp 1 0)`, `(gen 3 v0)` |
 | `:th`, `:th-ded` | `(theorem-name line-numbers... [:inst bindings])` | Citation of a theorem. The line numbers are the lines proving the premises the theorem requires |
 
 `(mp 1 0)` means "from `A → B` on line 1 and `A` on line 0, conclude `B`". When citing a
@@ -280,7 +280,7 @@ and is re-verified.
 
 | File | Contents |
 |---|---|
-| `hilbert-library/00-classical-fol-equality.system` | The system of first-order predicate logic with equality (formation rules, MP, Gen, IOTA, EXISTS-ELIM, II.1–3, III.1–3, IV.1–4) |
+| `hilbert-library/00-classical-fol-equality.system` | The system of first-order predicate logic with equality (formation rules, MP, Gen, IOTA, II.1–3, III.1–2, IV.1–4, ∃ as an abbreviation) |
 | `hilbert-library/00-connectives.system` | Abbreviations ∧ ∨ ↔ ∃! (no axioms) |
 | `hilbert-library/00-peano-arithmetic.system` | The vocabulary and axioms P1–P10 of Peano arithmetic |
 | `hilbert-library/00-peano-order.system` | The orders ≤ and < as abbreviations (s ≤ t :⇔ ∃z s + z = t, s < t :⇔ S s ≤ t; no axioms) |
@@ -330,7 +330,7 @@ what is trusted unconditionally".
 **What is trusted unconditionally**
 - **The kernel code**: matching, the judgements of free variables and substitutability
   (meta-predicates), the re-verification logic, and the conversion of written formulas
-  into de Bruijn form (`src/debruijn.lisp`). The list of binders (`.forall` `.exists`
+  into de Bruijn form (`src/debruijn.lisp`). The list of binders (`.forall`
   `.iota`) and the expansion of abbreviations (`src/abbreviation.lisp`) are also part of
   the kernel. Substitution is performed in a way that
   cannot capture bound variables, but `@subst-ok?` is kept, so that any error in the
@@ -412,7 +412,7 @@ deploy/                  Example systemd / nginx configurations for publishing t
 sbcl --non-interactive \
      --eval '(require :asdf)' \
      --eval '(asdf:load-asd (merge-pathnames "ledger-kernel.asd"))' \
-     --eval '(asdf:test-system :ledger-kernel)'        # kernel (333 tests)
+     --eval '(asdf:test-system :ledger-kernel)'        # kernel (338 tests)
 ```
 
 The Web UI tests are run with `(asdf:test-system :ledger-kernel/web)` (50 tests; no HTTP
@@ -444,7 +444,7 @@ with the reasons, include for example:
   pairs, natural numbers and so on are still to come. There is also no class notation
   (`{x ∣ φ}`) to make set theory easier to write.
 - **The effort of writing proofs**: raw Hilbert proofs get long. Variable clashes must be
-  renamed by hand with `:inst`. The witness variable for `EXISTS-ELIM` is also chosen by hand.
+  renamed by hand with `:inst`. The witness variable for existential elimination (`th-exists-elim`) is also chosen by hand.
   A higher-level proof language and infix input are future work.
 - **Automation**: automatic proof of tautologies is kept in `backup/` and not used by the
   kernel; propositional lemmas are written (or generated by a tool) as ordinary proofs.

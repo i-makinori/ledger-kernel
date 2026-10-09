@@ -89,7 +89,8 @@
   (1 (.to (.le (s v1) v1) (.exists x4 (.eq (+ (s v1) x4) v1))) :th-ded (th-identity))
   (2 (.exists x4 (.eq (+ (s v1) x4) v1)) :ir (mp 1 0))
   (3 (.to (.eq (+ (s v1) v3) v1) (.eq (s zero) zero)) :th (th-not-succ-le-s1))
-  (4 (.eq (s zero) zero) :ir (exists-elim 2 3 v3))))
+  (5 (.forall v3 (.to (.eq (+ (s v1) v3) v1) (.eq (s zero) zero))) :ir (gen 3 v3))
+  (4 (.eq (s zero) zero) :th (th-exists-elim 2 5 :inst ((v1 v3))))))
 
 (:th th-not-succ-le
  ((0
@@ -158,8 +159,7 @@
    (iv.4))
   (23 (.to (.eq (+ v3 v2) v1) (.eq (+ (s v3) v6) v1)) :ir (mp 22 21))
   (24 (.eq (+ (s v3) v6) v1) :ir (mp 23 0))
-  (25 (.to (.eq (+ (s v3) v6) v1) (.exists x4 (.eq (+ (s v3) x4) v1))) :axiom
-   (iii.3 x4 (.eq (+ (s v3) x4) v1) v6))
+  (25 (.to (.eq (+ (s v3) v6) v1) (.exists x4 (.eq (+ (s v3) x4) v1))) :th (th-exists-intro :inst ((p (x4) (.eq (+ (s v3) x4) v1)) (v1 v6))))
   (26 (.exists x4 (.eq (+ (s v3) x4) v1)) :ir (mp 25 24))
   (27 (.to (.exists x4 (.eq (+ (s v3) x4) v1)) (.le (s v3) v1)) :th-ded (th-identity))
   (28 (.le (s v3) v1) :ir (mp 27 26))
@@ -169,7 +169,8 @@
 (:th-ded th-le-cases-s3 (.exists x4 (.eq v2 (s x4)))
  ((0 (.eq (+ v3 v2) v1) :hyp nil) (1 (.exists x4 (.eq v2 (s x4))) :hyp nil)
   (2 (.to (.eq v2 (s v6)) (.or (.eq v3 v1) (.le (s v3) v1))) :th (th-le-cases-s2 0))
-  (3 (.or (.eq v3 v1) (.le (s v3) v1)) :ir (exists-elim 1 2 v6))))
+  (4 (.forall v6 (.to (.eq v2 (s v6)) (.or (.eq v3 v1) (.le (s v3) v1)))) :ir (gen 2 v6))
+  (3 (.or (.eq v3 v1) (.le (s v3) v1)) :th (th-exists-elim 1 4 :inst ((v1 v6))))))
 
 (:th-ded th-le-cases-s4 (.eq (+ v3 v2) v1)
  ((0 (.eq (+ v3 v2) v1) :hyp nil)
@@ -198,7 +199,8 @@
  ((0 (.le v3 v1) :hyp nil) (1 (.to (.le v3 v1) (.exists x4 (.eq (+ v3 x4) v1))) :th-ded (th-identity))
   (2 (.exists x4 (.eq (+ v3 x4) v1)) :ir (mp 1 0))
   (3 (.to (.eq (+ v3 v2) v1) (.or (.eq v3 v1) (.le (s v3) v1))) :th (th-le-cases-s4))
-  (4 (.or (.eq v3 v1) (.le (s v3) v1)) :ir (exists-elim 2 3 v2))))
+  (5 (.forall v2 (.to (.eq (+ v3 v2) v1) (.or (.eq v3 v1) (.le (s v3) v1)))) :ir (gen 3 v2))
+  (4 (.or (.eq v3 v1) (.le (s v3) v1)) :th (th-exists-elim 2 5 :inst ((v1 v2))))))
 
 (:th th-le-cases
  ((0 (.to (.le v3 v1) (.or (.eq v3 v1) (.le (s v3) v1))) :th (th-le-cases-s5))
@@ -242,12 +244,12 @@
   (15
    (.to (.and (.eq zero (+ (* zero (s v1)) zero)) (.le zero v1))
     (.exists x5 (.and (.eq zero (+ (* x5 (s v1)) zero)) (.le zero v1))))
-   :axiom (iii.3 x5 (.and (.eq zero (+ (* x5 (s v1)) zero)) (.le zero v1)) zero))
+   :th (th-exists-intro :inst ((p (x5) (.and (.eq zero (+ (* x5 (s v1)) zero)) (.le zero v1))) (v1 zero))))
   (16 (.exists x5 (.and (.eq zero (+ (* x5 (s v1)) zero)) (.le zero v1))) :ir (mp 15 14))
   (17
    (.to (.exists x5 (.and (.eq zero (+ (* x5 (s v1)) zero)) (.le zero v1)))
     (.exists x3 (.exists x5 (.and (.eq zero (+ (* x5 (s v1)) x3)) (.le x3 v1)))))
-   :axiom (iii.3 x3 (.exists x5 (.and (.eq zero (+ (* x5 (s v1)) x3)) (.le x3 v1))) zero))
+   :th (th-exists-intro :inst ((p (x3) (.exists x5 (.and (.eq zero (+ (* x5 (s v1)) x3)) (.le x3 v1)))) (v1 zero))))
   (18 (.exists x3 (.exists x5 (.and (.eq zero (+ (* x5 (s v1)) x3)) (.le x3 v1)))) :ir (mp 17 16))))
 
 (:th-ded th-divmod-exists-k1 (.eq v3 v1)
@@ -340,12 +342,12 @@
   (41
    (.to (.and (.eq (s v0) (+ (* (s v2) (s v1)) zero)) (.le zero v1))
     (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) zero)) (.le zero v1))))
-   :axiom (iii.3 x5 (.and (.eq (s v0) (+ (* x5 (s v1)) zero)) (.le zero v1)) (s v2)))
+   :th (th-exists-intro :inst ((p (x5) (.and (.eq (s v0) (+ (* x5 (s v1)) zero)) (.le zero v1))) (v1 (s v2)))))
   (42 (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) zero)) (.le zero v1))) :ir (mp 41 40))
   (43
    (.to (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) zero)) (.le zero v1)))
     (.exists x3 (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) x3)) (.le x3 v1)))))
-   :axiom (iii.3 x3 (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) x3)) (.le x3 v1))) zero))
+   :th (th-exists-intro :inst ((p (x3) (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) x3)) (.le x3 v1)))) (v1 zero))))
   (44 (.exists x3 (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) x3)) (.le x3 v1)))) :ir
    (mp 43 42))))
 
@@ -379,12 +381,12 @@
   (13
    (.to (.and (.eq (s v0) (+ (* v2 (s v1)) (s v3))) (.le (s v3) v1))
     (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) (s v3))) (.le (s v3) v1))))
-   :axiom (iii.3 x5 (.and (.eq (s v0) (+ (* x5 (s v1)) (s v3))) (.le (s v3) v1)) v2))
+   :th (th-exists-intro :inst ((p (x5) (.and (.eq (s v0) (+ (* x5 (s v1)) (s v3))) (.le (s v3) v1))) (v1 v2))))
   (14 (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) (s v3))) (.le (s v3) v1))) :ir (mp 13 12))
   (15
    (.to (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) (s v3))) (.le (s v3) v1)))
     (.exists x3 (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) x3)) (.le x3 v1)))))
-   :axiom (iii.3 x3 (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) x3)) (.le x3 v1))) (s v3)))
+   :th (th-exists-intro :inst ((p (x3) (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) x3)) (.le x3 v1)))) (v1 (s v3)))))
   (16 (.exists x3 (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) x3)) (.le x3 v1)))) :ir
    (mp 15 14))))
 
@@ -452,8 +454,9 @@
    (.to (.and (.eq v0 (+ (* v2 (s v1)) v3)) (.le v3 v1))
     (.exists x3 (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) x3)) (.le x3 v1)))))
    :th (th-divmod-exists-k4))
-  (2 (.exists x3 (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) x3)) (.le x3 v1)))) :ir
-   (exists-elim 0 1 v2))))
+  (3 (.forall v2 (.to (.and (.eq v0 (+ (* v2 (s v1)) v3)) (.le v3 v1))
+    (.exists x3 (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) x3)) (.le x3 v1)))))) :ir (gen 1 v2))
+  (2 (.exists x3 (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) x3)) (.le x3 v1)))) :th (th-exists-elim 0 3 :inst ((v1 v2))))))
 
 (:th-ded th-divmod-exists-step
  (.exists x3 (.exists x5 (.and (.eq v0 (+ (* x5 (s v1)) x3)) (.le x3 v1))))
@@ -462,8 +465,9 @@
    (.to (.exists x5 (.and (.eq v0 (+ (* x5 (s v1)) v3)) (.le v3 v1)))
     (.exists x3 (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) x3)) (.le x3 v1)))))
    :th (th-divmod-exists-k5))
-  (2 (.exists x3 (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) x3)) (.le x3 v1)))) :ir
-   (exists-elim 0 1 v3))))
+  (3 (.forall v3 (.to (.exists x5 (.and (.eq v0 (+ (* x5 (s v1)) v3)) (.le v3 v1)))
+    (.exists x3 (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) x3)) (.le x3 v1)))))) :ir (gen 1 v3))
+  (2 (.exists x3 (.exists x5 (.and (.eq (s v0) (+ (* x5 (s v1)) x3)) (.le x3 v1)))) :th (th-exists-elim 0 3 :inst ((v1 v3))))))
 
 (:th th-divmod-exists-ind
  ((0
@@ -673,8 +677,7 @@
   (40 (.to (.eq v3 (+ (s v1) (+ (* v7 (s v1)) v5))) (.eq (+ (s v1) (+ (* v7 (s v1)) v5)) v3))
    :axiom (iv.3))
   (41 (.eq (+ (s v1) (+ (* v7 (s v1)) v5)) v3) :ir (mp 40 39))
-  (42 (.to (.eq (+ (s v1) (+ (* v7 (s v1)) v5)) v3) (.exists x4 (.eq (+ (s v1) x4) v3))) :axiom
-   (iii.3 x4 (.eq (+ (s v1) x4) v3) (+ (* v7 (s v1)) v5)))
+  (42 (.to (.eq (+ (s v1) (+ (* v7 (s v1)) v5)) v3) (.exists x4 (.eq (+ (s v1) x4) v3))) :th (th-exists-intro :inst ((p (x4) (.eq (+ (s v1) x4) v3)) (v1 (+ (* v7 (s v1)) v5)))))
   (43 (.exists x4 (.eq (+ (s v1) x4) v3)) :ir (mp 42 41))
   (44 (.to (.exists x4 (.eq (+ (s v1) x4) v3)) (.le (s v1) v3)) :th-ded (th-identity))
   (45 (.le (s v1) v3) :ir (mp 44 43))
@@ -709,7 +712,8 @@
  ((0 (.eq v3 (+ (* v6 (s v1)) v5)) :hyp nil) (1 (.le v3 v1) :hyp nil)
   (2 (.exists x4 (.eq v6 (s x4))) :hyp nil)
   (3 (.to (.eq v6 (s v7)) (.and (.eq v2 v4) (.eq v3 v5))) :th (th-divmod-unique-u2 0 1))
-  (4 (.and (.eq v2 v4) (.eq v3 v5)) :ir (exists-elim 2 3 v7))))
+  (5 (.forall v7 (.to (.eq v6 (s v7)) (.and (.eq v2 v4) (.eq v3 v5)))) :ir (gen 3 v7))
+  (4 (.and (.eq v2 v4) (.eq v3 v5)) :th (th-exists-elim 2 5 :inst ((v1 v7))))))
 
 (:th-ded th-divmod-unique-u4 (.eq v3 (+ (* v6 (s v1)) v5))
  ((0 (.eq (+ v2 v6) v4) :hyp nil) (1 (.le v3 v1) :hyp nil)
@@ -856,7 +860,8 @@
   (2 (.le v2 v4) :hyp nil) (3 (.to (.le v2 v4) (.exists x4 (.eq (+ v2 x4) v4))) :th-ded (th-identity))
   (4 (.exists x4 (.eq (+ v2 x4) v4)) :ir (mp 3 2))
   (5 (.to (.eq (+ v2 v6) v4) (.and (.eq v2 v4) (.eq v3 v5))) :th (th-divmod-unique-u5 0 1))
-  (6 (.and (.eq v2 v4) (.eq v3 v5)) :ir (exists-elim 4 5 v6))))
+  (7 (.forall v6 (.to (.eq (+ v2 v6) v4) (.and (.eq v2 v4) (.eq v3 v5)))) :ir (gen 5 v6))
+  (6 (.and (.eq v2 v4) (.eq v3 v5)) :th (th-exists-elim 4 7 :inst ((v1 v6))))))
 
 (:th-ded th-divmod-unique-u7 (.le v3 v1)
  ((0 (.eq (+ (* v2 (s v1)) v3) (+ (* v4 (s v1)) v5)) :hyp nil) (1 (.le v3 v1) :hyp nil)
@@ -1493,7 +1498,7 @@
   (15 (.to (.eq (* (+ v2 v7) v6) (* v4 v6)) (.eq (+ (* v2 v6) (* v7 v6)) (* v4 v6))) :ir (mp 14 9))
   (16 (.eq (+ (* v2 v6) (* v7 v6)) (* v4 v6)) :ir (mp 15 13))
   (17 (.to (.eq (+ (* v2 v6) (* v7 v6)) (* v4 v6)) (.exists x4 (.eq (+ (* v2 v6) x4) (* v4 v6))))
-   :axiom (iii.3 x4 (.eq (+ (* v2 v6) x4) (* v4 v6)) (* v7 v6)))
+   :th (th-exists-intro :inst ((p (x4) (.eq (+ (* v2 v6) x4) (* v4 v6))) (v1 (* v7 v6)))))
   (18 (.exists x4 (.eq (+ (* v2 v6) x4) (* v4 v6))) :ir (mp 17 16))
   (19 (.to (.exists x4 (.eq (+ (* v2 v6) x4) (* v4 v6))) (.le (* v2 v6) (* v4 v6))) :th-ded
    (th-identity))
@@ -1503,7 +1508,8 @@
  ((0 (.le v2 v4) :hyp nil) (1 (.to (.le v2 v4) (.exists x4 (.eq (+ v2 x4) v4))) :th-ded (th-identity))
   (2 (.exists x4 (.eq (+ v2 x4) v4)) :ir (mp 1 0))
   (3 (.to (.eq (+ v2 v7) v4) (.le (* v2 v6) (* v4 v6))) :th (th-le-mul-mono-s1))
-  (4 (.le (* v2 v6) (* v4 v6)) :ir (exists-elim 2 3 v7))))
+  (5 (.forall v7 (.to (.eq (+ v2 v7) v4) (.le (* v2 v6) (* v4 v6)))) :ir (gen 3 v7))
+  (4 (.le (* v2 v6) (* v4 v6)) :th (th-exists-elim 2 5 :inst ((v1 v7))))))
 
 (:th th-le-mul-mono
  ((0 (.to (.le v2 v4) (.le (* v2 v6) (* v4 v6))) :th (th-le-mul-mono-s2))
@@ -2075,8 +2081,7 @@
  ((0 (.eq v0 (+ (* v2 (s v1)) v3)) :hyp nil) (1 (.eq (+ v3 v6) v1) :hyp nil)
   (2 (.to (.eq v0 (+ (* v2 (s v1)) v3)) (.eq (+ (* v2 (s v1)) v3) v0)) :axiom (iv.3))
   (3 (.eq (+ (* v2 (s v1)) v3) v0) :ir (mp 2 0))
-  (4 (.to (.eq (+ (* v2 (s v1)) v3) v0) (.exists x4 (.eq (+ (* v2 (s v1)) x4) v0))) :axiom
-   (iii.3 x4 (.eq (+ (* v2 (s v1)) x4) v0) v3))
+  (4 (.to (.eq (+ (* v2 (s v1)) v3) v0) (.exists x4 (.eq (+ (* v2 (s v1)) x4) v0))) :th (th-exists-intro :inst ((p (x4) (.eq (+ (* v2 (s v1)) x4) v0)) (v1 v3))))
   (5 (.exists x4 (.eq (+ (* v2 (s v1)) x4) v0)) :ir (mp 4 3))
   (6 (.to (.exists x4 (.eq (+ (* v2 (s v1)) x4) v0)) (.le (* v2 (s v1)) v0)) :th-ded (th-identity))
   (7 (.le (* v2 (s v1)) v0) :ir (mp 6 5))
@@ -2196,7 +2201,7 @@
   (57 (.to (.le (s v0) (* (s v2) (s v1))) (.lt v0 (* (s v2) (s v1)))) :th-ded (th-identity))
   (58
    (.to (.eq (+ (s v0) v6) (* (s v2) (s v1))) (.exists x4 (.eq (+ (s v0) x4) (* (s v2) (s v1)))))
-   :axiom (iii.3 x4 (.eq (+ (s v0) x4) (* (s v2) (s v1))) v6))
+   :th (th-exists-intro :inst ((p (x4) (.eq (+ (s v0) x4) (* (s v2) (s v1)))) (v1 v6))))
   (59 (.exists x4 (.eq (+ (s v0) x4) (* (s v2) (s v1)))) :ir (mp 58 56))
   (60 (.to (.exists x4 (.eq (+ (s v0) x4) (* (s v2) (s v1)))) (.le (s v0) (* (s v2) (s v1))))
    :th-ded (th-identity))
@@ -2215,7 +2220,8 @@
   (3 (.exists x4 (.eq (+ v3 x4) v1)) :ir (mp 2 1))
   (4 (.to (.eq (+ v3 v6) v1) (.and (.le (* v2 (s v1)) v0) (.lt v0 (* (s v2) (s v1))))) :th
    (th-div-s-exists-x1 0))
-  (5 (.and (.le (* v2 (s v1)) v0) (.lt v0 (* (s v2) (s v1)))) :ir (exists-elim 3 4 v6))))
+  (6 (.forall v6 (.to (.eq (+ v3 v6) v1) (.and (.le (* v2 (s v1)) v0) (.lt v0 (* (s v2) (s v1)))))) :ir (gen 4 v6))
+  (5 (.and (.le (* v2 (s v1)) v0) (.lt v0 (* (s v2) (s v1)))) :th (th-exists-elim 3 6 :inst ((v1 v6))))))
 
 (:th-ded th-div-s-exists-x3 (.and (.eq v0 (+ (* v2 (s v1)) v3)) (.le v3 v1))
  ((0 (.and (.eq v0 (+ (* v2 (s v1)) v3)) (.le v3 v1)) :hyp nil)
@@ -2230,7 +2236,7 @@
   (7
    (.to (.and (.le (* v2 (s v1)) v0) (.lt v0 (* (s v2) (s v1))))
     (.exists x3 (.and (.le (* x3 (s v1)) v0) (.lt v0 (* (s x3) (s v1))))))
-   :axiom (iii.3 x3 (.and (.le (* x3 (s v1)) v0) (.lt v0 (* (s x3) (s v1)))) v2))
+   :th (th-exists-intro :inst ((p (x3) (.and (.le (* x3 (s v1)) v0) (.lt v0 (* (s x3) (s v1))))) (v1 v2))))
   (8 (.exists x3 (.and (.le (* x3 (s v1)) v0) (.lt v0 (* (s x3) (s v1))))) :ir (mp 7 6))))
 
 (:th-ded th-div-s-exists-x4 (.exists x5 (.and (.eq v0 (+ (* x5 (s v1)) v3)) (.le v3 v1)))
@@ -2239,8 +2245,9 @@
    (.to (.and (.eq v0 (+ (* v2 (s v1)) v3)) (.le v3 v1))
     (.exists x3 (.and (.le (* x3 (s v1)) v0) (.lt v0 (* (s x3) (s v1))))))
    :th (th-div-s-exists-x3))
-  (2 (.exists x3 (.and (.le (* x3 (s v1)) v0) (.lt v0 (* (s x3) (s v1))))) :ir
-   (exists-elim 0 1 v2))))
+  (3 (.forall v2 (.to (.and (.eq v0 (+ (* v2 (s v1)) v3)) (.le v3 v1))
+    (.exists x3 (.and (.le (* x3 (s v1)) v0) (.lt v0 (* (s x3) (s v1))))))) :ir (gen 1 v2))
+  (2 (.exists x3 (.and (.le (* x3 (s v1)) v0) (.lt v0 (* (s x3) (s v1))))) :th (th-exists-elim 0 3 :inst ((v1 v2))))))
 
 (:th th-div-s-exists
  ((0
@@ -2264,8 +2271,9 @@
    (.to (.exists x5 (.and (.eq v0 (+ (* x5 (s v1)) v3)) (.le v3 v1)))
     (.exists x3 (.and (.le (* x3 (s v1)) v0) (.lt v0 (* (s x3) (s v1))))))
    :th (th-div-s-exists-x4))
-  (6 (.exists x3 (.and (.le (* x3 (s v1)) v0) (.lt v0 (* (s x3) (s v1))))) :ir
-   (exists-elim 4 5 v3))
+  (15 (.forall v3 (.to (.exists x5 (.and (.eq v0 (+ (* x5 (s v1)) v3)) (.le v3 v1)))
+    (.exists x3 (.and (.le (* x3 (s v1)) v0) (.lt v0 (* (s x3) (s v1))))))) :ir (gen 5 v3))
+  (6 (.exists x3 (.and (.le (* x3 (s v1)) v0) (.lt v0 (* (s x3) (s v1))))) :th (th-exists-elim 4 15 :inst ((v1 v3))))
   (7 (.forall v1 (.exists x3 (.and (.le (* x3 (s v1)) v0) (.lt v0 (* (s x3) (s v1)))))) :ir
    (gen 6 v1))
   (8
@@ -2300,7 +2308,7 @@
   (3
    (.to (.eq v0 (+ (* (div-s v0 v1) (s v1)) v3))
     (.exists x3 (.eq v0 (+ (* (div-s v0 v1) (s v1)) x3))))
-   :axiom (iii.3 x3 (.eq v0 (+ (* (div-s v0 v1) (s v1)) x3)) v3))
+   :th (th-exists-intro :inst ((p (x3) (.eq v0 (+ (* (div-s v0 v1) (s v1)) x3))) (v1 v3))))
   (4 (.exists x3 (.eq v0 (+ (* (div-s v0 v1) (s v1)) x3))) :ir (mp 3 2))))
 
 (:th th-mod-s-exists
@@ -2318,7 +2326,9 @@
    (.to (.eq (+ (* (div-s v0 v1) (s v1)) v3) v0)
     (.exists x3 (.eq v0 (+ (* (div-s v0 v1) (s v1)) x3))))
    :th (th-mod-s-exists-y1))
-  (6 (.exists x3 (.eq v0 (+ (* (div-s v0 v1) (s v1)) x3))) :ir (exists-elim 4 5 v3))
+  (15 (.forall v3 (.to (.eq (+ (* (div-s v0 v1) (s v1)) v3) v0)
+    (.exists x3 (.eq v0 (+ (* (div-s v0 v1) (s v1)) x3))))) :ir (gen 5 v3))
+  (6 (.exists x3 (.eq v0 (+ (* (div-s v0 v1) (s v1)) x3))) :th (th-exists-elim 4 15 :inst ((v1 v3))))
   (7 (.forall v1 (.exists x3 (.eq v0 (+ (* (div-s v0 v1) (s v1)) x3)))) :ir (gen 6 v1))
   (8
    (.to (.forall v1 (.exists x3 (.eq v0 (+ (* (div-s v0 v1) (s v1)) x3))))
@@ -2695,8 +2705,7 @@
    :axiom (iv.4))
   (43 (.to (.eq (mod-s v0 v1) v3) (.eq (+ (mod-s v0 v1) zero) v3)) :ir (mp 42 41))
   (44 (.eq (+ (mod-s v0 v1) zero) v3) :ir (mp 43 40))
-  (45 (.to (.eq (+ (mod-s v0 v1) zero) v3) (.exists x4 (.eq (+ (mod-s v0 v1) x4) v3))) :axiom
-   (iii.3 x4 (.eq (+ (mod-s v0 v1) x4) v3) zero))
+  (45 (.to (.eq (+ (mod-s v0 v1) zero) v3) (.exists x4 (.eq (+ (mod-s v0 v1) x4) v3))) :th (th-exists-intro :inst ((p (x4) (.eq (+ (mod-s v0 v1) x4) v3)) (v1 zero))))
   (46 (.exists x4 (.eq (+ (mod-s v0 v1) x4) v3)) :ir (mp 45 44))
   (47 (.to (.exists x4 (.eq (+ (mod-s v0 v1) x4) v3)) (.le (mod-s v0 v1) v3)) :th-ded (th-identity))
   (48 (.le (mod-s v0 v1) v3) :ir (mp 47 46))
@@ -2738,7 +2747,8 @@
  ((0 (.exists x5 (.and (.eq v0 (+ (* x5 (s v1)) v3)) (.le v3 v1))) :hyp nil)
   (1 (.to (.and (.eq v0 (+ (* v2 (s v1)) v3)) (.le v3 v1)) (.le (mod-s v0 v1) v1)) :th
    (th-mod-s-le-m2))
-  (2 (.le (mod-s v0 v1) v1) :ir (exists-elim 0 1 v2))))
+  (3 (.forall v2 (.to (.and (.eq v0 (+ (* v2 (s v1)) v3)) (.le v3 v1)) (.le (mod-s v0 v1) v1))) :ir (gen 1 v2))
+  (2 (.le (mod-s v0 v1) v1) :th (th-exists-elim 0 3 :inst ((v1 v2))))))
 
 (:th th-mod-s-le
  ((0
@@ -2760,7 +2770,8 @@
   (4 (.exists x3 (.exists x5 (.and (.eq v0 (+ (* x5 (s v1)) x3)) (.le x3 v1)))) :ir (mp 3 2))
   (5 (.to (.exists x5 (.and (.eq v0 (+ (* x5 (s v1)) v3)) (.le v3 v1))) (.le (mod-s v0 v1) v1)) :th
    (th-mod-s-le-m3))
-  (6 (.le (mod-s v0 v1) v1) :ir (exists-elim 4 5 v3))
+  (15 (.forall v3 (.to (.exists x5 (.and (.eq v0 (+ (* x5 (s v1)) v3)) (.le v3 v1))) (.le (mod-s v0 v1) v1))) :ir (gen 5 v3))
+  (6 (.le (mod-s v0 v1) v1) :th (th-exists-elim 4 15 :inst ((v1 v3))))
   (7 (.forall v1 (.le (mod-s v0 v1) v1)) :ir (gen 6 v1))
   (8 (.to (.forall v1 (.le (mod-s v0 v1) v1)) (.le (mod-s v0 x2) x2)) :axiom (iii.1 x2))
   (9 (.le (mod-s v0 x2) x2) :ir (mp 8 7)) (10 (.forall x2 (.le (mod-s v0 x2) x2)) :ir (gen 9 x2))
@@ -2775,7 +2786,7 @@
   (1
    (.to (.eq (mod-s v0 (* (s v2) v1)) (mod-s v0 (* (s v2) v1)))
     (.exists x5 (.eq x5 (mod-s v0 (* (s v2) v1)))))
-   :axiom (iii.3 x5 (.eq x5 (mod-s v0 (* (s v2) v1))) (mod-s v0 (* (s v2) v1))))
+   :th (th-exists-intro :inst ((p (x5) (.eq x5 (mod-s v0 (* (s v2) v1)))) (v1 (mod-s v0 (* (s v2) v1))))))
   (2 (.exists x5 (.eq x5 (mod-s v0 (* (s v2) v1)))) :ir (mp 1 0))
   (3 (.forall v2 (.exists x5 (.eq x5 (mod-s v0 (* (s v2) v1))))) :ir (gen 2 v2))
   (4

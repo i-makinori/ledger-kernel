@@ -78,7 +78,8 @@
                                      (entries-of-kind 'abbreviation ledger))))
             (and (= (length defs) 3)
                  (every (lambda (e)
-                          (let ((body (second (entry-payload e))))
+                          ;; As written: the iota term over a formula with no binder of its own.
+                          (let ((body (second (or (getf (cdr (entry-origin e)) :written) (entry-payload e)))))
                             (and (eq (first body) '.iota) (= 0 (count-binders (third body))))))
                         defs)))
           t)

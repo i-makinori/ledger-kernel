@@ -20,7 +20,7 @@
                    '(.forall (.forall (.eq (:bv 0) (:bv 0)))))
             t)
     (expect "free variables keep their names"
-            (equal (named->db '(.exists v0 (.eq v0 v1)) ledger) '(.exists (.eq (:bv 0) v1))) t)
+            (equal (named->db '(.exists v0 (.eq v0 v1)) ledger) '(.neg (.forall (.neg (.eq (:bv 0) v1))))) t)
     (expect "a binder over a non-variable (A) is left alone, and is not a wff"
             (and (equal (named->db '(.forall a (.eq a a)) ledger) '(.forall a (.eq a a)))
                  (not (judgement? 'wff? '(.forall a (.eq a a)) ledger)))
@@ -172,12 +172,10 @@ order of first appearance; other pattern variables keep their names."
                   t)
           (expect "... its bound ?x becomes ?BV1 and each expansion's fresh ?u its own ?BVn"
                   (equal (third (entry-payload e))
-                         '(nil (.to (.exists ?bv1
-                                     (.neg (.to ?a (.neg (.forall ?bv2 (.to (@subst ?bv1 ?bv2 ?a)
-                                                                           (.eq ?bv2 ?bv1)))))))
-                                    (.exists ?bv1
-                                     (.neg (.to ?a (.neg (.forall ?bv3 (.to (@subst ?bv1 ?bv3 ?a)
-                                                                           (.eq ?bv3 ?bv1))))))))))
+                         '(nil (.to (.neg (.forall ?bv1 (.neg (.neg (.to ?a (.neg (.forall ?bv2 (.to (@subst ?bv1 ?bv2 ?a)
+                                                                                                  (.eq ?bv2 ?bv1)))))))))
+                                    (.neg (.forall ?bv1 (.neg (.neg (.to ?a (.neg (.forall ?bv3 (.to (@subst ?bv1 ?bv3 ?a)
+                                                                                                  (.eq ?bv3 ?bv1))))))))))))
                   t)
           (expect "... and the rule as written is kept in the origin"
                   (equal (getf (cdr (entry-origin e)) :written)
@@ -186,12 +184,9 @@ order of first appearance; other pattern variables keep their names."
     (expect "Gen: ?x is also the extra argument (free), so it keeps its name -- no ?BVn outside a binder"
             (equal (third (entry-payload (rule 'irule 'gen))) '((?a) (?x) :=> (.forall ?x ?a)))
             t)
-    (expect "III.3: ?x is also an extra argument, so it keeps its name"
-            (equal (first (third (entry-payload (rule 'axiom 'iii.3)))) '(?x ?a ?t))
-            t)
-    (expect "IOTA: ?x, ?y, ?z occur only within their scope (incl. A[t/x]) and become ?BV1-3"
+    (expect "a pattern written with .exists is stored as not forall not, its ?x bound"
             (equal (third (entry-payload (rule 'irule 'iota)))
-                   '(((.exists ?bv1 ?a)
+                   '(((.neg (.forall ?bv1 (.neg ?a)))
                       (.forall ?bv2 (.forall ?bv3 (.to (@subst ?bv1 ?bv2 ?a)
                                                       (.to (@subst ?bv1 ?bv3 ?a) (.eq ?bv2 ?bv3))))))
                      nil :=> (@subst ?bv1 (.iota ?bv1 ?a) ?a)))

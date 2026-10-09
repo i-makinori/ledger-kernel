@@ -58,6 +58,19 @@
        (some (lambda (e) (eq (car (first (entry-payload e))) sym))
              (entries-of-kind 'abbreviation ledger))))
 
+(defun next-abbrev-index (&rest trees)
+  "1 + the largest n such that ?ABBREVn occurs in TREES (0 if none)."
+  (let ((best -1))
+    (labels ((walk (x)
+               (cond ((consp x) (walk (car x)) (walk (cdr x)))
+                     ((and (symbolp x) x)
+                      (let ((s (symbol-name x)))
+                        (when (and (> (length s) 7) (string= (subseq s 0 7) "?ABBREV")
+                                   (every #'digit-char-p (subseq s 7)))
+                          (setf best (max best (parse-integer s :start 7)))))))))
+      (walk trees))
+    (1+ best)))
+
 (defun rename-body-binders (body parameters fresh)
   "BODY with the variable of every binder that is not one of PARAMETERS
 renamed to (FUNCALL FRESH), within its scope."
@@ -91,7 +104,13 @@ then pattern variables ?ABBREVn."
   (let ((table (abbreviation-table ledger)))
     (if (null table)
         x
-        (let ((counter (if pattern 0 (next-fresh-index x))))
+        ;; Fresh means above every name of that kind in X and in every
+        ;; stored body: a body is stored expanded, so it may already hold
+        ;; ?ABBREVn (or %n) binders of its own, and renaming one binder to
+        ;; a name another binder of the same body uses would capture.
+        (let ((counter (if pattern
+                           (next-abbrev-index x table)
+                           (next-fresh-index x table))))
           (labels ((fresh ()
                      (prog1 (if pattern
                                 (intern (format nil "?ABBREV~D" counter) :ledger-kernel)
@@ -122,7 +141,7 @@ abbreviation it uses declared before it."
       (fail "the head must be (SYMBOL ?PARAMETER...)."))
     (let ((head (car head-pattern)) (parameters (cdr head-pattern)))
       (unless (and (fresh-symbol-name-p head ledger)
-                   (not (member head '(.to .eq .neg .forall .exists .iota) :test #'eq))
+                   (not (member head '(.to .eq .neg .forall .iota) :test #'eq))
                    (not (symbol-used-in-ledger-p head ledger)))
         (fail "~S is not a fresh symbol." head))
       (unless (and (every #'pat-var-p parameters)

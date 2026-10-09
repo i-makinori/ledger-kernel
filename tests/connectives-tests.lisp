@@ -28,7 +28,9 @@ as their expansion, with no formation rule or axiom of their own."
   (expect "00-connectives.system adds no axiom and no formation rule"
           (and (notany (lambda (e) (search "FOLD" (symbol-name (first (entry-payload e)))))
                        (entries-of-kind 'axiom ledger))
-               (= (length (entries-of-kind 'abbreviation ledger)) 4))
+               (subsetp '(.and .or .iff .exists1)
+                        (mapcar (lambda (e) (car (first (entry-payload e))))
+                                (entries-of-kind 'abbreviation ledger))))
           t)
   (expect "A and B is the formula not(A -> not B)"
           (same-formula-p ledger '(.and A B) '(.neg (.to A (.neg B)))) t)
@@ -62,6 +64,19 @@ as their expansion, with no formation rule or axiom of their own."
           (same-formula-p ledger '(.exists1 v0 (.eq v0 %0))
                           '(.exists v0 (.and (.eq v0 %0) (.forall v2 (.to (.eq v2 %0) (.eq v2 v0))))))
           t)
+  (let ((l (bootstrap-kernel-from-spec
+            '((:abbreviation (.ex2 ?A) (.exists ?y (.exists ?z ?A)))
+              (:abbreviation (.ex3 ?A) (.ex2 (.exists ?w ?A)))
+              (:axiom EX3-TEST ((wff? ?B)) (nil (.to (.ex3 ?B) (.ex3 ?B)))))
+            :ledger ledger)))
+    (expect "an abbreviation built on another, inside a rule pattern: binders stay apart"
+            (and (equal (named->db '(.ex3 (.eq v0 v1)) l)
+                        (named->db '(.exists v2 (.exists v3 (.exists v4 (.eq v0 v1)))) l))
+                 (check-k-proof '((0 (.to (.ex3 (.eq v0 v1)) (.ex3 (.eq v0 v1))) :axiom (ex3-test))) l))
+            t)
+    (expect "Attack: ... and the pattern does not match a formula with fewer quantifiers"
+            (check-k-proof '((0 (.to (.ex2 (.eq v0 v1)) (.ex2 (.eq v0 v1))) :axiom (ex3-test))) l)
+            nil))
   (expect "Attack: declaring an abbreviation over the primitive .to -- must error"
           (handler-case (progn (bootstrap-kernel-from-spec '((:abbreviation (.to ?A ?B) (.or ?A ?B)))
                                                            :ledger ledger)

@@ -163,12 +163,13 @@ ledger and can never be declared as anything else."
 
 (defun binder-heads ()
   "Heads that bind the variable in position 1 over the body in position 2:
-(.forall x A), (.exists x A), and the term (.iota x A),
+(.forall x A) and the term (.iota x A),
 \"the x such that A\". The binder machinery (FREE-VARS-WFF, SUBSTITUTE-WFF,
 ...) does not care whether the expression is a wff or a term. Adding a
-binder requires editing this list. Binders such as .EXISTS1 are
-abbreviations (abbreviation.lisp), expanded before the kernel sees them."
-  '(.forall .exists .iota))
+binder requires editing this list. Binders such as .EXISTS and .EXISTS1
+are abbreviations (abbreviation.lisp), expanded before the kernel sees
+them."
+  '(.forall .iota))
 
 (defun at-symbol-p (sym)
   "True iff SYM is an @-prefixed meta-tag."

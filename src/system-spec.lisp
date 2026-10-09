@@ -126,8 +126,13 @@ written, under :WRITTEN, for display."
                         (and (not (equal (list ec ef) (list conditions form)))
                              (list conditions form))))))
            (admit-abbreviation (ledger head-pattern body)
-             (check-abbreviation-declaration head-pattern body ledger)
-             (admit ledger 'abbreviation (list head-pattern body)))
+             "Admit an abbreviation with its body already expanded into
+primitive symbols, so that every binder in it is a kernel binder (a body
+may use .EXISTS, itself an abbreviation). The ORIGIN keeps it as written."
+             (let ((expanded (expand-abbreviations body ledger :pattern t)))
+               (check-abbreviation-declaration head-pattern expanded ledger)
+               (admit ledger 'abbreviation (list head-pattern expanded) nil
+                      (and (not (equal expanded body)) (list head-pattern body)))))
            (admit-each (ledger kind syms)
              (if (null syms)
                  ledger

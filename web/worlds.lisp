@@ -220,8 +220,9 @@ DISPLAY-PROOF)."
                  ;; H -> PHI as the system's :DISCHARGE declaration writes it.
                  (db->bv-named (or (and ledger (discharge-formula hyp (proof-conclusion raw) ledger))
                                    (list '.to hyp (proof-conclusion raw)))))))
-      ;; An abbreviation reads as HEAD := BODY.
-      (abbreviation (values (list (first p)) (second p)))
+      ;; An abbreviation reads as HEAD := BODY, as written.
+      (abbreviation (let ((w (or (getf (cdr (entry-origin e)) :written) p)))
+                      (values (list (first w)) (second w))))
       (axiom (values nil (display-pattern (second (third w)) p)))
       ;; A Deduction Theorem case reads like an irule over (@vdash H A);
       ;; the discharge declaration as (@vdash ?H ?A) => its formula.

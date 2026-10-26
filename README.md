@@ -477,6 +477,11 @@ with the reasons, include for example:
   this form and passes unchanged.
 - **Speed**: because the formula is traversed each time a binder is opened, loading the
   Peano arithmetic library takes about 1.5 times as long as the named-variable version.
+  Citing a theorem re-verifies its proof; the verdict is memoized only for theorems
+  free of side conditions (built from axioms and rules without meta-predicates such as
+  `@not-free-in?`). A theorem with side conditions is re-verified in full at each
+  citation, its side-condition-free parts coming from the cache
+  (`disable-derived-entry-memoization` re-verifies everything).
 - **Scope of trust**: as described in "What is trusted" above. An independent checker
   (or export to the Metamath format) is future work.
 - **Web UI**: proofs can be checked, but there is not yet a feature for registering a proof

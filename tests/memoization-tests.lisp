@@ -4,7 +4,7 @@
 (in-package :ledger-kernel)
 
 ;;; ---------------------------------------------------------------------
-;;; 17. Differential check for the optional DERIVED-entry memoization
+;;; 17. Differential check for the DERIVED-entry memoization
 ;;;     layer (see the "Optional memoization" subsection right before
 ;;;     TRY-DERIVED-ENTRY, Section 6)
 ;;; ---------------------------------------------------------------------
@@ -93,11 +93,47 @@ verdict cached in one branch must not be reused in the other."
                    (check-k-proof line as-atom) nil))
       (disable-derived-entry-memoization))))
 
+(defun test-memoization-policy ()
+  "Only entries free of side conditions are memoized; one that is not is
+re-verified in full at each citation, its side-condition-free parts
+still coming from the cache."
+  (let* ((l (check-and-extend (fol-kernel) 'th 'memo-free '((0 (.to A (.to B A)) :axiom (II.1)))))
+         (l (check-and-extend l 'th 'memo-gen '((0 (.to A (.to B A)) :th (memo-free))
+                                                (1 (.forall v0 (.to A (.to B A))) :ir (Gen 0 v0)))))
+         (l (check-and-extend l 'th 'memo-iii1 '((0 (.to (.forall v0 (.eq v0 v0)) (.eq v1 v1)) :axiom (III.1 v1)))))
+         (l (check-and-extend-by-deduction-direct l 'memo-ded 'a '((0 a :hyp nil))))
+         (free (lambda (name) (entry-side-condition-free-p
+                               (car (treap-values-below (alist-get (ledger-by-derived-name l) name) nil))
+                               l))))
+    (expect "a theorem from II.1 and MP alone is free of side conditions"
+            (funcall free 'memo-free) t)
+    (expect "a TH-DED through :assumption alone is free of side conditions"
+            (funcall free 'memo-ded) t)
+    (expect "a theorem using Gen (x not free in the open hypotheses) is not"
+            (funcall free 'memo-gen) nil)
+    (expect "a theorem using III.1 (t substitutable for x) is not"
+            (funcall free 'memo-iii1) nil)
+    (let ((*derived-verify-cache* (make-hash-table :test #'equal))
+          (goal '((0 (.forall v0 (.to A (.to B A))) :th (memo-gen)))))
+      (expect "citing it with the cache on: accepted"
+              (check-k-proof goal l) t)
+      (let ((cached (loop for k being the hash-keys of *derived-verify-cache*
+                          collect (first (entry-payload (car k))))))
+        (expect "... its side-condition-free part, MEMO-FREE, was cached"
+                (and (member 'memo-free cached) t) t)
+        (expect "... but MEMO-GEN itself, with its Gen, was not: it is re-verified each time"
+                (member 'memo-gen cached) nil))
+      (let ((*derived-verify-cache* nil))
+        (expect "... and the verdict is the same with the cache off"
+                (check-k-proof goal l) t)))))
+
 (defun run-derived-entry-memoization-self-tests ()
-  "As RUN-SELF-TESTS, but exercising the optional memoization layer --
-Section 17. Leaves memoization OFF when done, so it never silently
-changes behaviour for anything that runs after it (including every other
-RUN-*-SELF-TESTS call in this same trailing auto-run form)."
-  (test-derived-entry-memoization)
-  (test-memoization-across-vocabulary-branches)
+  "As RUN-SELF-TESTS, but exercising the memoization layer -- Section 17.
+The tests switch memoization on and off; they do so under a binding of
+*DERIVED-VERIFY-CACHE*, so whatever runs after them sees the setting it
+had before."
+  (let ((*derived-verify-cache* *derived-verify-cache*))
+    (test-derived-entry-memoization)
+    (test-memoization-across-vocabulary-branches)
+    (test-memoization-policy))
   (format t "~%Derived-entry memoization self-tests complete.~%"))

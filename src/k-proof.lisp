@@ -198,7 +198,7 @@ proven at the same-position line number in NUMS, threading BINDS.
              (match-schema-hyps-against-cited (cdr pats) (cdr nums) proven-alist ledger
                                                (match-schema-atoms (car pats) actual ledger binds)))))))
 
-;;; --- Optional memoization of the recursive re-verification step --------
+;;; --- Memoization of the recursive re-verification step ---------------
 ;;;
 ;;; Re-verifying a cited entry E instantiated with bindings B checks a
 ;;; proof determined by (E . B) against ENTRIES-UPTO(ENTRY-K E). The
@@ -206,7 +206,19 @@ proven at the same-position line number in NUMS, threading BINDS.
 ;;; are a fixed prefix: the verdict depends on (E . B) alone and can be
 ;;; cached without changing what is accepted. Without the cache, nested
 ;;; citations re-verify the same instances over and over, which can blow
-;;; up exponentially. Off by default.
+;;; up exponentially.
+;;;
+;;; Policy: only entries free of side conditions are memoized. An entry
+;;; is free of them when its proof uses no axiom or inference rule with a
+;;; meta-predicate among its conditions (@not-free-in?, @subst-ok?, ...;
+;;; type conditions such as (wff? ?A) are not side conditions), cites only
+;;; entries that are free of them too, and, for a TH-DED, is discharged
+;;; through Deduction Theorem cases without one. An entry that is not is
+;;; re-verified in full at every citation; the side-condition-free
+;;; entries it cites, at any depth, still come from the cache. So the
+;;; cache only ever answers for proof figures made of side-condition-free
+;;; steps, and every side condition is checked again each time. On by
+;;; default; DISABLE-DERIVED-ENTRY-MEMOIZATION re-verifies everything.
 
 ;;; The verdict also depends on vocabulary admitted AFTER E: ENTRIES-UPTO
 ;;; leaves the vocabulary kinds unbounded, so whether a cited instance is
@@ -216,8 +228,8 @@ proven at the same-position line number in NUMS, threading BINDS.
 ;;; by appending to one particular ledger, so that entry object fixes
 ;;; every entry before it, and none of the vocabulary kinds has a later one.
 
-(defvar *derived-verify-cache* nil
-  "NIL (no memoization, the default) or an EQUAL hash table mapping
+(defvar *derived-verify-cache* (make-hash-table :test #'equal)
+  "NIL (no memoization) or an EQUAL hash table (the default) mapping
 (ENTRY LATEST-VOCABULARY-ENTRY . BINDS) to its CHECK-K-PROOF verdict.
 The one piece of mutable global state in the system; it can only change
 how fast a verdict is reached, never the verdict.")
@@ -234,10 +246,58 @@ LEDGER, ignoring its BOUND as ENTRIES-OF-KIND does for those kinds."
           (when (and node (or (null best) (> (entry-k (treap-node-value node)) (entry-k best))))
             (setf best (treap-node-value node))))))))
 
+(defvar *side-condition-free-cache* (make-hash-table :test #'equal)
+  "(Entry . under-deduction) -> whether it is free of side conditions
+(see ENTRY-SIDE-CONDITION-FREE-P). An entry
+never changes and fixes the entries before it, so this never goes stale.")
+
+(defun side-condition-rule-p (e)
+  "T iff rule-like entry E (axiom, irule, deduction case) has a
+meta-predicate among its conditions."
+  (and (some #'at-tagged-p (second (entry-payload e))) t))
+
+(defun entry-side-condition-free-p (e ledger &optional under-deduction)
+  "T iff TH / TH-DED entry E of LEDGER is free of side conditions (see
+above): judged from its stored proof, against the entries before it.
+UNDER-DEDUCTION (set for a TH-DED and for whatever it cites) also asks
+that the Deduction Theorem cases its steps go through have none."
+  (let ((key (cons e under-deduction))
+        (dd (or under-deduction (eq (entry-kind e) 'th-ded))))
+    (multiple-value-bind (known found) (gethash key *side-condition-free-cache*)
+      (if found
+          known
+          (setf (gethash key *side-condition-free-cache*)
+                (let* ((view (entries-upto (entry-k e) ledger))
+                       (proof (if (eq (entry-kind e) 'th-ded)
+                                  (third (entry-payload e))
+                                  (second (entry-payload e)))))
+                  (labels ((named (kind name)
+                             (remove-if-not (lambda (x) (eq (first (entry-payload x)) name))
+                                            (entries-of-kind kind view)))
+                           (rules-free-p (kind name)
+                             (notany #'side-condition-rule-p (named kind name)))
+                           (cases-free-p (&rest names)
+                             (or (not dd)
+                                 (every (lambda (n) (rules-free-p 'deduction-case n)) names)))
+                           (line-free-p (raw)
+                             (let ((role (third raw)) (by (fourth raw)))
+                               (case role
+                                 (:hyp (cases-free-p :assumption :independent))
+                                 (:axiom (and (rules-free-p 'axiom (car by)) (cases-free-p :independent)))
+                                 (:ir (and (rules-free-p 'irule (car by)) (cases-free-p (car by) :independent)))
+                                 ((:th :th-ded)
+                                  (every (lambda (c) (entry-side-condition-free-p c ledger dd))
+                                         (treap-values-below
+                                          (alist-get (ledger-by-derived-name view) (car by))
+                                          (ledger-bound view))))
+                                 (t nil)))))
+                    (and (every #'line-free-p proof) t))))))))
+
 (defun verify-derived-instantiation (e binds instantiated ledger log)
   "Check INSTANTIATED (E's stored proof under BINDS) against the entries
-before E, memoized when *DERIVED-VERIFY-CACHE* is set."
-  (if *derived-verify-cache*
+before E, memoized when *DERIVED-VERIFY-CACHE* is set and E is free of
+side conditions (see above)."
+  (if (and *derived-verify-cache* (entry-side-condition-free-p e ledger))
       (let ((key (list* e (latest-vocabulary-entry ledger) binds)))
         (multiple-value-bind (cached found) (gethash key *derived-verify-cache*)
           (if found

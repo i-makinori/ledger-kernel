@@ -4,10 +4,8 @@
 (in-package :ledger-kernel)
 
 (defun connectives-ledger ()
-  "00-classical-fol-equality.system + 00-connectives.system."
-  (bootstrap-kernel-from-spec-file
-   (library-path "00-connectives.system")
-   :ledger (bootstrap-kernel-from-spec-file (library-path "00-classical-fol-equality.system"))))
+  "The base system + 00-connectives.system."
+  (bootstrap-kernel-from-spec-file (library-path "00-connectives.system") :ledger (base-system-ledger)))
 
 (defun same-formula-p (ledger f g)
   "T iff F and G are the same formula to the kernel (after expanding

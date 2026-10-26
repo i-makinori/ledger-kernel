@@ -1,6 +1,7 @@
 ;;; 00-peano-arithmetic.system
 ;;;
-;;; Peano arithmetic, loaded ON TOP OF 00-classical-fol-equality.system
+;;; Peano arithmetic, loaded ON TOP OF the base system (00-fol-language,
+;;; 00-classical-logic, 00-equality, 00-description .system)
 ;;; (BOOTSTRAP-KERNEL-FROM-SPEC-FILE with :LEDGER): term formation for
 ;;; ZERO, S, +, * and axioms P1-P10. Every entry is :PRIMITIVE (trusted).
 ;;;

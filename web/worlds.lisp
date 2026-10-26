@@ -10,7 +10,10 @@
 
 (defparameter *world-specs*
   '(("zf" "ZF set theory"
-     ("hilbert-library/00-classical-fol-equality.system"
+     ("hilbert-library/00-fol-language.system"
+      "hilbert-library/00-classical-logic.system"
+      "hilbert-library/00-equality.system"
+      "hilbert-library/00-description.system"
       "hilbert-library/00-connectives.system"
       "zf-library/00-zf.system"
       "hilbert-library/01-propositional-core.ledger"
@@ -21,7 +24,10 @@
       "hilbert-library/07-quantifier-schemas.ledger"
       "zf-library/01-empty-set.ledger"))
     ("peano" "Peano arithmetic"
-     ("hilbert-library/00-classical-fol-equality.system"
+     ("hilbert-library/00-fol-language.system"
+      "hilbert-library/00-classical-logic.system"
+      "hilbert-library/00-equality.system"
+      "hilbert-library/00-description.system"
       "hilbert-library/00-connectives.system"
       "hilbert-library/00-peano-arithmetic.system"
       "hilbert-library/00-peano-order.system"

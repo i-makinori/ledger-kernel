@@ -2,26 +2,25 @@
 ;;;
 ;;; Zermelo-Fraenkel set theory (ZF, without Choice) as a SYSTEM-SPEC
 ;;; add-on file (see src/system-spec.lisp). It is written with
-;;; the defined connectives, so load it ON TOP OF both
-;;; hilbert-library/00-classical-fol-equality.system and
-;;; hilbert-library/00-connectives.system:
+;;; the defined connectives, so load it ON TOP OF the base system and the
+;;; connectives, in this order (BOOTSTRAP-KERNEL-FROM-SPEC-FILE with :LEDGER):
 ;;;
-;;;   (bootstrap-kernel-from-spec-file
-;;;     "zf-library/00-zf.system"
-;;;     :ledger (bootstrap-kernel-from-spec-file
-;;;               "hilbert-library/00-connectives.system"
-;;;               :ledger (bootstrap-kernel-from-spec-file
-;;;                         "hilbert-library/00-classical-fol-equality.system")))
+;;;   hilbert-library/00-fol-language.system
+;;;   hilbert-library/00-classical-logic.system
+;;;   hilbert-library/00-equality.system
+;;;   hilbert-library/00-description.system
+;;;   hilbert-library/00-connectives.system
+;;;   zf-library/00-zf.system
 ;;;
 ;;; REMINDER: every entry here is :PRIMITIVE -- trusted by fiat, never
-;;; re-verified (see 00-classical-fol-equality.system's header). This is
+;;; re-verified (see 00-fol-language.system's header). This is
 ;;; not a .ledger module file.
 ;;;
 ;;; --- Conventions ---------------------------------------------------------
 ;;;
 ;;; Language. The only new symbol is the binary membership predicate
 ;;; (.in s t), read "s ∈ t". Equality, the quantifiers and IOTA come from
-;;; the base file; .and/.or/.iff/.exists1 (∧ ∨ ↔ ∃!) come from
+;;; the base system; .and/.or/.iff/.exists1 (∧ ∨ ↔ ∃!) come from
 ;;; 00-connectives.system. Leibniz substitution for ∈ is already covered
 ;;; by IV.2, which is a schema over every wff.
 ;;;

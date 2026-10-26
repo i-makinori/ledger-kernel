@@ -1,0 +1,12 @@
+;;; 00-equality.system
+;;;
+;;; First-order equality, loaded ON TOP OF 00-fol-language.system and
+;;; 00-classical-logic.system: axioms IV.1-4 for the symbol .eq, whose
+;;; formation rule belongs to the language.
+
+(:axiom IV.1 ((term? ?t)) (nil (.eq ?t ?t)))
+(:axiom IV.2 ((var? ?x) (wff? ?A) (term? ?t) (@subst-ok? ?x ?t ?A))
+        (nil (.to (.eq ?x ?t) (.to ?A (@subst ?x ?t ?A)))))
+(:axiom IV.3 ((term? ?s) (term? ?t)) (nil (.to (.eq ?s ?t) (.eq ?t ?s))))
+(:axiom IV.4 ((term? ?s) (term? ?t) (term? ?u))
+        (nil (.to (.eq ?s ?t) (.to (.eq ?t ?u) (.eq ?s ?u)))))

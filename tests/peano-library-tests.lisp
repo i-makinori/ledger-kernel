@@ -7,8 +7,8 @@
 (defun peano-library-ledger ()
   "FOL + connectives + Peano arithmetic + order, and the modules 01-06, 08-10."
   (let ((l nil))
-    (dolist (f '("00-classical-fol-equality.system" "00-connectives.system"
-                 "00-peano-arithmetic.system" "00-peano-order.system"))
+    (dolist (f (append *base-system-files*
+                       '("00-connectives.system" "00-peano-arithmetic.system" "00-peano-order.system")))
       (setf l (bootstrap-kernel-from-spec-file (library-path f) :ledger l)))
     (dolist (f '("01-propositional-core.ledger" "02-predicate-core.ledger"
                  "03-equality-core.ledger" "04-peano-arithmetic.ledger"

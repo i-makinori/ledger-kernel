@@ -30,7 +30,8 @@
   (asdf:system-relative-pathname :ledger-kernel (concatenate 'string "hilbert-library/" name)))
 
 (defparameter *base-systems*
-  '("00-classical-fol-equality.system" "00-connectives.system"
+  '("00-fol-language.system" "00-classical-logic.system" "00-equality.system"
+    "00-description.system" "00-connectives.system"
     "00-peano-arithmetic.system" "00-peano-order.system"))
 (defparameter *base-modules*
   '("01-propositional-core.ledger" "02-predicate-core.ledger"

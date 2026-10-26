@@ -5,7 +5,10 @@
 ;;; below is re-verified from scratch when the file is loaded.
 ;;;
 ;;; Load order (each on top of the previous one):
-;;;   hilbert-library/00-classical-fol-equality.system
+;;;   hilbert-library/00-fol-language.system
+;;;   hilbert-library/00-classical-logic.system
+;;;   hilbert-library/00-equality.system
+;;;   hilbert-library/00-description.system
 ;;;   hilbert-library/00-connectives.system
 ;;;   zf-library/00-zf.system
 ;;;   hilbert-library/01-propositional-core.ledger

@@ -121,7 +121,10 @@ ZF 集合論の場合:
           files :initial-value nil))
 
 (defparameter *L*
-  (load-chain '("hilbert-library/00-classical-fol-equality.system"
+  (load-chain '("hilbert-library/00-fol-language.system"
+                "hilbert-library/00-classical-logic.system"
+                "hilbert-library/00-equality.system"
+                "hilbert-library/00-description.system"
                 "hilbert-library/00-connectives.system"
                 "zf-library/00-zf.system"
                 "hilbert-library/01-propositional-core.ledger"
@@ -133,7 +136,8 @@ ZF 集合論の場合:
                 "zf-library/01-empty-set.ledger")))
 ```
 
-ペアノ算術なら、`00-classical-fol-equality.system`・`00-connectives.system`・
+ペアノ算術なら、基本の4ファイル（`00-fol-language`・`00-classical-logic`・`00-equality`・
+`00-description` の `.system`）・`00-connectives.system`・
 `00-peano-arithmetic.system`・`00-peano-order.system` の上に `01`〜`06`、`08`〜`10` を
 積みます（Web UI の「Peano arithmetic」と同じ順です）。読み込むときに、すべての証明が
 検証し直されます。
@@ -260,7 +264,10 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
 
 | ファイル | 内容 |
 |---|---|
-| `hilbert-library/00-classical-fol-equality.system` | 一階述語論理と等号の体系（形成規則、MP・Gen・IOTA、II.1〜3、III.1〜2、IV.1〜4、∃ の略記） |
+| `hilbert-library/00-fol-language.system` | 言語: 項と論理式（→ ¬ ∀ =）の形成規則と、規則が使う付帯条件（自由変数・代入） |
+| `hilbert-library/00-classical-logic.system` | 論理: MP・Gen・演繹定理・II.1〜3・III.1〜2・∃ の略記（古典論理としての読み） |
+| `hilbert-library/00-equality.system` | 等号: IV.1〜4 |
+| `hilbert-library/00-description.system` | 確定記述: 項 ιx A と IOTA 規則 |
 | `hilbert-library/00-connectives.system` | ∧ ∨ ↔ ∃! の略記（公理なし） |
 | `hilbert-library/00-peano-arithmetic.system` | ペアノ算術の語彙と公理 P1〜P10 |
 | `hilbert-library/00-peano-order.system` | 順序 ≤ ・ < の略記（s ≤ t :⇔ ∃z s + z = t、s < t :⇔ S s ≤ t。公理なし） |

@@ -122,14 +122,30 @@ Kalmar の完全性定理の構成で恒真式を自動証明する `PROVE-TAUTO
 ;=> NIL
 ```
 
-`hilbert-library/00-classical-fol-equality.system` + `00-peano-arithmetic.system`
-は、このカーネルが標準で使っている体系（II.1-3/III.1-3/IV.1-4 + ペアノ算術）
-を定義する `.system` ファイルです。
+標準の体系は、段階ごとに分けた `.system` ファイルを順に重ねて作ります。
+言語・論理・理論を、それぞれ別に選べるようにするためです。
+
+| ファイル | 段階 | 中身 |
+|---|---|---|
+| `00-fol-language.system` | 言語 | 項と論理式の形成規則、付帯条件の宣言 |
+| `00-classical-logic.system` | 論理 | MP・Gen・演繹定理・II.1〜3・III.1〜2・∃ の略記 |
+| `00-equality.system` | 理論（等号） | IV.1〜4 |
+| `00-description.system` | 理論（確定記述） | 項 ιx A と IOTA 規則 |
+| `00-peano-arithmetic.system` など | 理論 | ペアノ算術・ZF など |
+
+∃ を ¬∀¬ の略記とするのは古典論理としての読みなので、言語ではなく論理のファイルに
+置いています。例えば論理だけを直観主義の体系に替えるなら、`00-classical-logic.system`
+を別のファイルに差し替えます。
 
 ```lisp
 (defparameter *L*
-  (bootstrap-kernel-from-spec-file "hilbert-library/00-peano-arithmetic.system"
-    :ledger (bootstrap-kernel-from-spec-file "hilbert-library/00-classical-fol-equality.system")))
+  (reduce (lambda (l f) (bootstrap-kernel-from-spec-file f :ledger l))
+          '("hilbert-library/00-fol-language.system"
+            "hilbert-library/00-classical-logic.system"
+            "hilbert-library/00-equality.system"
+            "hilbert-library/00-description.system"
+            "hilbert-library/00-peano-arithmetic.system")
+          :initial-value nil))
 ```
 
 **ここが `.ledger` ファイルと決定的に違う点です。** `.ledger` ファイルの
@@ -221,8 +237,8 @@ Lispソースレベルの拡張です）。それでも、命題論理の別の�
 通る離脱は、宣言を信頼して登録され、項目の ORIGIN に `:not-expanded-because` が残ります。
 現在のライブラリの `th-ded` は、すべて展開して検証済みです。
 
-標準の宣言は `hilbert-library/00-classical-fol-equality.system` にあり、MP・Gen・IOTA・
-EXISTS-ELIM の4規則を覆っています。各 `:case` は「教科書の帰納法のその1ステップが
+標準の宣言は `hilbert-library/00-classical-logic.system` にあり、MP・Gen の2規則を
+覆っています。IOTA の case は `00-description.system` が足します。各 `:case` は「教科書の帰納法のその1ステップが
 この体系で成り立つ」という主張で、公理と同じく信頼されます。
 
 ## 4. 確定記述（definite description）: `IOTA`
@@ -259,7 +275,7 @@ junk-valueの規約は一切ない）というのが設計上の要点です。
 まで）:
 
 ```lisp
-;; *L*: 00-classical-fol-equality.system に 01・05 の .ledger を読み込んだ台帳
+;; *L*: 基本の4ファイルに 01・05 の .ledger を読み込んだ台帳
 ;; 存在: exists v0 (v0=v1)
 (setf *L* (check-and-extend *L* 'th 'th-exists-v0-eq-v1
   '((0 (.eq v1 v1) :axiom (IV.1))
@@ -289,7 +305,7 @@ junk-valueの規約は一切ない）というのが設計上の要点です。
 
 ## 5. 存在量化子は略記: `th-exists-intro` と `th-exists-elim`
 
-Mendelson と同じく、∃ は略記です（`00-classical-fol-equality.system`）。
+Mendelson と同じく、∃ は略記です（`00-classical-logic.system`）。
 
 ```lisp
 (:abbreviation (.exists ?x ?A) (.neg (.forall ?x (.neg ?A))))
@@ -418,12 +434,14 @@ existence／uniqueness の再チェックと `NAME-DEF` の証明も毎回行わ
 
 ```lisp
 (defparameter *ZF*
-  (bootstrap-kernel-from-spec-file
-    "zf-library/00-zf.system"
-    :ledger (bootstrap-kernel-from-spec-file
-              "hilbert-library/00-connectives.system"
-              :ledger (bootstrap-kernel-from-spec-file
-                        "hilbert-library/00-classical-fol-equality.system"))))
+  (reduce (lambda (l f) (bootstrap-kernel-from-spec-file f :ledger l))
+          '("hilbert-library/00-fol-language.system"
+            "hilbert-library/00-classical-logic.system"
+            "hilbert-library/00-equality.system"
+            "hilbert-library/00-description.system"
+            "hilbert-library/00-connectives.system"
+            "zf-library/00-zf.system")
+          :initial-value nil))
 ```
 
 **言語**: 新しく加わる記号は二項述語 `(.in s t)`（s ∈ t）だけです。∈ についての
@@ -484,10 +502,7 @@ ZF の上に作った最初の定理ライブラリです。読み込み順は�
        (lib "hilbert-library/03-equality-core.ledger"
         (lib "hilbert-library/02-predicate-core.ledger"
          (lib "hilbert-library/01-propositional-core.ledger"
-          (bootstrap-kernel-from-spec-file "zf-library/00-zf.system"
-           :ledger (bootstrap-kernel-from-spec-file "hilbert-library/00-connectives.system"
-                    :ledger (bootstrap-kernel-from-spec-file
-                             "hilbert-library/00-classical-fol-equality.system")))))))))))
+          *ZF*))))))))
 ```
 
 | 名前 | 内容 |

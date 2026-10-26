@@ -1,0 +1,39 @@
+;;; 00-fol-language.system
+;;;
+;;; The language of first-order logic with equality: what counts as a
+;;; term and as a formula, and the syntactic notions (free variables,
+;;; substitution) that rules may use as side conditions. No axiom and no
+;;; inference rule: those choose a logic, in the files loaded after this
+;;; one. Load order for the standard system:
+;;;   00-fol-language.system     language                (this file)
+;;;   00-classical-logic.system  logic: how to infer
+;;;   00-equality.system         theory of equality
+;;;   00-description.system      definite descriptions (the IOTA rule)
+;;; then theories on top (00-peano-arithmetic.system, zf-library/00-zf.system).
+;;; Every entry here is :PRIMITIVE -- trusted, never checked -- so loading
+;;; it is an act of trust in its text.
+;;;
+;;; There is no generic "(wff? ?A)" or "(var? ?x)" rule: it would accept
+;;; any symbol. Declared atomic symbols and variables are recognized by
+;;; the kernel directly (DECLARED-SYMBOL-JUDGEMENT-P in judgement.lisp).
+
+;;; --- side conditions ---------------------------------------------------
+;;;
+;;; The meta-forms the rules of this language are written with, chosen
+;;; from the kernel's catalog (KERNEL-META-CATALOG): "x is not free in A",
+;;; "x is free in none of the open hypotheses" (Gen), "t is substitutable
+;;; for x in A", and the substitution A[t/x] itself. A rule may use only these.
+
+(:meta-predicate @not-free-in? ?x ?A)
+(:meta-predicate @not-free-in-dependencies? ?x)
+(:meta-predicate @subst-ok? ?x ?t ?A)
+(:meta-constructor @subst ?x ?t ?A)
+
+;;; --- term?/wff? formation ------------------------------------------
+
+(:term-formation var-term ((var? ?x)) (term? ?x))
+
+(:wff-formation wff_to? ((wff? ?A) (wff? ?B)) (wff? (.to ?A ?B)))
+(:wff-formation wff_neg? ((wff? ?A)) (wff? (.neg ?A)))
+(:wff-formation wff_forall? ((var? ?x) (wff? ?A)) (wff? (.forall ?x ?A)))
+(:wff-formation wff_eq? ((term? ?s) (term? ?t)) (wff? (.eq ?s ?t)))

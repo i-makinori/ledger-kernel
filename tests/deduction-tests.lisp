@@ -64,11 +64,11 @@ ledger by two entries."
 ;;; --- The Deduction Theorem as a declared meta-theorem -------------------
 
 (defun fol-spec-variant (&key (drop-meta-theorem nil) (unrestricted-gen nil) (extra nil))
-  "A ledger from 00-classical-fol-equality.system's directives, changed:
+  "A ledger from the base system's directives (BASE-SYSTEM-SPEC), changed:
 DROP-META-THEOREM removes the (:meta-theorem deduction ...) directive,
 UNRESTRICTED-GEN replaces Gen by one without its open-hypothesis
 restriction, and EXTRA directives are appended."
-  (let ((spec (read-system-spec-from-file (library-path "00-classical-fol-equality.system"))))
+  (let ((spec (base-system-spec)))
     (when drop-meta-theorem
       (setf spec (remove :meta-theorem spec :key #'car)))
     (when unrestricted-gen
@@ -187,7 +187,7 @@ wrong one, its case is trusted and the entry says so."
                          (if (eq (car cmd) :meta-theorem)
                              (subst '(II.1) '(II.2) cmd :test #'equal)
                              cmd))
-                       (read-system-spec-from-file (library-path "00-classical-fol-equality.system"))))
+                       (base-system-spec)))
          (l (bootstrap-kernel-from-spec spec))
          (l (check-and-extend-by-deduction-direct
              l 'th-exp-bad 'a '((0 (.to a b) :hyp nil) (1 a :hyp nil) (2 b :ir (MP 0 1)))))

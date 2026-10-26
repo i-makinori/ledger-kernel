@@ -1,0 +1,36 @@
+;;; 00-description.system
+;;;
+;;; Definite descriptions, loaded ON TOP OF 00-fol-language.system,
+;;; 00-classical-logic.system and 00-equality.system: the term
+;;; (.iota x A), "the x such that A", the IOTA rule that gives it its
+;;; meaning, and the rule's case of the Deduction Theorem.
+;;; DEFINE-FUNCTION-BY-DESCRIPTION (function-definition.lisp) proves a
+;;; definition's NAME-DEF with this rule.
+
+;; (.iota x A): a TERM-producing binder. Inert on its own; all of its
+;; meaning comes from the IOTA irule below.
+(:term-formation iota-term ((var? ?x) (wff? ?A)) (term? (.iota ?x ?A)))
+
+;; IOTA: from EXISTENCE (.exists ?x ?A) and UNIQUENESS "any two things
+;; satisfying A are equal", concludes A[(.iota ?x ?A)/?x]. An irule, not
+;; an axiom: existence and uniqueness are facts about a particular A and
+;; must be proved lines of the current proof. Premises are matched left
+;; to right, so ?x/?A are bound by the first before the second's @subst
+;; forms are evaluated.
+(:irule IOTA ((var? ?x) (wff? ?A) (@subst-ok? ?x (.iota ?x ?A) ?A))
+        (((.exists ?x ?A)
+          (.forall ?y (.forall ?z (.to (@subst ?x ?y ?A)
+                                       (.to (@subst ?x ?z ?A) (.eq ?y ?z))))))
+         nil :=>
+         (@subst ?x (.iota ?x ?A) ?A)))
+
+;; IOTA's case of the Deduction Theorem: H -> each premise |- H -> the
+;; conclusion. It has no template (no axiom states IOTA), so a discharge
+;; through IOTA trusts this case.
+(:meta-theorem deduction
+  (:case IOTA ((wff? ?H) (var? ?x) (wff? ?A))
+         (((@vdash ?H (.exists ?x ?A))
+           (@vdash ?H (.forall ?y (.forall ?z (.to (@subst ?x ?y ?A)
+                                                   (.to (@subst ?x ?z ?A) (.eq ?y ?z)))))))
+          nil :=>
+          (@vdash ?H (@subst ?x (.iota ?x ?A) ?A)))))

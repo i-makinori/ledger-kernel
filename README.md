@@ -137,7 +137,10 @@ For ZF set theory:
           files :initial-value nil))
 
 (defparameter *L*
-  (load-chain '("hilbert-library/00-classical-fol-equality.system"
+  (load-chain '("hilbert-library/00-fol-language.system"
+                "hilbert-library/00-classical-logic.system"
+                "hilbert-library/00-equality.system"
+                "hilbert-library/00-description.system"
                 "hilbert-library/00-connectives.system"
                 "zf-library/00-zf.system"
                 "hilbert-library/01-propositional-core.ledger"
@@ -150,7 +153,8 @@ For ZF set theory:
 ```
 
 For Peano arithmetic, stack `01`–`06` and `08`–`10` on top of
-`00-classical-fol-equality.system`, `00-connectives.system`,
+the four base files (`00-fol-language`, `00-classical-logic`, `00-equality`,
+`00-description` `.system`), `00-connectives.system`,
 `00-peano-arithmetic.system` and `00-peano-order.system` (the same order as
 "Peano arithmetic" in the Web UI). Every proof is re-verified as it is loaded.
 
@@ -285,7 +289,10 @@ and is re-verified.
 
 | File | Contents |
 |---|---|
-| `hilbert-library/00-classical-fol-equality.system` | The system of first-order predicate logic with equality (formation rules, MP, Gen, IOTA, II.1–3, III.1–2, IV.1–4, ∃ as an abbreviation) |
+| `hilbert-library/00-fol-language.system` | Language: formation rules for terms and formulas (→ ¬ ∀ =), and the side conditions (free variables, substitution) rules may use |
+| `hilbert-library/00-classical-logic.system` | Logic: MP, Gen, the Deduction Theorem, II.1–3, III.1–2, ∃ as an abbreviation (a classical reading) |
+| `hilbert-library/00-equality.system` | Equality: IV.1–4 |
+| `hilbert-library/00-description.system` | Definite descriptions: the term ιx A and the IOTA rule |
 | `hilbert-library/00-connectives.system` | Abbreviations ∧ ∨ ↔ ∃! (no axioms) |
 | `hilbert-library/00-peano-arithmetic.system` | The vocabulary and axioms P1–P10 of Peano arithmetic |
 | `hilbert-library/00-peano-order.system` | The orders ≤ and < as abbreviations (s ≤ t :⇔ ∃z s + z = t, s < t :⇔ S s ≤ t; no axioms) |

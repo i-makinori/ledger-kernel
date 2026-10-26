@@ -1,7 +1,7 @@
 ;;;; _backup_generate-connectives-ledger.lisp -- BACKUP (was tools/)
 ;;;;
 ;;;; Moved here on 2026-10-09 with _backup_tautology.lisp, which it needs.
-;;;; It generated hilbert-library/06-connectives.ledger. Since then that
+;;;; It generated library/hilbert-library/06-connectives.ledger. Since then that
 ;;;; file has been edited by hand: its ':axiom (ii.4)' lines now cite
 ;;;; ':th-ded (th-case-split)'. Regenerating it would need step 2 of
 ;;;; _backup_tautology.lisp's HOW TO RESTORE first.
@@ -10,7 +10,7 @@
 
 ;;;; generate-connectives-ledger.lisp
 ;;;;
-;;;; Regenerates hilbert-library/06-connectives.ledger: the basic
+;;;; Regenerates library/hilbert-library/06-connectives.ledger: the basic
 ;;;; propositional lemmas for .and/.or/.iff, each proved by PROVE-TAUTOLOGY.
 ;;;; The generated file is an ordinary .ledger command stream; loading it
 ;;;; re-verifies every proof from scratch, so this script is a convenience,
@@ -51,7 +51,7 @@
   "(NAME FORMULA) pairs, in the order they are admitted.")
 
 (defun library-file (name)
-  (asdf:system-relative-pathname :ledger-kernel (concatenate 'string "hilbert-library/" name)))
+  (asdf:system-relative-pathname :ledger-kernel (concatenate 'string "library/hilbert-library/" name)))
 
 (defun connectives-base-ledger ()
   "00-classical-fol-equality.system + 00-connectives.system + the

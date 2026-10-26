@@ -8,7 +8,7 @@
 ;;;;   POST /api/check                 {"world": "zf", "proof": "((0 ...) ...)"}
 ;;;;
 ;;;; The server binds to 127.0.0.1 by default; put a reverse proxy (TLS,
-;;;; rate limits) in front of it to serve it publicly (deploy/). /api/check
+;;;; rate limits) in front of it to serve it publicly (web/deploy/). /api/check
 ;;;; reads untrusted text with SAFE-READ-FORMS (no evaluation, no new
 ;;;; symbols, bounded nesting), within a size limit, a time limit and a
 ;;;; limit on concurrent checks. Nothing is ever added to a ledger.

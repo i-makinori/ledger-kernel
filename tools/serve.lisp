@@ -12,7 +12,7 @@
 ;;;;   LEDGER_MAX_CHECKS       checks running at once         (2)
 ;;;;   LEDGER_MAX_THREADS      connections served at once     (16)
 ;;;; For a public server keep ADDRESS=127.0.0.1 behind a reverse proxy and
-;;;; lower LEDGER_CHECK_TIMEOUT (see deploy/README.md).
+;;;; lower LEDGER_CHECK_TIMEOUT (see web/deploy/README.md).
 
 (require :asdf)
 #+quicklisp (ql:quickload '(:hunchentoot :yason) :silent t)

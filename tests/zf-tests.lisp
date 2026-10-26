@@ -1,4 +1,4 @@
-;;;; zf-tests.lisp -- zf-library/00-zf.system: ZF set theory axioms
+;;;; zf-tests.lisp -- library/zf-library/00-zf.system: ZF set theory axioms
 ;;;; Part of the ledger-kernel/tests system (see ledger-kernel.asd).
 
 (in-package :ledger-kernel)
@@ -58,7 +58,7 @@
 
 (defun zf-ledger ()
   (bootstrap-kernel-from-spec-file
-   (asdf:system-relative-pathname :ledger-kernel "zf-library/00-zf.system")
+   (asdf:system-relative-pathname :ledger-kernel "library/zf-library/00-zf.system")
    :ledger (connectives-ledger)))
 
 (defun zf-axiom-ok-p (ledger formula axiom-name)
@@ -142,7 +142,7 @@ strip both outer quantifiers from Extensionality with III.1 and MP."
     ledger))
 
 (defun run-zf-self-tests ()
-  "zf-library/00-zf.system: formation of .IN, one positive instance per
+  "library/zf-library/00-zf.system: formation of .IN, one positive instance per
 axiom, side-condition attacks, and a small derivation."
   (let* ((ledger (zf-ledger))
          (ledger (test-zf-axioms ledger))

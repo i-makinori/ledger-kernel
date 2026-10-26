@@ -2,7 +2,7 @@
 ;;;;
 ;;;; Removed from the kernel on 2026-09-27 to keep src/ small (every line
 ;;;; of src/ is something a reader has to trust or understand). Nothing in
-;;;; hilbert-library/ or zf-library/ used it. Kept here as material for a
+;;;; library/hilbert-library/ or library/zf-library/ used it. Kept here as material for a
 ;;;; later version.
 ;;;;
 ;;;; WHAT IT WAS

@@ -1,4 +1,4 @@
-# deploy/ — Ledger のお試しサーバーを VPS で公開する
+# web/deploy/ — Ledger のお試しサーバーを VPS で公開する
 
 ブラウザでライブラリを閲覧し、エディタで書いた証明をその場で検証できるサーバーを、
 nginx の後ろに置いて公開するための設定例です。サーバーは台帳に何も書き込みません
@@ -54,7 +54,7 @@ nginx の後ろに置いて公開するための設定例です。サーバー�
 5. **systemd に登録する**（`ledger_server.service` の先頭のコメントのとおり）
 
    ```bash
-   sudo cp deploy/ledger_server.service /etc/systemd/system/
+   sudo cp web/deploy/ledger_server.service /etc/systemd/system/
    sudo systemctl daemon-reload
    sudo systemctl enable --now ledger_server
    sudo systemctl status ledger_server
@@ -63,7 +63,7 @@ nginx の後ろに置いて公開するための設定例です。サーバー�
 6. **nginx と証明書**
 
    ```bash
-   sudo cp deploy/ledger_server.conf /etc/nginx/conf.d/
+   sudo cp web/deploy/ledger_server.conf /etc/nginx/conf.d/
    sudo nginx -t && sudo systemctl reload nginx
    sudo certbot --nginx -d ledger.rndiis.com
    ```

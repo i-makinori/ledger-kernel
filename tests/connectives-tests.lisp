@@ -1,4 +1,4 @@
-;;;; connectives-tests.lisp -- hilbert-library/00-connectives.system
+;;;; connectives-tests.lisp -- library/hilbert-library/00-connectives.system
 ;;;; Part of the ledger-kernel/tests system (see ledger-kernel.asd).
 
 (in-package :ledger-kernel)
@@ -166,7 +166,7 @@ lemma not(A -> not-B) -> A, proved by hand from the classical library
           :initial-value (connectives-ledger)))
 
 (defun test-connectives-library (ledger)
-  "hilbert-library/06-connectives.ledger loads and its lemmas are usable."
+  "library/hilbert-library/06-connectives.ledger loads and its lemmas are usable."
   (let ((ledger (read-ledger-from-file (library-path "06-connectives.ledger") :ledger ledger)))
     (expect "06: th-and-intro at compound formulas"
             (check-k-proof '((0 (.to (.eq v0 v1) (.to (.neg a) (.and (.eq v0 v1) (.neg a))))
@@ -183,7 +183,7 @@ lemma not(A -> not-B) -> A, proved by hand from the classical library
     ledger))
 
 (defun run-connectives-self-tests ()
-  "hilbert-library/00-connectives.system, the .EXISTS1 binder, and
+  "library/hilbert-library/00-connectives.system, the .EXISTS1 binder, and
 06-connectives.ledger."
   (let* ((ledger (connectives-ledger))
          (ledger (test-connectives-formation-and-axioms ledger))

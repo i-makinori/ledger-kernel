@@ -5,18 +5,18 @@
 ;;; below is re-verified from scratch when the file is loaded.
 ;;;
 ;;; Load order (each on top of the previous one):
-;;;   hilbert-library/00-fol-language.system
-;;;   hilbert-library/00-classical-logic.system
-;;;   hilbert-library/00-equality.system
-;;;   hilbert-library/00-description.system
-;;;   hilbert-library/00-connectives.system
-;;;   zf-library/00-zf.system
-;;;   hilbert-library/01-propositional-core.ledger
-;;;   hilbert-library/02-predicate-core.ledger
-;;;   hilbert-library/03-equality-core.ledger
-;;;   hilbert-library/05-classical-logic.ledger
-;;;   hilbert-library/06-connectives.ledger
-;;;   zf-library/01-empty-set.ledger          <- this file
+;;;   library/hilbert-library/00-fol-language.system
+;;;   library/hilbert-library/00-classical-logic.system
+;;;   library/hilbert-library/00-equality.system
+;;;   library/hilbert-library/00-description.system
+;;;   library/hilbert-library/00-connectives.system
+;;;   library/zf-library/00-zf.system
+;;;   library/hilbert-library/01-propositional-core.ledger
+;;;   library/hilbert-library/02-predicate-core.ledger
+;;;   library/hilbert-library/03-equality-core.ledger
+;;;   library/hilbert-library/05-classical-logic.ledger
+;;;   library/hilbert-library/06-connectives.ledger
+;;;   library/zf-library/01-empty-set.ledger          <- this file
 ;;;
 ;;; Contents
 ;;;   th-zf-empty-exists   ∃y ∀z ¬(z ∈ y)

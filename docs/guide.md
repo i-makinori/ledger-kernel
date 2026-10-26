@@ -16,8 +16,8 @@ README を読んで全体像を掴んでから、必要な節だけを読む使�
 5. 存在量化子は略記: `th-exists-intro` と `th-exists-elim`
 6. 略記としての関数定義: `DEFINE-FUNCTION-BY-DESCRIPTION`
 7. 略記としての結合子: `00-connectives.system`
-8. ZF 集合論: `zf-library/00-zf.system`
-9. 空集合: `zf-library/01-empty-set.ledger`
+8. ZF 集合論: `library/zf-library/00-zf.system`
+9. 空集合: `library/zf-library/01-empty-set.ledger`
 10. 述語スキーマ変数「A(x)」: `07-quantifier-schemas.ledger`
 11. Web UI
 12. 設計上の細かな要点
@@ -140,11 +140,11 @@ Kalmar の完全性定理の構成で恒真式を自動証明する `PROVE-TAUTO
 ```lisp
 (defparameter *L*
   (reduce (lambda (l f) (bootstrap-kernel-from-spec-file f :ledger l))
-          '("hilbert-library/00-fol-language.system"
-            "hilbert-library/00-classical-logic.system"
-            "hilbert-library/00-equality.system"
-            "hilbert-library/00-description.system"
-            "hilbert-library/00-peano-arithmetic.system")
+          '("library/hilbert-library/00-fol-language.system"
+            "library/hilbert-library/00-classical-logic.system"
+            "library/hilbert-library/00-equality.system"
+            "library/hilbert-library/00-description.system"
+            "library/hilbert-library/00-peano-arithmetic.system")
           :initial-value nil))
 ```
 
@@ -237,7 +237,7 @@ Lispソースレベルの拡張です）。それでも、命題論理の別の�
 通る離脱は、宣言を信頼して登録され、項目の ORIGIN に `:not-expanded-because` が残ります。
 現在のライブラリの `th-ded` は、すべて展開して検証済みです。
 
-標準の宣言は `hilbert-library/00-classical-logic.system` にあり、MP・Gen の2規則を
+標準の宣言は `library/hilbert-library/00-classical-logic.system` にあり、MP・Gen の2規則を
 覆っています。IOTA の case は `00-description.system` が足します。各 `:case` は「教科書の帰納法のその1ステップが
 この体系で成り立つ」という主張で、公理と同じく信頼されます。
 
@@ -376,7 +376,7 @@ existence／uniqueness の再チェックと `NAME-DEF` の証明も毎回行わ
                                  EXISTENCE-NAME UNIQUENESS-NAME)
 ```
 
-## 7. 略記としての結合子: `hilbert-library/00-connectives.system`
+## 7. 略記としての結合子: `library/hilbert-library/00-connectives.system`
 
 カーネルの基本結合子は `.to`（→）と `.neg`（¬）だけです。∧・∨・↔・∃! は、
 `.system` ファイルで**略記**として定義しています。形成規則も公理もありません。
@@ -413,7 +413,7 @@ existence／uniqueness の再チェックと `NAME-DEF` の証明も毎回行わ
 `.exists1` は略記なので、カーネルの束縛子の一覧（`BINDER-HEADS`）には入っていません。
 台帳には展開した形が入りますが、Web UI などの表示は、書かれたとおりの形を使います。
 
-∧ ∨ ↔ の基本補題は `hilbert-library/06-connectives.ledger` にまとめてあります
+∧ ∨ ↔ の基本補題は `library/hilbert-library/06-connectives.ledger` にまとめてあります
 （`th-and-intro`, `th-and-elim-l/r`, `th-or-intro-l/r`, `th-or-elim`,
 `th-iff-intro`, `th-iff-mp/mpr`, `th-iff-refl/sym/trans`, `th-not-and`,
 `th-not-or`, `th-excluded-middle`, `th-contrapositive` など）。このファイルは
@@ -424,10 +424,10 @@ existence／uniqueness の再チェックと `NAME-DEF` の証明も毎回行わ
 全証明が再検証されます。
 
 ∃! や量化子についての補題（∃!x P(x) → ∃x P(x) など）は、述語スキーマ変数を
-使って `hilbert-library/07-quantifier-schemas.ledger` にまとめてあります
+使って `library/hilbert-library/07-quantifier-schemas.ledger` にまとめてあります
 （10節）。
 
-## 8. ZF 集合論: `zf-library/00-zf.system`
+## 8. ZF 集合論: `library/zf-library/00-zf.system`
 
 一階述語論理 + 等号の体系と、定義された結合子の上に、ZF 集合論（選択公理なし）を
 積むための `.system` ファイルです。
@@ -435,12 +435,12 @@ existence／uniqueness の再チェックと `NAME-DEF` の証明も毎回行わ
 ```lisp
 (defparameter *ZF*
   (reduce (lambda (l f) (bootstrap-kernel-from-spec-file f :ledger l))
-          '("hilbert-library/00-fol-language.system"
-            "hilbert-library/00-classical-logic.system"
-            "hilbert-library/00-equality.system"
-            "hilbert-library/00-description.system"
-            "hilbert-library/00-connectives.system"
-            "zf-library/00-zf.system")
+          '("library/hilbert-library/00-fol-language.system"
+            "library/hilbert-library/00-classical-logic.system"
+            "library/hilbert-library/00-equality.system"
+            "library/hilbert-library/00-description.system"
+            "library/hilbert-library/00-connectives.system"
+            "library/zf-library/00-zf.system")
           :initial-value nil))
 ```
 
@@ -479,7 +479,7 @@ z := x とすると ∀x ∀y (∀x (x∈x ↔ x∈y) → x = y) という別の
 ;=> T
 ```
 
-`hilbert-library/` の `01`〜`03`, `05` の `.ledger`（命題論理・述語論理・等号・
+`library/hilbert-library/` の `01`〜`03`, `05` の `.ledger`（命題論理・述語論理・等号・
 古典論理の定理）は、この ZF 台帳の上にもそのまま積めます（`04` はペアノ算術用
 なので対象外です）。
 
@@ -489,19 +489,19 @@ z := x とすると ∀x ∀y (∀x (x∈x ↔ x∈y) → x = y) という別の
 されることを `tests/zf-tests.lisp` で確認しています。
 
 
-## 9. 空集合: `zf-library/01-empty-set.ledger`
+## 9. 空集合: `library/zf-library/01-empty-set.ledger`
 
 ZF の上に作った最初の定理ライブラリです。読み込み順は次のとおりです。
 
 ```lisp
 (defparameter *ZF-EMPTY*
   (flet ((lib (f l) (read-ledger-from-file f :ledger l)))
-    (lib "zf-library/01-empty-set.ledger"
-     (lib "hilbert-library/06-connectives.ledger"
-      (lib "hilbert-library/05-classical-logic.ledger"
-       (lib "hilbert-library/03-equality-core.ledger"
-        (lib "hilbert-library/02-predicate-core.ledger"
-         (lib "hilbert-library/01-propositional-core.ledger"
+    (lib "library/zf-library/01-empty-set.ledger"
+     (lib "library/hilbert-library/06-connectives.ledger"
+      (lib "library/hilbert-library/05-classical-logic.ledger"
+       (lib "library/hilbert-library/03-equality-core.ledger"
+        (lib "library/hilbert-library/02-predicate-core.ledger"
+         (lib "library/hilbert-library/01-propositional-core.ledger"
           *ZF*))))))))
 ```
 

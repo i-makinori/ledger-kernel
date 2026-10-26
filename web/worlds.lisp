@@ -205,7 +205,7 @@ contain ?-pattern variables. Bound variables are named ?BVn (see
 DISPLAY-PROOF)."
   (let* ((p (entry-payload e))
          ;; A rule as written: (NAME CONDITIONS FORM).
-         (w (if (member (entry-kind e) '(axiom irule deduction-case contradiction-form wff? term? var?))
+         (w (if (member (entry-kind e) '(axiom irule deduction-case wff? term? var?))
                 (cons (first p) (written-rule e))
                 p)))
     (case (entry-kind e)
@@ -231,8 +231,6 @@ DISPLAY-PROOF)."
                (values (mapcar (lambda (f) (display-pattern f p)) (first form))
                        (display-pattern (car (last form)) p))))
       ((wff? term? var?) (values nil (display-pattern (third w) p)))
-      ;; A declared contradiction: the formulas that, proved together, make one.
-      (contradiction-form (values (mapcar (lambda (f) (display-pattern f p)) (third w)) (first p)))
       (predicate-schema-symbol
        (values nil (cons (first p) (loop for i from 1 to (second p)
                                          collect (intern (format nil "?X~D" i) :ledger-kernel)))))
@@ -240,7 +238,7 @@ DISPLAY-PROOF)."
 
 (defun entry-conditions (e)
   "Side conditions of an axiom / rule / formation schema, as written."
-  (and (member (entry-kind e) '(axiom irule deduction-case contradiction-form wff? term? var?))
+  (and (member (entry-kind e) '(axiom irule deduction-case wff? term? var?))
        (first (written-rule e))))
 
 (defun auxiliary-name-p (name)

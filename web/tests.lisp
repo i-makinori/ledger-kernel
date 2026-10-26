@@ -36,10 +36,7 @@
     (expect "api-entry: line 2 is MP citing lines 1 and 0"
             (equalp (gethash "refs" (aref proof 2)) #("1" "0")) t)
     (expect "api-entry: an axiom citation links to the axiom's entry"
-            (string= (gethash "kind" (gethash "cite" (aref proof 0))) "axiom") t)
-    (let ((c (find "contradiction-form" entries :key (lambda (h) (gethash "kind" h)) :test #'string=)))
-      (expect "api-entry: the declared contradiction A, not-A is listed and shown"
-              (and c (hash-table-p (api-entry "zf" (gethash "k" c)))) t)))
+            (string= (gethash "kind" (gethash "cite" (aref proof 0))) "axiom") t))
   (let ((ok (api-check "zf" "((0 (.in v0 v1) :hyp nil)
                               (1 (.to (.in v0 v1) (.or (.in v0 v1) (.in v0 v2))) :th (th-or-intro-l))
                               (2 (.or (.in v0 v1) (.in v0 v2)) :ir (mp 1 0)))"))

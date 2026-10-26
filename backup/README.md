@@ -14,6 +14,7 @@ it back, followed by the original code (and its tests) verbatim.
 | `_backup_meta-unused.lisp` | the `@PROVEN?`, `@SUBSTN`, `@SUBSTN-OK?` meta operations |
 | `_backup_tautology.lisp` | `PROVE-TAUTOLOGY`: tautologies proved by Kalmár's completeness construction (removed with axiom II.4) |
 | `_backup_tautology-tests.lisp` | its tests |
+| `_backup_contradiction.lisp` | `(:contradiction ...)`: declaring what a system counts as a contradiction, and reporting a ledger that reaches one (a report, not part of checking; material for a separate tool) |
 | `_backup_generate-connectives-ledger.lisp` | the script (formerly in `tools/`) that generated `06-connectives.ledger` with it |
 
 The hardcoded `BOOTSTRAP-KERNEL` (FOL, equality and Peano axioms written

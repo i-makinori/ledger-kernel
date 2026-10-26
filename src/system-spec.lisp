@@ -16,7 +16,6 @@
 ;;;   (:meta-theorem deduction CLAUSE...)   -- see meta-theorem.lisp
 ;;;   (:meta-predicate @NAME ?ARG...)       -- see below
 ;;;   (:meta-constructor @NAME ?ARG...)
-;;;   (:contradiction NAME CONDITIONS (PATTERN...))  -- see contradiction.lisp
 ;;;
 ;;; Side conditions. The kernel computes a fixed catalog of meta-forms
 ;;; (KERNEL-META-CATALOG in meta.lisp): meta-predicates such as
@@ -246,15 +245,6 @@ may use .EXISTS, itself an abbreviation). The ORIGIN keeps it as written."
                      (check-meta-form-declaration role name params ledger)
                      (admit ledger (if (eq role :predicate) 'meta-predicate 'meta-constructor)
                             (cons name params)))))
-                (:contradiction
-                 (destructuring-bind (name conditions patterns) (cdr cmd)
-                   (unless (and (consp patterns) (proper-list-p patterns))
-                     (error "BOOTSTRAP-KERNEL-FROM-SPEC: (:contradiction ~S ...) needs a ~
-                             non-empty list of formula patterns, got ~S." name patterns))
-                   (when (find name (entries-of-kind 'contradiction-form ledger)
-                               :key (lambda (e) (first (entry-payload e))))
-                     (error "BOOTSTRAP-KERNEL-FROM-SPEC: contradiction ~S is already declared." name))
-                   (admit-rule ledger 'contradiction-form name conditions patterns)))
                 (t (error "BOOTSTRAP-KERNEL-FROM-SPEC: unknown system-spec command ~S" cmd))))))))
 
 (defun read-system-spec-from-file (path)

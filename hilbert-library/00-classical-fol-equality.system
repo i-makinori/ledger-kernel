@@ -28,6 +28,14 @@
 (:meta-predicate @subst-ok? ?x ?t ?A)
 (:meta-constructor @subst ?x ?t ?A)
 
+;;; --- contradiction ------------------------------------------------------
+;;;
+;;; What this system counts as a contradiction: some formula and its
+;;; negation both proved (contradiction.lisp). The kernel reports it if a
+;;; ledger ever gets there; it cannot show that one never will.
+
+(:contradiction a-and-not-a ((wff? ?A)) (?A (.neg ?A)))
+
 ;;; --- abbreviations -------------------------------------------------
 
 (:abbreviation (.exists ?x ?A) (.neg (.forall ?x (.neg ?A))))

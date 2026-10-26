@@ -16,6 +16,18 @@
 ;;; any symbol. Declared atomic symbols and variables are recognized by
 ;;; the kernel directly (DECLARED-SYMBOL-JUDGEMENT-P in judgement.lisp).
 
+;;; --- side conditions ---------------------------------------------------
+;;;
+;;; The meta-forms this system's rules are written with, chosen from the
+;;; kernel's catalog (KERNEL-META-CATALOG): "x is not free in A", "x is
+;;; free in none of the open hypotheses" (Gen), "t is substitutable for x
+;;; in A", and the substitution A[t/x] itself. A rule may use only these.
+
+(:meta-predicate @not-free-in? ?x ?A)
+(:meta-predicate @not-free-in-dependencies? ?x)
+(:meta-predicate @subst-ok? ?x ?t ?A)
+(:meta-constructor @subst ?x ?t ?A)
+
 ;;; --- abbreviations -------------------------------------------------
 
 (:abbreviation (.exists ?x ?A) (.neg (.forall ?x (.neg ?A))))

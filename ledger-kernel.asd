@@ -33,6 +33,7 @@
   :components ((:file "framework")
                (:file "core-tests")
                (:file "deduction-tests")
+               (:file "side-condition-tests")
                (:file "persistence-tests")
                (:file "arithmetic-tests")
                (:file "classical-logic-tests")

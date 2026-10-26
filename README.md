@@ -481,7 +481,12 @@ with the reasons, include for example:
   free of side conditions (built from axioms and rules without meta-predicates such as
   `@not-free-in?`). A theorem with side conditions is re-verified in full at each
   citation, its side-condition-free parts coming from the cache
-  (`disable-derived-entry-memoization` re-verifies everything).
+  (`disable-derived-entry-memoization` re-verifies everything). Side-conditioned steps
+  (Gen, III.1, ...) are where "for every x" is reached at once; since ω-inconsistency
+  cannot be ruled out by any finite check, they are re-checked at every citation.
+- **ω-consistency**: a declared contradiction (`(:contradiction ...)`) is found only among
+  finitely many theorems. ω-inconsistency (A(0), A(1), ... all proved, together with
+  ¬∀x A(x)) cannot be detected or excluded by the kernel.
 - **Scope of trust**: as described in "What is trusted" above. An independent checker
   (or export to the Metamath format) is future work.
 - **Web UI**: proofs can be checked, but there is not yet a feature for registering a proof

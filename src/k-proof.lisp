@@ -219,6 +219,13 @@ proven at the same-position line number in NUMS, threading BINDS.
 ;;; cache only ever answers for proof figures made of side-condition-free
 ;;; steps, and every side condition is checked again each time. On by
 ;;; default; DISABLE-DERIVED-ENTRY-MEMOIZATION re-verifies everything.
+;;;
+;;; Why the line is drawn there: side conditions guard the steps that
+;;; generalize at once (Gen's "for an arbitrary x", III.1's instance of a
+;;; universal), where counting instances one by one and asserting forall x
+;;; can part ways -- omega-inconsistency. No finite check can rule that
+;;; out, so those steps are never answered from a cache but unfolded and
+;;; checked again wherever they are cited.
 
 ;;; The verdict also depends on vocabulary admitted AFTER E: ENTRIES-UPTO
 ;;; leaves the vocabulary kinds unbounded, so whether a cited instance is

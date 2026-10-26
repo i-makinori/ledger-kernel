@@ -341,7 +341,13 @@ what is trusted unconditionally".
   cannot capture bound variables, but `@subst-ok?` is kept, so that any error in the
   conversion or in unfolding binders is detected and rejected there.
 - **The contents of `.system` files**: axioms, inference rules and formation rules are
-  trusted as-is once loaded (`:PRIMITIVE`); abbreviations assert nothing and are not
+  trusted as-is once loaded (`:PRIMITIVE`). A system may declare what it counts as a
+  contradiction (`(:contradiction NAME CONDITIONS (PATTERN...))`, e.g. A and ¬A in the
+  base system); whenever an admitted closed theorem completes one together with earlier
+  ones, the kernel still admits it but appends a `contradiction` entry and signals a
+  `contradiction-detected` warning (`ledger-contradictions` lists them). A system that
+  declares none has nothing to report, and finding nothing proves nothing;
+  abbreviations assert nothing and are not
   trusted. The propositional axioms are II.1–II.3 only;
   proof by cases and the rest are derived from them. The consistency of an axiom system cannot be confirmed from within
   the system (Gödel's second incompleteness theorem).
@@ -450,7 +456,10 @@ with the reasons, include for example:
   theorem can now be declared with `(:meta-theorem deduction ...)`, and the side
   conditions a system's rules are written with (`@not-free-in?`, `@subst`, ...) with
   `(:meta-predicate ...)` / `(:meta-constructor ...)`.
-- **Making it possible to define contradiction per system, and to detect contradictions**
+- **Making it possible to define contradiction per system, and to detect contradictions**:
+  a `.system` file can now declare what it counts as a contradiction with
+  `(:contradiction ...)`, and a ledger that reaches one is reported. Detection matches
+  theorems literally (up to bound variable names), without unifying schematic theorems.
 - **The library is small**: ZF only goes as far as the empty set. Pairs, unions, ordered
   pairs, natural numbers and so on are still to come. There is also no class notation
   (`{x ∣ φ}`) to make set theory easier to write.

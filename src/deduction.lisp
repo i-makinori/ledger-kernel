@@ -303,10 +303,12 @@ new ledger."
       (multiple-value-bind (expanded why) (expanded-deduction-checks-p db-proof db-hyp ledger)
         (log-admission-result log name t)
         ;; Kernel form in the payload, the text as written in the ORIGIN.
-        (ledger-append ledger 'th-ded (list name db-hyp db-proof)
-                       (list :derived-by-deduction hyp-formula raw-proof
-                             :expanded (and expanded t)
-                             :not-expanded-because (and (not expanded) why)))))))
+        (note-contradictions
+         (ledger-append ledger 'th-ded (list name db-hyp db-proof)
+                        (list :derived-by-deduction hyp-formula raw-proof
+                              :expanded (and expanded t)
+                              :not-expanded-because (and (not expanded) why)))
+         name)))))
 
 (defun deduction-entry-expanded-p (e)
   "T iff TH-DED entry E was admitted with its discharge built as a real,

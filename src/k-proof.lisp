@@ -523,4 +523,6 @@ that command rather than on its own."
       (log-admission-result log name nil)
       (error "CHECK-AND-EXTEND: proof of ~S rejected." name))
     (log-admission-result log name t)
-    (ledger-append ledger 'th (list name db-proof) (list* :derived raw-proof origin-tail))))
+    (note-contradictions
+     (ledger-append ledger 'th (list name db-proof) (list* :derived raw-proof origin-tail))
+     name)))

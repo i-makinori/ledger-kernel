@@ -121,19 +121,19 @@ ZF 集合論の場合:
           files :initial-value nil))
 
 (defparameter *L*
-  (load-chain '("hilbert-library/00-fol-language.system"
-                "hilbert-library/00-classical-logic.system"
-                "hilbert-library/00-equality.system"
-                "hilbert-library/00-description.system"
-                "hilbert-library/00-connectives.system"
-                "zf-library/00-zf.system"
-                "hilbert-library/01-propositional-core.ledger"
-                "hilbert-library/02-predicate-core.ledger"
-                "hilbert-library/03-equality-core.ledger"
-                "hilbert-library/05-classical-logic.ledger"
-                "hilbert-library/06-connectives.ledger"
-                "hilbert-library/07-quantifier-schemas.ledger"
-                "zf-library/01-empty-set.ledger")))
+  (load-chain '("library/hilbert-library/00-fol-language.system"
+                "library/hilbert-library/00-classical-logic.system"
+                "library/hilbert-library/00-equality.system"
+                "library/hilbert-library/00-description.system"
+                "library/hilbert-library/00-connectives.system"
+                "library/zf-library/00-zf.system"
+                "library/hilbert-library/01-propositional-core.ledger"
+                "library/hilbert-library/02-predicate-core.ledger"
+                "library/hilbert-library/03-equality-core.ledger"
+                "library/hilbert-library/05-classical-logic.ledger"
+                "library/hilbert-library/06-connectives.ledger"
+                "library/hilbert-library/07-quantifier-schemas.ledger"
+                "library/zf-library/01-empty-set.ledger")))
 ```
 
 ペアノ算術なら、基本の4ファイル（`00-fol-language`・`00-classical-logic`・`00-equality`・
@@ -193,7 +193,7 @@ GitHub Pages などの静的ホスティングに置けます。画面はサー�
 エディタでの検証はできません（証明の S 式はコピーできます）。
 
 検証もできるサーバー版を VPS などで公開するときは、nginx の後ろに置きます。
-systemd のユニットと nginx の設定例、手順を [deploy/](deploy/README.md) にまとめて
+systemd のユニットと nginx の設定例、手順を [web/deploy/](web/deploy/README.md) にまとめて
 あります。送られた証明は Lisp の `read` を使わずに読み（既存の記号だけを受け付け、
 新しい記号を作らない）、1 件の検証時間・同時に走る検証の数・要求の大きさに上限を
 設けています。
@@ -264,27 +264,27 @@ systemd のユニットと nginx の設定例、手順を [deploy/](deploy/READM
 
 | ファイル | 内容 |
 |---|---|
-| `hilbert-library/00-fol-language.system` | 言語: 項と論理式（→ ¬ ∀ =）の形成規則と、規則が使う付帯条件（自由変数・代入） |
-| `hilbert-library/00-classical-logic.system` | 論理: MP・Gen・演繹定理・II.1〜3・III.1〜2・∃ の略記（古典論理としての読み） |
-| `hilbert-library/00-equality.system` | 等号: IV.1〜4 |
-| `hilbert-library/00-description.system` | 確定記述: 項 ιx A と IOTA 規則 |
-| `hilbert-library/00-connectives.system` | ∧ ∨ ↔ ∃! の略記（公理なし） |
-| `hilbert-library/00-peano-arithmetic.system` | ペアノ算術の語彙と公理 P1〜P10 |
-| `hilbert-library/00-peano-order.system` | 順序 ≤ ・ < の略記（s ≤ t :⇔ ∃z s + z = t、s < t :⇔ S s ≤ t。公理なし） |
-| `hilbert-library/01-propositional-core.ledger` | 恒等律、仮言三段論法、前件の入れ替え |
-| `hilbert-library/02-predicate-core.ledger` | ∀ の順序交換 |
-| `hilbert-library/03-equality-core.ledger` | 等号の反射律・推移律 |
-| `hilbert-library/04-peano-arithmetic.ledger` | 0 + x = x（帰納法による証明） |
-| `hilbert-library/05-classical-logic.ledger` | ex falso、二重否定の導入・除去、モーダストレンス、場合分け（`th-case-split`）、背理法 など。II.1〜II.3 だけから導出 |
-| `hilbert-library/06-connectives.ledger` | ∧ ∨ ↔ の基本補題（導入・除去・対称・推移・ド・モルガン・排中律 など。元は `PROVE-TAUTOLOGY` で生成（現在は `backup/`）） |
-| `hilbert-library/07-quantifier-schemas.ledger` | P(x) についての量化子の補題（∀除去、∃導入、単調性、∃! → ∃、∃! の一意性） |
-| `hilbert-library/08-arithmetic.ledger` | 加法・乗法の交換律・結合律・分配律・簡約律、0 と 1 の性質（`tools/generate-arithmetic-ledger.lisp` で生成） |
-| `hilbert-library/09-order.ledger` | ≤ の反射律・推移律・反対称律・全順序性、x ≤ Sx、0 か後者か、x + y = 0 → y = 0（同上） |
-| `hilbert-library/10-division.ledger` | S b による割り算の存在と一意性、商 `div-s(a,b)`・余り `mod-s(a,b)`・β 関数 `beta(c,d,i)` = c mod (1+(i+1)d) の定義（同上） |
-| `zf-library/00-zf.system` | ZF の公理系 |
-| `zf-library/01-empty-set.ledger` | 空集合の存在・一意性、∅ の定義、¬(x ∈ ∅) |
+| `library/hilbert-library/00-fol-language.system` | 言語: 項と論理式（→ ¬ ∀ =）の形成規則と、規則が使う付帯条件（自由変数・代入） |
+| `library/hilbert-library/00-classical-logic.system` | 論理: MP・Gen・演繹定理・II.1〜3・III.1〜2・∃ の略記（古典論理としての読み） |
+| `library/hilbert-library/00-equality.system` | 等号: IV.1〜4 |
+| `library/hilbert-library/00-description.system` | 確定記述: 項 ιx A と IOTA 規則 |
+| `library/hilbert-library/00-connectives.system` | ∧ ∨ ↔ ∃! の略記（公理なし） |
+| `library/hilbert-library/00-peano-arithmetic.system` | ペアノ算術の語彙と公理 P1〜P10 |
+| `library/hilbert-library/00-peano-order.system` | 順序 ≤ ・ < の略記（s ≤ t :⇔ ∃z s + z = t、s < t :⇔ S s ≤ t。公理なし） |
+| `library/hilbert-library/01-propositional-core.ledger` | 恒等律、仮言三段論法、前件の入れ替え |
+| `library/hilbert-library/02-predicate-core.ledger` | ∀ の順序交換 |
+| `library/hilbert-library/03-equality-core.ledger` | 等号の反射律・推移律 |
+| `library/hilbert-library/04-peano-arithmetic.ledger` | 0 + x = x（帰納法による証明） |
+| `library/hilbert-library/05-classical-logic.ledger` | ex falso、二重否定の導入・除去、モーダストレンス、場合分け（`th-case-split`）、背理法 など。II.1〜II.3 だけから導出 |
+| `library/hilbert-library/06-connectives.ledger` | ∧ ∨ ↔ の基本補題（導入・除去・対称・推移・ド・モルガン・排中律 など。元は `PROVE-TAUTOLOGY` で生成（現在は `backup/`）） |
+| `library/hilbert-library/07-quantifier-schemas.ledger` | P(x) についての量化子の補題（∀除去、∃導入、単調性、∃! → ∃、∃! の一意性） |
+| `library/hilbert-library/08-arithmetic.ledger` | 加法・乗法の交換律・結合律・分配律・簡約律、0 と 1 の性質（`tools/generate-arithmetic-ledger.lisp` で生成） |
+| `library/hilbert-library/09-order.ledger` | ≤ の反射律・推移律・反対称律・全順序性、x ≤ Sx、0 か後者か、x + y = 0 → y = 0（同上） |
+| `library/hilbert-library/10-division.ledger` | S b による割り算の存在と一意性、商 `div-s(a,b)`・余り `mod-s(a,b)`・β 関数 `beta(c,d,i)` = c mod (1+(i+1)d) の定義（同上） |
+| `library/zf-library/00-zf.system` | ZF の公理系 |
+| `library/zf-library/01-empty-set.ledger` | 空集合の存在・一意性、∅ の定義、¬(x ∈ ∅) |
 
-読み込み順は、`.system` → `01`, `02`, `03`, `05`, `06`, `07` → `zf-library/01` です
+読み込み順は、`.system` → `01`, `02`, `03`, `05`, `06`, `07` → `library/zf-library/01` です
 （「ライブラリを読み込む」の例のとおり）。
 
 `08`〜`10` の法則は、束縛専用の変数 x1, x2, x3 で全称閉包した形で登録されています
@@ -367,8 +367,9 @@ src/                     カーネル本体
   system-spec.lisp       .system ファイルの読み込み
   function-definition.lisp  DEFINE-FUNCTION-BY-DESCRIPTION（ι 項の略記と 名前-DEF）
 tests/                   カーネルのテスト（ledger-kernel/tests）
-hilbert-library/         論理とペアノ算術の体系・ライブラリ
-zf-library/              ZF 集合論の体系・ライブラリ
+library/
+  hilbert-library/       論理とペアノ算術の体系・ライブラリ
+  zf-library/            ZF 集合論の体系・ライブラリ
 web/                     Web UI（ledger-kernel/web。カーネルの外側）
   render.lisp            式を教科書風の記法で表示
   worlds.lisp            表示する世界（ZF、ペアノ算術）
@@ -378,13 +379,13 @@ web/                     Web UI（ledger-kernel/web。カーネルの外側）
   static-export.lisp     静的サイトとして書き出す
   static/                画面（HTML / JS / CSS）
   tests.lisp             表示と API のテスト
+  deploy/                サーバー版を公開するための systemd / nginx の設定例
 tools/
   serve.lisp                        Web UI を起動する
   export-static.lisp                Web UI を静的サイトとして書き出す
   generate-arithmetic-ledger.lisp   08-arithmetic / 09-order / 10-division を生成し直す
 docs/guide.md            機能ごとの詳しい説明
 backup/                  カーネルから外した機能（元のコードと復元の手順。読み込まれない）
-deploy/                  サーバー版を公開するための systemd / nginx の設定例
 ```
 
 

@@ -5,12 +5,12 @@
 ;;; the defined connectives, so load it ON TOP OF the base system and the
 ;;; connectives, in this order (BOOTSTRAP-KERNEL-FROM-SPEC-FILE with :LEDGER):
 ;;;
-;;;   hilbert-library/00-fol-language.system
-;;;   hilbert-library/00-classical-logic.system
-;;;   hilbert-library/00-equality.system
-;;;   hilbert-library/00-description.system
-;;;   hilbert-library/00-connectives.system
-;;;   zf-library/00-zf.system
+;;;   library/hilbert-library/00-fol-language.system
+;;;   library/hilbert-library/00-classical-logic.system
+;;;   library/hilbert-library/00-equality.system
+;;;   library/hilbert-library/00-description.system
+;;;   library/hilbert-library/00-connectives.system
+;;;   library/zf-library/00-zf.system
 ;;;
 ;;; REMINDER: every entry here is :PRIMITIVE -- trusted by fiat, never
 ;;; re-verified (see 00-fol-language.system's header). This is

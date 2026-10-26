@@ -9,7 +9,7 @@
 ;;;   00-classical-logic.system  logic: how to infer
 ;;;   00-equality.system         theory of equality
 ;;;   00-description.system      definite descriptions (the IOTA rule)
-;;; then theories on top (00-peano-arithmetic.system, zf-library/00-zf.system).
+;;; then theories on top (00-peano-arithmetic.system, library/zf-library/00-zf.system).
 ;;; Every entry here is :PRIMITIVE -- trusted, never checked -- so loading
 ;;; it is an act of trust in its text.
 ;;;

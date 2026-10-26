@@ -1,6 +1,6 @@
 ;;;; generate-arithmetic-ledger.lisp
 ;;;;
-;;;; Writes hilbert-library/08-arithmetic.ledger: the commutative-semiring
+;;;; Writes library/hilbert-library/08-arithmetic.ledger: the commutative-semiring
 ;;;; laws of + and * in Peano arithmetic, each proved by induction from
 ;;;; P1-P10. Proofs are assembled by the small builder below and every
 ;;;; theorem is admitted through CHECK-AND-EXTEND as it is built, so this
@@ -27,7 +27,7 @@
 (in-package :ledger-kernel)
 
 (defun library-file (name)
-  (asdf:system-relative-pathname :ledger-kernel (concatenate 'string "hilbert-library/" name)))
+  (asdf:system-relative-pathname :ledger-kernel (concatenate 'string "library/hilbert-library/" name)))
 
 (defparameter *base-systems*
   '("00-fol-language.system" "00-classical-logic.system" "00-equality.system"

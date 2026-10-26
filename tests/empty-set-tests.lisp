@@ -1,11 +1,11 @@
-;;;; empty-set-tests.lisp -- zf-library/01-empty-set.ledger and persistence
+;;;; empty-set-tests.lisp -- library/zf-library/01-empty-set.ledger and persistence
 ;;;; of DEFINE-FUNCTION-BY-DESCRIPTION
 ;;;; Part of the ledger-kernel/tests system (see ledger-kernel.asd).
 
 (in-package :ledger-kernel)
 
 (defun zf-library-path (name)
-  (asdf:system-relative-pathname :ledger-kernel (concatenate 'string "zf-library/" name)))
+  (asdf:system-relative-pathname :ledger-kernel (concatenate 'string "library/zf-library/" name)))
 
 (defun zf-logic-ledger ()
   "ZF-LEDGER (the three .system files) + hilbert-library 01/02/03/05/06:
@@ -87,7 +87,7 @@ command is refused on load."
     ledger))
 
 (defun run-empty-set-self-tests ()
-  "zf-library/01-empty-set.ledger and persistence of function definitions."
+  "library/zf-library/01-empty-set.ledger and persistence of function definitions."
   (let* ((ledger (zf-logic-ledger))
          (ledger (test-empty-set-library ledger))
          (ledger (progn (expect "every TH-DED of the ZF libraries is expanded into a real, checked proof"

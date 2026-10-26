@@ -28,16 +28,16 @@ generalized booleans. Returns T on pass, NIL on failure."
     ok))
 
 (defun library-path (name)
-  "Absolute pathname of NAME inside this system's hilbert-library/
+  "Absolute pathname of NAME inside this system's library/hilbert-library/
 directory, so the tests do not depend on the current working directory."
   (asdf:system-relative-pathname :ledger-kernel
-                                 (concatenate 'string "hilbert-library/" name)))
+                                 (concatenate 'string "library/hilbert-library/" name)))
 
 (defparameter *base-system-files*
   '("00-fol-language.system" "00-classical-logic.system"
     "00-equality.system" "00-description.system")
   "The standard base system, layer by layer: language, logic, equality,
-descriptions (hilbert-library/).")
+descriptions (library/hilbert-library/).")
 
 (defun base-system-spec ()
   "The directives of *BASE-SYSTEM-FILES*, in loading order."

@@ -1,7 +1,7 @@
 # backup/
 
 Code removed from `src/` to keep the kernel small. None of it is loaded by
-any ASDF system, and nothing in `hilbert-library/` or `zf-library/` needs it to load.
+any ASDF system, and nothing in `library/hilbert-library/` or `library/zf-library/` needs it to load.
 Each file starts with what the code did and step-by-step notes for putting
 it back, followed by the original code (and its tests) verbatim.
 
@@ -19,6 +19,6 @@ it back, followed by the original code (and its tests) verbatim.
 
 The hardcoded `BOOTSTRAP-KERNEL` (FOL, equality and Peano axioms written
 in Lisp) was removed as well but is not kept here: it was an exact copy of
-`hilbert-library/00-classical-fol-equality.system` and
+`library/hilbert-library/00-classical-fol-equality.system` and
 `00-peano-arithmetic.system`, which are now the only source. Tests build
 that ledger with `FOL-KERNEL` (`tests/framework.lisp`).

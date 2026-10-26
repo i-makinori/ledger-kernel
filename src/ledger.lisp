@@ -85,7 +85,7 @@ BY-DERIVED-NAME. Signals an error on a bounded view."
 TERM?/WFF?/VAR? formation rules), as opposed to kinds that justify proof
 steps (AXIOM, IRULE, TH, ...)."
   (member kind '(atomic-wff-symbol variable-symbol predicate-schema-symbol wff? term? var?
-                 abbreviation)
+                 abbreviation meta-predicate meta-constructor)
           :test #'eq))
 
 (defun entries-of-kind (kind ledger)

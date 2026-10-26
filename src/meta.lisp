@@ -84,6 +84,18 @@ during it, so that RESULT can be bound structurally before TERM is known
         (cons '@subst-ok? #'meta-subst-ok?)
         (cons '@substitutes? #'meta-substitutes?)))
 
+(defun kernel-meta-catalog ()
+  "Every meta-form the kernel can compute, as (NAME ROLE ARITY): ROLE is
+:PREDICATE (a side condition, META-PREDICATES-TABLE) or :CONSTRUCTOR (a
+form evaluated inside a pattern, META-CONSTRUCTORS-TABLE). A .system file
+selects from it with (:meta-predicate ...) / (:meta-constructor ...);
+a rule may use only what its system has declared (system-spec.lisp)."
+  '((@not-free-in? :predicate 2)
+    (@not-free-in-dependencies? :predicate 1)
+    (@subst-ok? :predicate 3)
+    (@substitutes? :predicate 4)
+    (@subst :constructor 3)))
+
 (defun meta-constructors-table ()
   "Alist of @-tagged meta-constructors to their functions."
   (list (cons '@subst (lambda (var term wff) (substitute-wff var term wff)))))

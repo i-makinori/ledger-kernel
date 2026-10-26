@@ -61,6 +61,10 @@ proof trees, and verifying proofs you write on the spot.
 - Definite descriptions `(.iota x A)` ("the unique x satisfying A")
 
 **Definition mechanisms**
+- `(:meta-predicate @NAME ?ARG...)` / `(:meta-constructor @NAME ?ARG...)`: declares
+  which side conditions (x not free in A, A[t/x], ...) the system's rules use, chosen
+  from the kernel's fixed catalog. A rule may use only declared ones; a system with
+  no side conditions declares none
 - `(:abbreviation HEAD BODY)`: defines a new symbol as an abbreviation of an expression
   in earlier symbols. The kernel expands input before checking it, so no axiom is added
 - `DEFINE-FUNCTION-BY-DESCRIPTION`: defines a new function symbol, from a property whose
@@ -443,8 +447,9 @@ with the reasons, include for example:
   one piece at a time — at both the language level and the meta-language level.
 - **Making it possible to define the behavior of meta-theorems within `.system`**:
   because the handling and meaning of symbols differ from system to system. The deduction
-  theorem can now be declared with `(:meta-theorem deduction ...)`; the grammar of side
-  conditions such as those for Subst is still to come.
+  theorem can now be declared with `(:meta-theorem deduction ...)`, and the side
+  conditions a system's rules are written with (`@not-free-in?`, `@subst`, ...) with
+  `(:meta-predicate ...)` / `(:meta-constructor ...)`.
 - **Making it possible to define contradiction per system, and to detect contradictions**
 - **The library is small**: ZF only goes as far as the empty set. Pairs, unions, ordered
   pairs, natural numbers and so on are still to come. There is also no class notation

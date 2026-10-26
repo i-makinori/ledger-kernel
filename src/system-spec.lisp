@@ -14,8 +14,24 @@
 ;;;                            :=> CONCLUSION-PATTERN))
 ;;;   (:abbreviation (HEAD ?PARAMETER...) BODY)  -- see abbreviation.lisp
 ;;;   (:meta-theorem deduction CLAUSE...)   -- see meta-theorem.lisp
-;;; CONDITIONS and patterns may use only the kernel's fixed catalog of
-;;; meta-predicates and meta-constructors; a new one needs new Lisp code.
+;;;   (:meta-predicate @NAME ?ARG...)       -- see below
+;;;   (:meta-constructor @NAME ?ARG...)
+;;;
+;;; Side conditions. The kernel computes a fixed catalog of meta-forms
+;;; (KERNEL-META-CATALOG in meta.lisp): meta-predicates such as
+;;; (@not-free-in? ?x ?A), checked as side conditions, and the
+;;; meta-constructor (@subst ?x ?t ?A), A[t/x], evaluated inside a pattern.
+;;; A system says which of them its side conditions are written with, by
+;;; declaring each before its first use, e.g.
+;;;   (:meta-predicate @not-free-in? ?x ?A)
+;;;   (:meta-constructor @subst ?x ?t ?A)
+;;; A rule, abbreviation or meta-theorem clause using an @-form its system
+;;; has not declared, or with the wrong number of arguments, is refused.
+;;; A system without a declaration simply cannot use that side condition,
+;;; as a system without (:meta-theorem deduction ...) cannot use the
+;;; Deduction Theorem. (@vdash ...) is not a meta-form but the notation of
+;;; the deduction clauses themselves. A new meta-form still needs new Lisp
+;;; code in the catalog.
 ;;;
 ;;; Trust: unlike .ledger theorems, .system entries are :PRIMITIVE,
 ;;; admitted by fiat with nothing to check them against. Loading one is
@@ -99,6 +115,65 @@ something else, since the renaming would then merge two variables."
                 variable of its own; rename it." name)))
     (values (sublis map conditions) (sublis map form) map)))
 
+;;; --- Declared meta-forms ------------------------------------------------
+
+(defun declared-meta-form (name role ledger)
+  "The payload (NAME ?ARG...) of LEDGER's declaration of meta-form NAME
+in ROLE (:PREDICATE or :CONSTRUCTOR), or NIL."
+  (let ((e (find name (entries-of-kind (if (eq role :predicate) 'meta-predicate 'meta-constructor)
+                                       ledger)
+                 :key (lambda (e) (car (entry-payload e))))))
+    (and e (entry-payload e))))
+
+(defun check-meta-form-declaration (role name params ledger)
+  "Signal an error unless (:meta-predicate/:meta-constructor NAME . PARAMS)
+may be admitted to LEDGER."
+  (flet ((fail (fmt &rest args)
+           (error "BOOTSTRAP-KERNEL-FROM-SPEC: (~(~S~) ~S ...): ~?"
+                  (if (eq role :predicate) :meta-predicate :meta-constructor) name fmt args)))
+    (let ((known (assoc name (kernel-meta-catalog) :test #'eq)))
+      (unless (and known (eq (second known) role))
+        (fail "the kernel has no ~(~A~) of that name (it has ~{~S~^, ~})."
+              role (loop for (n r) in (kernel-meta-catalog) when (eq r role) collect n)))
+      (unless (and (every #'pat-var-p params)
+                   (= (length params) (length (remove-duplicates params))))
+        (fail "the arguments must be distinct pattern variables."))
+      (unless (= (length params) (third known))
+        (fail "it takes ~D argument~:P, not ~D." (third known) (length params)))
+      (when (or (declared-meta-form name :predicate ledger)
+                (declared-meta-form name :constructor ledger))
+        (fail "already declared.")))))
+
+(defun check-meta-forms-declared (what conditions forms ledger)
+  "Signal an error unless every @-form in CONDITIONS (as side conditions)
+and FORMS (inside patterns, templates or bodies) is declared in LEDGER,
+with its arity. WHAT names the directive, for the message."
+  (labels ((need (name role nargs)
+             (let ((decl (declared-meta-form name role ledger)))
+               (cond
+                 ((null decl)
+                  (error "BOOTSTRAP-KERNEL-FROM-SPEC: ~A uses ~S, which this system ~
+                          does not declare; add (~(~S~) ~S ...) before it."
+                         what name (if (eq role :predicate) :meta-predicate :meta-constructor) name))
+                 ((/= nargs (length (cdr decl)))
+                  (error "BOOTSTRAP-KERNEL-FROM-SPEC: ~A applies ~S to ~D argument~:P; ~
+                          it is declared with ~D."
+                         what name nargs (length (cdr decl)))))))
+           (walk (x)
+             ;; Inside a pattern every @-form is a constructor, except the
+             ;; deduction clauses' own (@vdash H A).
+             (when (consp x)
+               (when (and (at-tagged-p x) (not (eq (car x) '@vdash)))
+                 (need (car x) :constructor (length (cdr x))))
+               (walk (car x))
+               (walk (cdr x)))))
+    (dolist (c conditions)
+      (cond ((at-tagged-p c)
+             (need (car c) :predicate (length (cdr c)))
+             (walk (cdr c)))
+            (t (walk c))))
+    (dolist (f forms) (walk f))))
+
 (defun bootstrap-kernel-from-spec (spec &key (atomic-symbols '(A B C D E F G H))
                                               (variables '(v0 v1 v2 v3 v4 v5))
                                               (ledger nil)
@@ -123,6 +198,7 @@ case's proof template, is expanded and renamed together with the rule
 and stored as the payload's fourth element."
              (destructuring-bind (ec ef et)
                  (expand-abbreviations (list conditions form template) ledger :pattern t)
+               (check-meta-forms-declared (format nil "~(~A~) ~S" kind name) ec (list ef et) ledger)
                (multiple-value-bind (c f map) (canonicalize-rule-binders name ec ef)
                  (admit ledger kind (if template-p
                                         (list name c f (sublis map et))
@@ -136,6 +212,8 @@ primitive symbols, so that every binder in it is a kernel binder (a body
 may use .EXISTS, itself an abbreviation). The ORIGIN keeps it as written."
              (let ((expanded (expand-abbreviations body ledger :pattern t)))
                (check-abbreviation-declaration head-pattern expanded ledger)
+               (check-meta-forms-declared (format nil "the abbreviation ~S" head-pattern)
+                                          nil (list expanded) ledger)
                (admit ledger 'abbreviation (list head-pattern expanded) nil
                       (and (not (equal expanded body)) (list head-pattern body)))))
            (admit-each (ledger kind syms)
@@ -161,6 +239,12 @@ may use .EXISTS, itself an abbreviation). The ORIGIN keeps it as written."
                 (:abbreviation (destructuring-bind (head-pattern body) (cdr cmd)
                                  (admit-abbreviation ledger head-pattern body)))
                 (:meta-theorem (admit-meta-theorem ledger (cdr cmd) #'admit #'admit-rule))
+                ((:meta-predicate :meta-constructor)
+                 (destructuring-bind (name . params) (cdr cmd)
+                   (let ((role (if (eq (car cmd) :meta-predicate) :predicate :constructor)))
+                     (check-meta-form-declaration role name params ledger)
+                     (admit ledger (if (eq role :predicate) 'meta-predicate 'meta-constructor)
+                            (cons name params)))))
                 (t (error "BOOTSTRAP-KERNEL-FROM-SPEC: unknown system-spec command ~S" cmd))))))))
 
 (defun read-system-spec-from-file (path)
@@ -202,8 +286,10 @@ the discharge form is declared once."
                  (when (deduction-discharge-entry ledger)
                    (error "BOOTSTRAP-KERNEL-FROM-SPEC: the Deduction Theorem's :DISCHARGE ~
                            is already declared."))
-                 (funcall admit ledger 'deduction-discharge
-                          (list vdash (expand-abbreviations formula ledger :pattern t)))))
+                 (let ((expanded (expand-abbreviations formula ledger :pattern t)))
+                   (check-meta-forms-declared "the Deduction Theorem's :DISCHARGE"
+                                              nil (list expanded) ledger)
+                   (funcall admit ledger 'deduction-discharge (list vdash expanded)))))
               (:case
                (destructuring-bind (case-name conditions form &optional proof-clause) (cdr clause)
                  (unless (and (= (length form) 4) (eq (third form) :=>)

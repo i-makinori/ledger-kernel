@@ -31,7 +31,7 @@
 ;;;;        ;;;   (:contradiction NAME CONDITIONS (PATTERN...))  -- see contradiction.lisp
 ;;;;      to its list of directives.
 ;;;;   4. Put the declaration below back into
-;;;;      hilbert-library/00-classical-fol-equality.system, after the side
+;;;;      library/hilbert-library/00-classical-fol-equality.system, after the side
 ;;;;      conditions.
 ;;;;   5. Tests: tests/contradiction-tests.lisp below, after "deduction-tests"
 ;;;;      in the test system, and (run-contradiction-self-tests) in run.lisp.
@@ -165,7 +165,7 @@ completes (see above), signalling CONTRADICTION-DETECTED for each."
 |#
 
 ;;; =====================================================================
-;;; hilbert-library/00-classical-fol-equality.system
+;;; library/hilbert-library/00-classical-fol-equality.system
 ;;; =====================================================================
 #|
 ;;; --- contradiction ------------------------------------------------------

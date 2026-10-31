@@ -1,5 +1,5 @@
 ;;;; predicate-schema-tests.lisp -- predicate schema symbols, :INST,
-;;;; vocabulary visibility, and hilbert-library/07-quantifier-schemas.ledger
+;;;; vocabulary visibility, and library/hilbert-library/07-quantifier-schemas.ledger
 ;;;; Part of the ledger-kernel/tests system (see ledger-kernel.asd).
 
 (in-package :ledger-kernel)
@@ -61,7 +61,7 @@ puts v0 into P is rejected, however it is requested."
     ledger))
 
 (defun test-quantifier-schema-library (ledger)
-  "hilbert-library/07-quantifier-schemas.ledger on top of ZF + the empty
+  "library/hilbert-library/07-quantifier-schemas.ledger on top of ZF + the empty
 set: automatic and explicit instantiation, later vocabulary, attacks."
   (let* ((ledger (read-ledger-from-file (library-path "07-quantifier-schemas.ledger") :ledger ledger))
          (ledger (read-ledger-from-file (zf-library-path "01-empty-set.ledger") :ledger ledger)))
@@ -179,7 +179,7 @@ that comparison makes these citations succeed with the broken matcher.)"
 
 (defun run-predicate-schema-self-tests ()
   "Predicate schema symbols, :INST, vocabulary visibility, and
-hilbert-library/07-quantifier-schemas.ledger."
+library/hilbert-library/07-quantifier-schemas.ledger."
   (let* ((ledger (connectives-ledger))
          (ledger (test-predicate-schema-declarations ledger)))
     (test-predicate-schema-soundness ledger))

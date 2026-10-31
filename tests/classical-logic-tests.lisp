@@ -7,7 +7,7 @@
 ;;; 14. Classical propositional lemmas from II.1-3 alone
 ;;; ---------------------------------------------------------------------
 ;;;
-;;; hilbert-library/01-propositional-core.ledger and
+;;; library/hilbert-library/01-propositional-core.ledger and
 ;;; 05-classical-logic.ledger derive, from Lukasiewicz's axioms II.1-3 and
 ;;; MP only: ex falso, double negation (both ways), modus tollens, the
 ;;; case split TH-CASE-SPLIT (formerly the extra axiom II.4), reductio

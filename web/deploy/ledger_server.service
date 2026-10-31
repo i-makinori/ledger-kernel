@@ -2,7 +2,7 @@
 #
 # how to setup:
 # # 1. cp
-# sudo cp deploy/ledger_server.service /etc/systemd/system/
+# sudo cp web/deploy/ledger_server.service /etc/systemd/system/
 # # 2. systemd reload
 # sudo systemctl daemon-reload
 # # 3. start service

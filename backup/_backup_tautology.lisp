@@ -13,7 +13,7 @@
 ;;;;   Hilbert proof of it by Kalmar's Lemma (signed atoms prove the signed
 ;;;;   formula, by induction) and elimination of the atoms one at a time by
 ;;;;   the case split. Every emitted line was still checked by the kernel.
-;;;;   hilbert-library/06-connectives.ledger was generated with it
+;;;;   library/hilbert-library/06-connectives.ledger was generated with it
 ;;;;   (_backup_generate-connectives-ledger.lisp); that file is ordinary
 ;;;;   checked proofs and no longer needs this code.
 ;;;;
@@ -69,7 +69,7 @@
 
 (defun kdefined-connectives ()
   "Defined binary connectives the tactic sees through, as
-(HEAD FOLD-AXIOM UNFOLD-AXIOM); see hilbert-library/00-connectives.system."
+(HEAD FOLD-AXIOM UNFOLD-AXIOM); see library/hilbert-library/00-connectives.system."
   '((.and and-fold and-unfold)
     (.or or-fold or-unfold)
     (.iff iff-fold iff-unfold)))
